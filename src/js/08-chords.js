@@ -199,6 +199,7 @@ function chordBoxSVG(v, funcMap){
   for(let r=0;r<=rows;r++){ const isNut=(baseFret===1 && r===0); s+=`<line class="${isNut?'cd-nut':'cd-fret'}" x1="${x(0)}" y1="${y(r)}" x2="${x(5)}" y2="${y(r)}"/>`; }
   for(let i=0;i<6;i++){ s+=`<line class="cd-string" x1="${x(i)}" y1="${y(0)}" x2="${x(i)}" y2="${y(rows)}"/>`; }
   if(baseFret>1){ s+=`<text class="cd-pos" x="${x(0)-9}" y="${y(0)+gh*0.7}" text-anchor="end">${baseFret}fr</text>`; }
+  const fing=chordFingers(frets);
   frets.forEach((fr,li)=>{
     const sx=x(li);                          // low E at left
     const stringPc=mod(STD_LOW6[li],12);
@@ -209,7 +210,8 @@ function chordBoxSVG(v, funcMap){
     const notePc=mod(stringPc+fr,12);
     const cls=funcMap[notePc] || 'd-fifth';
     const midi=STD_LOW6_MIDI[li]+fr;
-    s+=`<circle class="cd-dot ${cls}" data-midi="${midi}" cx="${sx}" cy="${cy}" r="6.5"/>`;
+    s+=`<circle class="cd-dot ${cls}" data-midi="${midi}" cx="${sx}" cy="${cy}" r="7.5"/>`;
+    if(fing[li]) s+=`<text class="cd-fing" x="${sx}" y="${cy}" text-anchor="middle">${fing[li]}</text>`;
   });
   s+=`</svg>`; return s;
 }

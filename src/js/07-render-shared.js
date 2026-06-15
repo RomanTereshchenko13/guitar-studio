@@ -46,6 +46,10 @@ function renderBoard(boardEl, cellFn){
     for(let f=lo; f<=hi; f++){
       const pc=(OPEN[si]+f)%12;
       const cell=document.createElement('div'); cell.className='cell';
+      // position-marker inlays on the neck face: single dot between the centre
+      // strings (G/D, si 3), double dot straddling the centre at fret 12/24
+      if(INLAY_DOUBLE.has(f)){ if(si===2||si===4) cell.classList.add('inlay'); }
+      else if(INLAY_SINGLE.has(f)){ if(si===3) cell.classList.add('inlay'); }
       const dot=cellFn(pc,si,f);
       if(dot) cell.appendChild(dot);
       row.appendChild(cell);
@@ -53,6 +57,33 @@ function renderBoard(boardEl, cellFn){
     boardEl.appendChild(row);
   });
   const panel=boardEl.closest('.board'); if(panel){ panel.style.minWidth=boardWidth()+'px'; panel.classList.toggle('lefty', lefty); }
+  // hint that the neck scrolls (only the wide "All frets" view overflows)
+  const sc=boardEl.closest('.scroll'); if(sc){ sc.classList.toggle('scrollable', sc.scrollWidth > sc.clientWidth + 1); }
+}
+const INLAY_SINGLE = new Set(DOTS.filter(f=>f!==12&&f!==24));
+const INLAY_DOUBLE = new Set([12,24]);
+/* Heuristic fingering for a fretted shape. `frets` is indexed by display column
+   (null = muted, 0 = open → no finger). Returns {colIndex: 1..4}. A genuine
+   index-barre is detected when the lowest fret is played on 2+ strings AND a
+   higher fret sits above it; otherwise fingers ascend by fret then string. This
+   lands the standard fingerings for the open / E-shape / A-shape voicings the
+   app generates, and a sensible ascending guess for computed jazz voicings. */
+function chordFingers(frets){
+  const fretted=frets.map((fr,i)=>({i,fr})).filter(o=>o.fr!=null&&o.fr>0)
+                     .sort((a,b)=> a.fr-b.fr || a.i-b.i);
+  const map={};
+  if(!fretted.length) return map;
+  const minF=fretted[0].fr;
+  const atMin=fretted.filter(o=>o.fr===minF);
+  const higher=fretted.filter(o=>o.fr>minF);
+  let next=1;
+  if(atMin.length>=2 && higher.length>=1){          // index bars the lowest fret
+    atMin.forEach(o=>{ map[o.i]=1; }); next=2;
+    higher.forEach(o=>{ map[o.i]=Math.min(next++,4); });
+  } else {
+    fretted.forEach(o=>{ map[o.i]=Math.min(next++,4); });
+  }
+  return map;
 }
 function makeDot(cls,text,midi){
   const d=document.createElement('div'); d.className='dot '+cls; d.textContent=text;

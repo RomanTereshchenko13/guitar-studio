@@ -1,8 +1,18 @@
 <!DOCTYPE html>
 <!-- ===========================================================
      Guitar Studio
-     Version: 1.12.0  (2026-06-15)
+     Version: 1.13.0  (2026-06-15)
      Changelog:
+       1.13.0 — visual + mobile polish. Phones get finger-sized tap targets
+               (fretboard dots grow rather than shrink, taller buttons) plus
+               touch-action/user-select fixes so rapid note tapping no longer
+               zooms or selects text. The UI accent became a teal, decoupled
+               from the musical "fifth" blue it used to collide with. The neck
+               face now shows position-marker inlays (single 3·5·7·9, double at
+               12), chord + triad diagrams print a heuristic fingering (1–4)
+               inside each dot, the board fades at its right edge when more
+               frets scroll off, and fret wires gained a metallic sheen. No new
+               dependencies.
        1.12.0 — alternate voicings + playable cards (chord/triad parity).
                Chord diagrams now show the canonical voicing set per chord —
                open (where one exists) plus the E-shape (root on string 6) and
@@ -109,7 +119,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="1.12.0">
+<meta name="version" content="1.13.0">
 <title>Гітарна студія — гами, моди, акорди</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -121,7 +131,9 @@
     --line-string: rgba(220, 200, 160, 0.35); --line-fret: rgba(180, 160, 120, 0.5);
     --text: #f0ebe0; --text-dim: #a39c8a; --text-faint: #6f6857;
     --border: rgba(220, 200, 160, 0.14); --border-strong: rgba(220, 200, 160, 0.3);
-    --accent: #4A9EE8; --root: #6BA53A; --third: #E0962B; --fifth: #4A9EE8; --seventh: #D14E7E;
+    /* UI accent is a cool teal, deliberately distinct from the musical "fifth"
+       blue below — selection/focus chrome must never be mistaken for a note role */
+    --accent: #2DB6A6; --root: #6BA53A; --third: #E0962B; --fifth: #4A9EE8; --seventh: #D14E7E;
     --ext: #9B7BE0;
     --natural: #4A9EE8; --sharp: #C98426; --radius: 10px;
   }
@@ -133,6 +145,11 @@
   .aside-toggle:focus-visible, .tb-toggle:focus-visible, .cl-close:focus-visible,
   input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .dot:focus-visible { outline: 2px solid #fff; outline-offset: 2px; z-index: 7; }
+  /* touch: kill the 300ms tap delay and double-tap-zoom on tappable controls so
+     rapid note tapping feels instant on phones */
+  .btn, .tab, .langbtn, .ver, .tb-toggle, .aside-toggle, .cl-close,
+  .chordbox, .cd-dot, .cof-node, .seq-chip .nm, .seq-chip .bars, .seq-chip .x,
+  select { touch-action: manipulation; }
   .cof-node:focus { outline: none; }
   .cof-node:focus-visible circle { stroke: #fff; stroke-width: 2.6; }
   /* respect users who prefer less motion */
@@ -179,7 +196,7 @@
   .btn.play { background: transparent; border-color: var(--root); color: var(--root); }
   .btn.play:hover { background: rgba(107,165,58,0.14); }
   .btn.play.loop { border-color: var(--accent); color: var(--accent); }
-  .btn.play.loop:hover:not(.active) { background: rgba(74,158,232,0.14); }
+  .btn.play.loop:hover:not(.active) { background: rgba(45,182,166,0.14); }
 
   /* ---- chord progression sequencer ---- */
   .seq { margin: 14px 0 6px; padding: 11px 13px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); }
@@ -204,6 +221,9 @@
   .info .sub { color: var(--text-dim); margin-top: 5px; font-size: 13px; font-family: 'JetBrains Mono', monospace; }
 
   .scroll { overflow-x: auto; padding-bottom: 10px; }
+  /* fade the right edge only when the neck actually overflows, hinting more frets
+     off-screen; the left stays opaque so the string-name labels never dim */
+  .scroll.scrollable { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent); }
   .scroll::-webkit-scrollbar { height: 8px; }
   .scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
   .board { background: var(--wood); border-radius: 8px; padding: 10px 0; box-shadow: inset 0 1px 0 rgba(255,230,190,0.08), 0 4px 18px rgba(0,0,0,0.4); }
@@ -212,15 +232,19 @@
   .ocell { width: 30px; height: 100%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; }
   .ocell::before { content: ''; position: absolute; top: 50%; right: 0; width: 55%; height: 1.6px; transform: translateY(-50%); background: var(--line-string); z-index: 0; }
   .nut { width: 7px; background: #d8cba8; flex-shrink: 0; height: 100%; border-radius: 1px; }
-  .cell { flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; border-right: 2px solid var(--line-fret); }
+  /* fret wire: a vertical metallic line — top-lit highlight fading to a darker
+     base gives the flat separator a rounded, nickel-silver sheen */
+  .cell { flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; border-right: 2px solid var(--line-fret); border-image: linear-gradient(180deg, rgba(255,244,212,0.55) 0%, var(--line-fret) 42%, rgba(60,46,28,0.6) 100%) 1; }
   .cell::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; transform: translateY(-50%); background: var(--line-string); z-index: 0; }
+  /* position-marker inlay on the neck face, centred on the boundary above the row */
+  .cell.inlay::after { content: ''; position: absolute; top: 0; left: 50%; width: 11px; height: 11px; border-radius: 50%; transform: translate(-50%, -50%); background: radial-gradient(circle at 38% 34%, rgba(247,233,202,0.32), rgba(214,194,154,0.13) 72%); z-index: 0; pointer-events: none; }
   .srow:nth-child(1) .cell::before { height: 1px; }
   .srow:nth-child(2) .cell::before { height: 1.2px; }
   .srow:nth-child(3) .cell::before { height: 1.5px; }
   .srow:nth-child(4) .cell::before { height: 1.9px; }
   .srow:nth-child(5) .cell::before { height: 2.3px; }
   .srow:nth-child(6) .cell::before { height: 2.8px; }
-  .dot { width: 27px; height: 27px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; position: relative; z-index: 1; transition: transform 0.1s; color: #0e1408; box-shadow: 0 1px 3px rgba(0,0,0,0.4); cursor: pointer; }
+  .dot { width: 27px; height: 27px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; position: relative; z-index: 1; transition: transform 0.1s; color: #0e1408; box-shadow: 0 1px 3px rgba(0,0,0,0.4); cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
   .dot:hover { transform: scale(1.18); }
   .dot.playing { transform: scale(1.34); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px #fff, 0 0 16px 3px rgba(255,255,255,0.55); z-index: 6; }
   .d-root { background: var(--root); }
@@ -295,7 +319,7 @@
   .tb-transport[hidden] { display: none; }
   .tb-transport-label { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; }
   .tb-transport-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 var(--accent); animation: tb-pulse 1.1s ease-out infinite; }
-  @keyframes tb-pulse { 0% { box-shadow: 0 0 0 0 rgba(74,158,232,0.55); } 70% { box-shadow: 0 0 0 6px rgba(74,158,232,0); } 100% { box-shadow: 0 0 0 0 rgba(74,158,232,0); } }
+  @keyframes tb-pulse { 0% { box-shadow: 0 0 0 0 rgba(45,182,166,0.55); } 70% { box-shadow: 0 0 0 6px rgba(45,182,166,0); } 100% { box-shadow: 0 0 0 0 rgba(45,182,166,0); } }
   #tb-stop { padding: 4px 9px; }
   /* shared musical-context bar (root + display mode), contextual per tab */
   .context-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 18px; padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); }
@@ -328,6 +352,7 @@
   .cd-dot.d-ext { fill: var(--ext); }
   .cd-mark { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; fill: var(--text-dim); }
   .cd-pos { font-family: 'JetBrains Mono', monospace; font-size: 10px; fill: var(--text-faint); }
+  .cd-fing { font-family: 'JetBrains Mono', monospace; font-size: 8px; font-weight: 700; fill: #0e1408; dominant-baseline: central; pointer-events: none; }
 
   /* ---- left-handed: mirror the neck, keep glyphs readable ---- */
   .board.lefty, .fretnums.lefty { transform: scaleX(-1); }
@@ -342,7 +367,12 @@
     .brand h1 { font-size: 25px; }
     .toolbar { gap: 8px 10px; }
     input[type="range"] { width: 92px; }
-    .dot { width: 25px; height: 25px; }
+    /* finger-sized touch targets: dots are the app's primary verb (tap to hear),
+       so on a phone they grow rather than shrink; the 5-fret window has the room */
+    .dot { width: 33px; height: 33px; font-size: 11px; }
+    .btn { padding: 8px 12px; }
+    .langbtn { padding: 7px 12px; }
+    .seq-chip .x { padding: 4px 6px; opacity: 0.85; }
     .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: -14px; margin-right: -14px; padding: 0 14px; }
     .tabs::-webkit-scrollbar { display: none; }
     .tab { white-space: nowrap; flex-shrink: 0; }
@@ -590,10 +620,21 @@
 <script>
 /* Single source of truth for the app version. Bump on each release and update
    the changelog comment at the top of the file + the <meta name="version">. */
-const APP_VERSION = '1.12.0';
+const APP_VERSION = '1.13.0';
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.13.0', date:'2026-06-15',
+    en:['Easier to use on phones: fretboard notes and buttons now have bigger touch targets, and tapping a note no longer triggers zoom or selects text.',
+        'The interface accent is now a distinct teal, so a selected control is no longer the same blue as the "fifth" note on the fretboard.',
+        'The fretboard now shows position-marker inlays on its face — single dots at frets 3·5·7·9 and a double at 12 — so you can orient at a glance.',
+        'Chord and triad diagrams now print a suggested fingering (1–4) inside each dot.',
+        'The neck fades at its right edge when more frets are scrollable off-screen, and the fret wires gained a subtle metallic sheen.'],
+    uk:['Зручніше на телефонах: ноти на грифі та кнопки тепер мають більші зони дотику, а дотик до ноти більше не викликає масштабування чи виділення тексту.',
+        'Акцентний колір інтерфейсу тепер окремий бірюзовий, тож вибраний елемент більше не збігається із синім кольором «квінти» на грифі.',
+        'На грифі з’явилися маркери позицій — поодинокі крапки на ладах 3·5·7·9 і подвійна на 12 — щоб орієнтуватися з першого погляду.',
+        'Діаграми акордів і тріад тепер показують підказку аплікатури (1–4) всередині кожної крапки.',
+        'Гриф плавно згасає біля правого краю, коли є ще лади для прокрутки, а лади отримали легкий металевий відблиск.'] },
   { v:'1.12.0', date:'2026-06-15',
     en:['Chord diagrams now show every common way to play the chord — the open shape plus the E-shape and A-shape barre forms — instead of just one.',
         'Tap a voicing card to select it: Listen and Loop then play that exact shape in its real register, so an open chord and its barre version actually sound different.',
@@ -1410,6 +1451,10 @@ function renderBoard(boardEl, cellFn){
     for(let f=lo; f<=hi; f++){
       const pc=(OPEN[si]+f)%12;
       const cell=document.createElement('div'); cell.className='cell';
+      // position-marker inlays on the neck face: single dot between the centre
+      // strings (G/D, si 3), double dot straddling the centre at fret 12/24
+      if(INLAY_DOUBLE.has(f)){ if(si===2||si===4) cell.classList.add('inlay'); }
+      else if(INLAY_SINGLE.has(f)){ if(si===3) cell.classList.add('inlay'); }
       const dot=cellFn(pc,si,f);
       if(dot) cell.appendChild(dot);
       row.appendChild(cell);
@@ -1417,6 +1462,33 @@ function renderBoard(boardEl, cellFn){
     boardEl.appendChild(row);
   });
   const panel=boardEl.closest('.board'); if(panel){ panel.style.minWidth=boardWidth()+'px'; panel.classList.toggle('lefty', lefty); }
+  // hint that the neck scrolls (only the wide "All frets" view overflows)
+  const sc=boardEl.closest('.scroll'); if(sc){ sc.classList.toggle('scrollable', sc.scrollWidth > sc.clientWidth + 1); }
+}
+const INLAY_SINGLE = new Set(DOTS.filter(f=>f!==12&&f!==24));
+const INLAY_DOUBLE = new Set([12,24]);
+/* Heuristic fingering for a fretted shape. `frets` is indexed by display column
+   (null = muted, 0 = open → no finger). Returns {colIndex: 1..4}. A genuine
+   index-barre is detected when the lowest fret is played on 2+ strings AND a
+   higher fret sits above it; otherwise fingers ascend by fret then string. This
+   lands the standard fingerings for the open / E-shape / A-shape voicings the
+   app generates, and a sensible ascending guess for computed jazz voicings. */
+function chordFingers(frets){
+  const fretted=frets.map((fr,i)=>({i,fr})).filter(o=>o.fr!=null&&o.fr>0)
+                     .sort((a,b)=> a.fr-b.fr || a.i-b.i);
+  const map={};
+  if(!fretted.length) return map;
+  const minF=fretted[0].fr;
+  const atMin=fretted.filter(o=>o.fr===minF);
+  const higher=fretted.filter(o=>o.fr>minF);
+  let next=1;
+  if(atMin.length>=2 && higher.length>=1){          // index bars the lowest fret
+    atMin.forEach(o=>{ map[o.i]=1; }); next=2;
+    higher.forEach(o=>{ map[o.i]=Math.min(next++,4); });
+  } else {
+    fretted.forEach(o=>{ map[o.i]=Math.min(next++,4); });
+  }
+  return map;
 }
 function makeDot(cls,text,midi){
   const d=document.createElement('div'); d.className='dot '+cls; d.textContent=text;
@@ -1641,6 +1713,7 @@ function chordBoxSVG(v, funcMap){
   for(let r=0;r<=rows;r++){ const isNut=(baseFret===1 && r===0); s+=`<line class="${isNut?'cd-nut':'cd-fret'}" x1="${x(0)}" y1="${y(r)}" x2="${x(5)}" y2="${y(r)}"/>`; }
   for(let i=0;i<6;i++){ s+=`<line class="cd-string" x1="${x(i)}" y1="${y(0)}" x2="${x(i)}" y2="${y(rows)}"/>`; }
   if(baseFret>1){ s+=`<text class="cd-pos" x="${x(0)-9}" y="${y(0)+gh*0.7}" text-anchor="end">${baseFret}fr</text>`; }
+  const fing=chordFingers(frets);
   frets.forEach((fr,li)=>{
     const sx=x(li);                          // low E at left
     const stringPc=mod(STD_LOW6[li],12);
@@ -1651,7 +1724,8 @@ function chordBoxSVG(v, funcMap){
     const notePc=mod(stringPc+fr,12);
     const cls=funcMap[notePc] || 'd-fifth';
     const midi=STD_LOW6_MIDI[li]+fr;
-    s+=`<circle class="cd-dot ${cls}" data-midi="${midi}" cx="${sx}" cy="${cy}" r="6.5"/>`;
+    s+=`<circle class="cd-dot ${cls}" data-midi="${midi}" cx="${sx}" cy="${cy}" r="7.5"/>`;
+    if(fing[li]) s+=`<text class="cd-fing" x="${sx}" y="${cy}" text-anchor="middle">${fing[li]}</text>`;
   });
   s+=`</svg>`; return s;
 }
@@ -1749,12 +1823,14 @@ function triadCardSVG(notes, iv){
   for(let r=0;r<=rows;r++){ const isNut=(baseFret===1 && r===0); s+=`<line class="${isNut?'cd-nut':'cd-fret'}" x1="${x(0)}" y1="${y(r)}" x2="${x(2)}" y2="${y(r)}"/>`; }
   for(let i=0;i<3;i++){ s+=`<line class="cd-string" x1="${x(i)}" y1="${y(0)}" x2="${x(i)}" y2="${y(rows)}"/>`; }
   if(baseFret>1){ s+=`<text class="cd-pos" x="${x(0)-8}" y="${y(0)+gh*0.7}" text-anchor="end">${baseFret}fr</text>`; }
+  const fing=chordFingers(frets);
   notes.forEach((n,col)=>{                 // col 0 = lowest string of the set
     const r=n.fr-baseFret; if(r<0||r>=rows) return;
     const cy=y(r)+gh/2;
     const cls=triFuncClass(n.o,iv);
     const midi=OPEN_MIDI[n.si]+n.fr;
-    s+=`<circle class="cd-dot ${cls}" data-midi="${midi}" cx="${x(col)}" cy="${cy}" r="6.5"/>`;
+    s+=`<circle class="cd-dot ${cls}" data-midi="${midi}" cx="${x(col)}" cy="${cy}" r="7.5"/>`;
+    if(fing[col]) s+=`<text class="cd-fing" x="${x(col)}" y="${cy}" text-anchor="middle">${fing[col]}</text>`;
   });
   s+=`</svg>`; return s;
 }

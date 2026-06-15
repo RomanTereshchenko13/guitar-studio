@@ -1,8 +1,18 @@
 <!DOCTYPE html>
 <!-- ===========================================================
      Guitar Studio
-     Version: 1.12.0  (2026-06-15)
+     Version: 1.13.0  (2026-06-15)
      Changelog:
+       1.13.0 — visual + mobile polish. Phones get finger-sized tap targets
+               (fretboard dots grow rather than shrink, taller buttons) plus
+               touch-action/user-select fixes so rapid note tapping no longer
+               zooms or selects text. The UI accent became a teal, decoupled
+               from the musical "fifth" blue it used to collide with. The neck
+               face now shows position-marker inlays (single 3·5·7·9, double at
+               12), chord + triad diagrams print a heuristic fingering (1–4)
+               inside each dot, the board fades at its right edge when more
+               frets scroll off, and fret wires gained a metallic sheen. No new
+               dependencies.
        1.12.0 — alternate voicings + playable cards (chord/triad parity).
                Chord diagrams now show the canonical voicing set per chord —
                open (where one exists) plus the E-shape (root on string 6) and
@@ -109,7 +119,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="1.12.0">
+<meta name="version" content="1.13.0">
 <title>Гітарна студія — гами, моди, акорди</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

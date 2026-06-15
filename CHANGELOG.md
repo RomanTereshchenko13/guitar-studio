@@ -2,6 +2,14 @@
 
 _Generated from `src/js/02-changelog.js` by `build.js` — do not edit by hand._
 
+## v1.13.0 — 2026-06-15
+
+- Easier to use on phones: fretboard notes and buttons now have bigger touch targets, and tapping a note no longer triggers zoom or selects text.
+- The interface accent is now a distinct teal, so a selected control is no longer the same blue as the "fifth" note on the fretboard.
+- The fretboard now shows position-marker inlays on its face — single dots at frets 3·5·7·9 and a double at 12 — so you can orient at a glance.
+- Chord and triad diagrams now print a suggested fingering (1–4) inside each dot.
+- The neck fades at its right edge when more frets are scrollable off-screen, and the fret wires gained a subtle metallic sheen.
+
 ## v1.12.0 — 2026-06-15
 
 - Chord diagrams now show every common way to play the chord — the open shape plus the E-shape and A-shape barre forms — instead of just one.

@@ -72,12 +72,14 @@ function triadCardSVG(notes, iv){
   for(let r=0;r<=rows;r++){ const isNut=(baseFret===1 && r===0); s+=`<line class="${isNut?'cd-nut':'cd-fret'}" x1="${x(0)}" y1="${y(r)}" x2="${x(2)}" y2="${y(r)}"/>`; }
   for(let i=0;i<3;i++){ s+=`<line class="cd-string" x1="${x(i)}" y1="${y(0)}" x2="${x(i)}" y2="${y(rows)}"/>`; }
   if(baseFret>1){ s+=`<text class="cd-pos" x="${x(0)-8}" y="${y(0)+gh*0.7}" text-anchor="end">${baseFret}fr</text>`; }
+  const fing=chordFingers(frets);
   notes.forEach((n,col)=>{                 // col 0 = lowest string of the set
     const r=n.fr-baseFret; if(r<0||r>=rows) return;
     const cy=y(r)+gh/2;
     const cls=triFuncClass(n.o,iv);
     const midi=OPEN_MIDI[n.si]+n.fr;
-    s+=`<circle class="cd-dot ${cls}" data-midi="${midi}" cx="${x(col)}" cy="${cy}" r="6.5"/>`;
+    s+=`<circle class="cd-dot ${cls}" data-midi="${midi}" cx="${x(col)}" cy="${cy}" r="7.5"/>`;
+    if(fing[col]) s+=`<text class="cd-fing" x="${x(col)}" y="${cy}" text-anchor="middle">${fing[col]}</text>`;
   });
   s+=`</svg>`; return s;
 }

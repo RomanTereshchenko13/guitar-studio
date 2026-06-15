@@ -7,7 +7,7 @@ v1.12.x the app is authored as small modules under `src/` and assembled into the
 `index.html` by a pure-string `build.js` (concatenation only — no bundler, no transpile,
 no runtime dependency added). New phases add their code as new `src/js/NN-*.js` modules.
 
-_Last updated: 2026-06-15 · current shipping version: v1.12.0_
+_Last updated: 2026-06-15 · current shipping version: v1.13.0_
 
 ---
 

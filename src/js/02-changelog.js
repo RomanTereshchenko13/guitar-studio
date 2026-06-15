@@ -1,6 +1,17 @@
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.13.0', date:'2026-06-15',
+    en:['Easier to use on phones: fretboard notes and buttons now have bigger touch targets, and tapping a note no longer triggers zoom or selects text.',
+        'The interface accent is now a distinct teal, so a selected control is no longer the same blue as the "fifth" note on the fretboard.',
+        'The fretboard now shows position-marker inlays on its face — single dots at frets 3·5·7·9 and a double at 12 — so you can orient at a glance.',
+        'Chord and triad diagrams now print a suggested fingering (1–4) inside each dot.',
+        'The neck fades at its right edge when more frets are scrollable off-screen, and the fret wires gained a subtle metallic sheen.'],
+    uk:['Зручніше на телефонах: ноти на грифі та кнопки тепер мають більші зони дотику, а дотик до ноти більше не викликає масштабування чи виділення тексту.',
+        'Акцентний колір інтерфейсу тепер окремий бірюзовий, тож вибраний елемент більше не збігається із синім кольором «квінти» на грифі.',
+        'На грифі з’явилися маркери позицій — поодинокі крапки на ладах 3·5·7·9 і подвійна на 12 — щоб орієнтуватися з першого погляду.',
+        'Діаграми акордів і тріад тепер показують підказку аплікатури (1–4) всередині кожної крапки.',
+        'Гриф плавно згасає біля правого краю, коли є ще лади для прокрутки, а лади отримали легкий металевий відблиск.'] },
   { v:'1.12.0', date:'2026-06-15',
     en:['Chord diagrams now show every common way to play the chord — the open shape plus the E-shape and A-shape barre forms — instead of just one.',
         'Tap a voicing card to select it: Listen and Loop then play that exact shape in its real register, so an open chord and its barre version actually sound different.',
