@@ -2,6 +2,11 @@
 
 _Generated from `src/js/02-changelog.js` by `build.js` — do not edit by hand._
 
+## v1.14.0 — 2026-06-15
+
+- The drums now have a backbeat: a snare lands on beats 2 and 4, so turning on Drums sounds like a real groove instead of a ticking pulse.
+- Listen now plays at a fixed, comfortable speed no matter your tempo — so slowing the metronome down for practice no longer makes the preview crawl. Loop and progression Play still follow the tempo, since they are backings you play over.
+
 ## v1.13.0 — 2026-06-15
 
 - Easier to use on phones: fretboard notes and buttons now have bigger touch targets, and tapping a note no longer triggers zoom or selects text.

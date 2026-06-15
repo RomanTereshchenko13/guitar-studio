@@ -173,9 +173,14 @@ function playCue(kind, when){
 
 /* chord/triad: roll up, each note lights and stays lit so the shape builds, then clears */
 /* arpeggio + scale animations share the visual timer pool */
+/* PREVIEW_STEP: one-shot "Listen" previews arpeggiate at a fixed, pleasant rate
+   that is intentionally NOT tied to the practice tempo — Listen is "what does this
+   sound like", not part of the groove, so it shouldn't crawl when you slow the
+   metronome down. (Loop / progression Play DO follow the tempo: they're backings.) */
+const PREVIEW_STEP=0.15;
 function animRun(boardEl, base, ivs){
   clearPlayHighlights();
-  const step=beat()/2, dur=Math.min(0.5, step*1.1);
+  const step=PREVIEW_STEP, dur=Math.min(0.5, step*1.6);
   ivs.forEach((iv,i)=>{ pluck(base+iv, i*step, dur); pulseAt(boardEl, mod(base+iv,12), i*step*1000, step*1000*0.96); });
 }
 /* Listen for an explicit voicing: arpeggiate the real MIDI notes (low->high) and
@@ -183,7 +188,7 @@ function animRun(boardEl, base, ivs){
    cards and by the triad view, so Listen matches the shape on screen. */
 function animArpMidi(boardEl, midis){
   clearPlayHighlights();
-  const step=beat()/2;
+  const step=PREVIEW_STEP;
   midis.forEach((m,i)=>{ pluck(m, i*step, 1.7); if(boardEl) flashAt(boardEl, mod(m,12), i*step*1000); });
   playTimers.push(setTimeout(clearPlayHighlights, ((Math.max(1,midis.length)-1)*step + 1.7)*1000));
 }

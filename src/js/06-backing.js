@@ -49,6 +49,24 @@ function kickHit(when, vel){
   g.gain.exponentialRampToValueAtTime(0.0001, when+0.16);
   o.connect(g).connect(groove); o.start(when); o.stop(when+0.2);
 }
+/* snare: a noise crack (bandpassed white noise) over a short tonal body — the
+   backbeat on 2 & 4 is what turns the kick+hat pulse into something that grooves. */
+function snareHit(when, vel){
+  const ctx=audio(); if(!ctx) return; vel=vel==null?0.9:vel;
+  const src=ctx.createBufferSource(); src.buffer=noiseBuf();
+  const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1850; bp.Q.value=0.8;
+  const ng=ctx.createGain();
+  ng.gain.setValueAtTime(0.0001, when);
+  ng.gain.exponentialRampToValueAtTime(0.5*vel, when+0.002);
+  ng.gain.exponentialRampToValueAtTime(0.0001, when+0.13);
+  src.connect(bp).connect(ng).connect(groove); src.start(when); src.stop(when+0.16);
+  const o=ctx.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(190, when);
+  const og=ctx.createGain();
+  og.gain.setValueAtTime(0.0001, when);
+  og.gain.exponentialRampToValueAtTime(0.3*vel, when+0.003);
+  og.gain.exponentialRampToValueAtTime(0.0001, when+0.09);
+  o.connect(og).connect(groove); o.start(when); o.stop(when+0.12);
+}
 /* hi-hat: filtered white noise, very short */
 function hatHit(when, vel){
   const ctx=audio(); if(!ctx) return; vel=vel==null?0.6:vel;
@@ -87,6 +105,8 @@ function scheduleBand(pc, qi, when){
     }
     kickHit(when,     1);                                                            // kick on 1
     kickHit(when+2*b, 0.9);                                                          // kick on 3
+    snareHit(when+b,   0.9);                                                         // backbeat on 2
+    snareHit(when+3*b, 0.9);                                                         // backbeat on 4
   }
 }
 function bandActive(){ return bassOn || grooveOn; }

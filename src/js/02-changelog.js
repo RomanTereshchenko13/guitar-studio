@@ -1,6 +1,11 @@
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.14.0', date:'2026-06-15',
+    en:['The drums now have a backbeat: a snare lands on beats 2 and 4, so turning on Drums sounds like a real groove instead of a ticking pulse.',
+        'Listen now plays at a fixed, comfortable speed no matter your tempo — so slowing the metronome down for practice no longer makes the preview crawl. Loop and progression Play still follow the tempo, since they are backings you play over.'],
+    uk:['Удар­ні тепер мають бекбіт: малий барабан звучить на 2-й і 4-й долях, тож увімкнені «Ударні» звучать як справжній грув, а не як цокання.',
+        '«Прослухати» тепер грає зі сталою зручною швидкістю незалежно від темпу — тож сповільнення метронома для занять більше не робить попереднє відтворення млявим. «Луп» і «Програти» прогресію, як і раніше, слідують за темпом, бо це супровід, під який ти граєш.'] },
   { v:'1.13.0', date:'2026-06-15',
     en:['Easier to use on phones: fretboard notes and buttons now have bigger touch targets, and tapping a note no longer triggers zoom or selects text.',
         'The interface accent is now a distinct teal, so a selected control is no longer the same blue as the "fifth" note on the fretboard.',

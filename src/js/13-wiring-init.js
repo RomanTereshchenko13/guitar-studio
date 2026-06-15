@@ -32,7 +32,7 @@ function globalPlay(){
     else { const v=currentChordVoicing(); animArpMidi(document.getElementById('ch-board'), v.midis); }
   } else if(currentTab==='scales'){ const s=SCALES[scIdx]; animRun(document.getElementById('sc-board'), 48+gRoot, s.iv.concat([12])); }
   else if(currentTab==='circle'){
-    const c=COF[cofSel], pc=cofMinor?c.minPc:c.majPc, b=48+pc, iv=cofMinor?[0,3,7]:[0,4,7], bt=beat();
+    const c=COF[cofSel], pc=cofMinor?c.minPc:c.majPc, b=48+pc, iv=cofMinor?[0,3,7]:[0,4,7], bt=0.5;  // fixed cadence pace, independent of practice tempo
     [0,5,7,12].forEach((off,i)=>{ const base=b+off; iv.forEach((x,j)=>pluck(base+x, i*bt + j*0.018, Math.max(0.9, bt*1.4))); });
   }
 }

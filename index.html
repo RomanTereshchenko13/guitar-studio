@@ -1,8 +1,14 @@
 <!DOCTYPE html>
 <!-- ===========================================================
      Guitar Studio
-     Version: 1.13.0  (2026-06-15)
+     Version: 1.14.0  (2026-06-15)
      Changelog:
+       1.14.0 — backing groove + preview tempo fix. The drums gained a snare
+               backbeat on 2 & 4 so the groove actually grooves instead of just
+               ticking, and one-shot Listen previews now play at a fixed,
+               comfortable rate independent of the practice tempo (Loop and
+               progression Play still follow the tempo, since they are backings).
+               No new dependencies.
        1.13.0 — visual + mobile polish. Phones get finger-sized tap targets
                (fretboard dots grow rather than shrink, taller buttons) plus
                touch-action/user-select fixes so rapid note tapping no longer
@@ -119,7 +125,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="1.13.0">
+<meta name="version" content="1.14.0">
 <title>Гітарна студія — гами, моди, акорди</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -620,10 +626,15 @@
 <script>
 /* Single source of truth for the app version. Bump on each release and update
    the changelog comment at the top of the file + the <meta name="version">. */
-const APP_VERSION = '1.13.0';
+const APP_VERSION = '1.14.0';
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.14.0', date:'2026-06-15',
+    en:['The drums now have a backbeat: a snare lands on beats 2 and 4, so turning on Drums sounds like a real groove instead of a ticking pulse.',
+        'Listen now plays at a fixed, comfortable speed no matter your tempo — so slowing the metronome down for practice no longer makes the preview crawl. Loop and progression Play still follow the tempo, since they are backings you play over.'],
+    uk:['Удар­ні тепер мають бекбіт: малий барабан звучить на 2-й і 4-й долях, тож увімкнені «Ударні» звучать як справжній грув, а не як цокання.',
+        '«Прослухати» тепер грає зі сталою зручною швидкістю незалежно від темпу — тож сповільнення метронома для занять більше не робить попереднє відтворення млявим. «Луп» і «Програти» прогресію, як і раніше, слідують за темпом, бо це супровід, під який ти граєш.'] },
   { v:'1.13.0', date:'2026-06-15',
     en:['Easier to use on phones: fretboard notes and buttons now have bigger touch targets, and tapping a note no longer triggers zoom or selects text.',
         'The interface accent is now a distinct teal, so a selected control is no longer the same blue as the "fifth" note on the fretboard.',
@@ -1111,9 +1122,14 @@ function playCue(kind, when){
 
 /* chord/triad: roll up, each note lights and stays lit so the shape builds, then clears */
 /* arpeggio + scale animations share the visual timer pool */
+/* PREVIEW_STEP: one-shot "Listen" previews arpeggiate at a fixed, pleasant rate
+   that is intentionally NOT tied to the practice tempo — Listen is "what does this
+   sound like", not part of the groove, so it shouldn't crawl when you slow the
+   metronome down. (Loop / progression Play DO follow the tempo: they're backings.) */
+const PREVIEW_STEP=0.15;
 function animRun(boardEl, base, ivs){
   clearPlayHighlights();
-  const step=beat()/2, dur=Math.min(0.5, step*1.1);
+  const step=PREVIEW_STEP, dur=Math.min(0.5, step*1.6);
   ivs.forEach((iv,i)=>{ pluck(base+iv, i*step, dur); pulseAt(boardEl, mod(base+iv,12), i*step*1000, step*1000*0.96); });
 }
 /* Listen for an explicit voicing: arpeggiate the real MIDI notes (low->high) and
@@ -1121,7 +1137,7 @@ function animRun(boardEl, base, ivs){
    cards and by the triad view, so Listen matches the shape on screen. */
 function animArpMidi(boardEl, midis){
   clearPlayHighlights();
-  const step=beat()/2;
+  const step=PREVIEW_STEP;
   midis.forEach((m,i)=>{ pluck(m, i*step, 1.7); if(boardEl) flashAt(boardEl, mod(m,12), i*step*1000); });
   playTimers.push(setTimeout(clearPlayHighlights, ((Math.max(1,midis.length)-1)*step + 1.7)*1000));
 }
@@ -1191,6 +1207,24 @@ function kickHit(when, vel){
   g.gain.exponentialRampToValueAtTime(0.0001, when+0.16);
   o.connect(g).connect(groove); o.start(when); o.stop(when+0.2);
 }
+/* snare: a noise crack (bandpassed white noise) over a short tonal body — the
+   backbeat on 2 & 4 is what turns the kick+hat pulse into something that grooves. */
+function snareHit(when, vel){
+  const ctx=audio(); if(!ctx) return; vel=vel==null?0.9:vel;
+  const src=ctx.createBufferSource(); src.buffer=noiseBuf();
+  const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1850; bp.Q.value=0.8;
+  const ng=ctx.createGain();
+  ng.gain.setValueAtTime(0.0001, when);
+  ng.gain.exponentialRampToValueAtTime(0.5*vel, when+0.002);
+  ng.gain.exponentialRampToValueAtTime(0.0001, when+0.13);
+  src.connect(bp).connect(ng).connect(groove); src.start(when); src.stop(when+0.16);
+  const o=ctx.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(190, when);
+  const og=ctx.createGain();
+  og.gain.setValueAtTime(0.0001, when);
+  og.gain.exponentialRampToValueAtTime(0.3*vel, when+0.003);
+  og.gain.exponentialRampToValueAtTime(0.0001, when+0.09);
+  o.connect(og).connect(groove); o.start(when); o.stop(when+0.12);
+}
 /* hi-hat: filtered white noise, very short */
 function hatHit(when, vel){
   const ctx=audio(); if(!ctx) return; vel=vel==null?0.6:vel;
@@ -1229,6 +1263,8 @@ function scheduleBand(pc, qi, when){
     }
     kickHit(when,     1);                                                            // kick on 1
     kickHit(when+2*b, 0.9);                                                          // kick on 3
+    snareHit(when+b,   0.9);                                                         // backbeat on 2
+    snareHit(when+3*b, 0.9);                                                         // backbeat on 4
   }
 }
 function bandActive(){ return bassOn || grooveOn; }
@@ -2198,7 +2234,7 @@ function globalPlay(){
     else { const v=currentChordVoicing(); animArpMidi(document.getElementById('ch-board'), v.midis); }
   } else if(currentTab==='scales'){ const s=SCALES[scIdx]; animRun(document.getElementById('sc-board'), 48+gRoot, s.iv.concat([12])); }
   else if(currentTab==='circle'){
-    const c=COF[cofSel], pc=cofMinor?c.minPc:c.majPc, b=48+pc, iv=cofMinor?[0,3,7]:[0,4,7], bt=beat();
+    const c=COF[cofSel], pc=cofMinor?c.minPc:c.majPc, b=48+pc, iv=cofMinor?[0,3,7]:[0,4,7], bt=0.5;  // fixed cadence pace, independent of practice tempo
     [0,5,7,12].forEach((off,i)=>{ const base=b+off; iv.forEach((x,j)=>pluck(base+x, i*bt + j*0.018, Math.max(0.9, bt*1.4))); });
   }
 }

@@ -7,7 +7,7 @@ v1.12.x the app is authored as small modules under `src/` and assembled into the
 `index.html` by a pure-string `build.js` (concatenation only — no bundler, no transpile,
 no runtime dependency added). New phases add their code as new `src/js/NN-*.js` modules.
 
-_Last updated: 2026-06-15 · current shipping version: v1.13.0_
+_Last updated: 2026-06-16 · current shipping version: v1.14.0_
 
 ---
 
@@ -84,9 +84,12 @@ loop, or sequencer playback.
 
 - Synthesized **bass** (root/fifth on the downbeats) under the progression.
 - **Humanization:** velocity + micro-timing variation on the comping.
-- Optional groove click (filtered-noise hat/kick).
+- Optional groove click (filtered-noise hat/kick, snare backbeat on 2 & 4 added v1.14.0).
 
 Turns the existing sequencer into a real jam-along bed for improv practice.
+
+_v1.14.0 follow-up: snare backbeat (2 & 4) added to the groove; one-shot Listen previews
+decoupled from the practice tempo (Loop / progression Play still follow it)._
 
 ---
 
@@ -149,23 +152,40 @@ zero-dependency at runtime.
 
 ---
 
-## Phase D — Practice mode v1  (flagship · screen-based, no mic)
+## Phase D — Practice mode v1  (screen-based, no mic)
 
 New **Practice** tab. Two drills first, both reusing the fretboard rendering + B's
 scheduler + cues:
 
 - **Fretboard note-naming.** App asks for a note; you tap every instance; timed and scored.
-- **Chord-tone targeting.** The progression loops with C's backing; target tones light per
-  chord; you tap inside a scoring window; scored on accuracy and timing.
+  Solid and pure-screen — but note this is table-stakes (several free apps do it well), so
+  it's the floor of the Practice tab, not its draw.
+- **Chord-tone location / recognition.** The progression loops with C's backing; target tones
+  light per chord; you tap inside a scoring window; scored on accuracy and timing. **Framing
+  matters:** without a mic this trains *where the chord tones are* (recognition + location),
+  not soloing — it is a theory/rhythm game, not guitar practice. Don't market it as the latter.
 
-Plus session scoring and light progress stats, persisted through the full-state
-localStorage added in v1.7.0.
+**Decision to resolve before building drill 2 — tap vs. play.** If the user taps the on-screen
+fretboard, drill 2 is a pure-screen recognition game (ships in D). If the intent is for them to
+play their *real* guitar to the lit targets, that needs F1 onset detection and is really a Phase F
+feature — building a latency-corrupted tap version first would be throwaway. Pick one explicitly;
+the recommendation is: ship the recognition framing in D, defer the play-your-guitar version to F.
+
+**Latency calibration belongs here, not in F.** D's scoring window already needs to account for
+`outputLatency`; add a small one-time calibration/offset step in D rather than deferring all
+latency UX to the mic phases.
+
+**Retention is a first-class workstream, not a footnote.** "Light progress stats" undersells what
+makes a practice app sticky. Track per-drill history, streaks, and a simple spaced-repetition queue
+(resurface the notes/chords you miss most). Persist through the full-state localStorage added in
+v1.7.0 with bounds-checked restores. This is the difference between a one-session toy and a daily tool.
 
 **Note on input:** these are tap-based, so timing scores are subject to touch latency —
 acceptable for note-finding, weaker for strict-timing drills. Strict timing is properly
 solved by Phase F's onset detection.
 
-**Validation:** drill logic, scoring-window correctness, persistence of stats.
+**Validation:** drill logic, scoring-window correctness, latency-offset applied to the window,
+persistence of stats + streak/SRS state.
 
 ---
 
@@ -173,6 +193,10 @@ solved by Phase F's onset detection.
 
 Interval and chord-quality recognition: prompt on the lead voice, multiple-choice answer,
 cue feedback. Mostly audio + simple UI. Naturally bilingual (EN/UK) like the rest of the app.
+
+**Underranked — pull forward.** E has no dependency on D: it's audio-only, low-risk, and high
+value-per-effort. Nothing forces D → E, so E can run in parallel with D (or even precede D's
+second drill). Treat it as cheap independent value rather than a strictly-later phase.
 
 ---
 
@@ -189,6 +213,12 @@ difficulty:
 
 Both need latency compensation in the scoring window and a permission + calibration step.
 Highest risk in the roadmap; gate carefully.
+
+**F1 is nearer-term than its position suggests.** Onset detection alone is a comparatively light
+lift, and it is the actual unlock for the app's differentiator: practicing on a *real* guitar is
+something the free-tier competitors don't do well. F1 is what makes both chord-tone targeting
+(Phase D drill 2, play version) and rhythm scoring (Phase G) real instead of tap-latency games.
+Worth promoting ahead of D's timing-dependent work. F2 (pitch) remains the moonshot; F1 does not.
 
 ---
 
@@ -241,8 +271,24 @@ C+ (release hardening) ✅ shipped v1.11.0  ── mobile board + committed test
 ```
 
 Recommendation: A–C+ are shipped — the release gate is cleared, so a public launch and the
-user-facing practice features are unblocked. Build **D** next on solid ground. E, F, and G
-are extensions; F2 (polyphonic-adjacent pitch work) is the moonshot.
+user-facing practice features are unblocked.
+
+**Revised emphasis (value vs. uniqueness).** The naïve order builds the *safest* phase first (D
+is screen-only drills that overlap heavily with free apps) and gates the *differentiator* (real-
+guitar input) last. A better-leveraged path:
+
+1. Ship the **note-naming** half of D quickly (cheap, table-stakes floor) and stand up the
+   **retention layer** (history / streaks / spaced repetition) alongside it — that's the actual
+   stickiness, independent of any one drill.
+2. Pull **E (ear training)** forward in parallel — independent, low-risk, high value-per-effort.
+3. **Promote F1 (onset)** ahead of D's timing-dependent chord-tone *play* version and the Phase G
+   scored tier. F1 is a light lift and is what makes the app's unique selling point — practice on
+   your real guitar — actually work, instead of latency-corrupted tap games.
+4. **F2 (pitch)** stays the moonshot; G's coach tier (B-only) can ship any time as a smart
+   metronome regardless.
+
+So: D is still a fine *next* increment, but treat its second drill as recognition-only (or defer
+to F), front-load retention + E, and bring F1 forward rather than leaving it near the end.
 
 ---
 
@@ -251,6 +297,13 @@ are extensions; F2 (polyphonic-adjacent pitch work) is the moonshot.
 - **Mobile:** audio unlock on user gesture (already required); account for
   `outputLatency` in any scoring window. The fixed-width, scroll-bound fretboard is
   addressed in C+ (responsive board); keep new Practice UI within the reflowed layout.
+- **Latency calibration:** a one-time calibration/offset step that scoring windows read from.
+  Lands in Phase D (its tap windows already need it), shared by F's mic windows later — not a
+  mic-only concern.
+- **Retention / progress:** the engine that turns drills into a daily habit — per-drill history,
+  streaks, and a spaced-repetition queue that resurfaces frequently-missed notes/chords. A
+  first-class workstream introduced in Phase D, reused by every later practice phase. Rides the
+  existing full-state localStorage with bounds-checked restores.
 - **i18n:** every new label, drill name, and cue caption needs EN + UK entries
   (symmetric dictionaries — enforced by the test harness).
 - **Persistence:** practice stats and drill settings ride the existing full-state
