@@ -1,0 +1,2154 @@
+<!DOCTYPE html>
+<!-- ===========================================================
+     Guitar Studio
+     Version: 1.11.0  (2026-06-15)
+     Changelog:
+       1.11.0 — release hardening (Phase C+) + playback-control clarity.
+               Playback UX: the per-chord Listen and Loop now sit together in
+               the timing bar (the transport), so "hear it once" (▶ Listen,
+               green) and "keep it going as a backing" (↻ Loop, blue) are one
+               obvious pair; the progression Play/Cycle stays with its strip.
+               Loop is shown only where it applies (chord-tones view); the
+               transport chip is still the cross-tab Stop. Responsive fretboard:
+               fret-cell width is now derived from the available viewport with a
+               readable floor, so a windowed range fits a phone with no sideways
+               scroll (only the wide "All frets" view keeps the scroller); the
+               board re-fits on rotation. Robustness: previously-silent error
+               swallows now log a dev warning, and a browser without Web Audio
+               degrades gracefully (controls disabled with a hint, not dead
+               buttons). Ships with a committed jsdom test harness (npm test).
+       1.10.0 — backing realism (Phase C). The loop and progression sequencer
+               become a jam-along band: a synthesized bass (root on beat 1, the
+               chord's true fifth on beat 3 — perfect, ♭5 for dim/m7♭5, ♯5 for
+               aug) and an optional filtered-noise groove (kick on 1 & 3, 8th-
+               note hi-hats with a downbeat accent) on their own dry buses that
+               skip the guitar body + room. The guitar comp is humanized
+               (per-note velocity variation + micro-timing jitter) with a softer
+               push on beat 3 whenever the band is on. Two timing-bar toggles —
+               Bass and Drums — both persisted. All scheduled per-bar from inside
+               the existing strum, so it stays sample-accurate on Phase B's clock.
+               No new dependencies.
+       1.9.0 — audio engine foundation (Phase B). The metronome, single-chord
+               loop and progression sequencer were moved off setInterval onto a
+               lookahead scheduler ("two clocks"): a 25 ms timer queues audio
+               events ~100 ms ahead on the sample-accurate audio clock, so the
+               rhythmic grid no longer drifts (worst on mobile / background tabs)
+               and the tempo slider now glides instead of restarting. Dot-lighting
+               for the loop and sequencer rides the same scheduled times via a
+               requestAnimationFrame queue, so the lit notes stay locked to the
+               sound. The audio path was split into named buses — backing (guitar
+               voice), leadTarget (reserved for practice target tones) and cue (UI
+               clicks; the metronome now runs here) — and short synthesized
+               correct / wrong / count-in cues were added on the cue bus as
+               foundation for the upcoming practice modes. No new dependencies.
+               (One-shot Play animations stay on their existing timers — being
+               brief and non-repeating, they don't accumulate drift.)
+       1.8.0 — tone realism (Phase A). Karplus-Strong voice reworked to sound
+               more like a guitar: a body-resonance peaking EQ (air ~100 Hz,
+               top ~200 Hz, mid ~430 Hz) colours every note like a real box;
+               a pick-position comb shapes the excitation; a fractional-delay
+               allpass in the string loop fixes upper-register tuning (integer
+               delay alone ran ~10-20 cents flat); plucks now respond to
+               velocity (louder + brighter when harder, with slight
+               humanization); and low/wound vs high/plain strings get distinct
+               brightness and sustain by register. No new dependencies.
+       1.7.0 — chord vocabulary expanded from 7 to 21 qualities (sus2/sus4,
+               6/m6, m7♭5, dim7, add9, 9/maj9/m9, 11, 13, 7♭9, 7♯9). New
+               per-quality label/degree arrays fix the interval-ambiguity
+               problem; colour is now label-derived (labClass) with a new
+               violet --ext for extensions. Chord diagrams gain a generalized
+               interval-based voicing generator so every quality gets a shape
+               (no more "no simple shape"). Fretboard dots are now keyboard-
+               focusable and play on Enter/Space. Phones get narrower frets
+               and default to a 5-fret window. Full state persistence: chord
+               quality, scale + position, triad set/inversion, circle
+               selection, highlighted note, and the built progression now
+               survive a reload.
+       1.6.0 — header decluttered: subtitle tagline removed. UI/UX polish:
+               keyboard focus rings on all controls, reduced-motion support,
+               tab hover affordance, and tabs now scroll horizontally on
+               phones instead of wrapping to a second row.
+       1.5.0 — UI refactor: Chord tones and Triads merged into one
+               "Chords / triads" tab with a view toggle (5 tabs → 4).
+               Root and Notes/Intervals are now a single shared context
+               bar across Harmony & Scales (no more per-tab duplicates).
+               One context-aware Play in the timing bar replaces the
+               four per-panel Listen/Cadence buttons.
+       1.4.0 — playback persists across tabs: the single-chord loop and
+               the progression sequencer no longer stop when you switch
+               tabs (backing-track behaviour). A global transport chip in
+               the timing bar shows what's playing and offers Stop from
+               any tab. Added an in-app changelog (tap the version badge).
+       1.3.0 — tempo relocated: tempo + metronome now live in an
+               always-visible timing bar; Settings toolbar is now
+               instrument-only (tuning, handedness, fret range)
+       1.2.0 — chord progression sequencer (presets, per-chord bars,
+               board follows the active chord, cycle/once playback)
+       1.1.0 — single-chord background loop
+       1.0.0 — base: chord tones, triads, scales/modes, circle, notes
+     Single source of truth for the version is APP_VERSION in the script.
+     ============================================================ -->
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="version" content="1.11.0">
+<title>Гітарна студія — гами, моди, акорди</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #16140f; --bg-panel: #201d16; --bg-panel-2: #29251c;
+    --wood: linear-gradient(180deg, #4a3320 0%, #3a2817 100%);
+    --line-string: rgba(220, 200, 160, 0.35); --line-fret: rgba(180, 160, 120, 0.5);
+    --text: #f0ebe0; --text-dim: #a39c8a; --text-faint: #6f6857;
+    --border: rgba(220, 200, 160, 0.14); --border-strong: rgba(220, 200, 160, 0.3);
+    --accent: #4A9EE8; --root: #6BA53A; --third: #E0962B; --fifth: #4A9EE8; --seventh: #D14E7E;
+    --ext: #9B7BE0;
+    --natural: #4A9EE8; --sharp: #C98426; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Hanken Grotesk', system-ui, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; padding: 0 0 4rem; }
+
+  /* keyboard accessibility: visible focus on every interactive control */
+  .btn:focus-visible, .tab:focus-visible, .langbtn:focus-visible, .ver:focus-visible,
+  .aside-toggle:focus-visible, .tb-toggle:focus-visible, .cl-close:focus-visible,
+  input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dot:focus-visible { outline: 2px solid #fff; outline-offset: 2px; z-index: 7; }
+  .cof-node:focus { outline: none; }
+  .cof-node:focus-visible circle { stroke: #fff; stroke-width: 2.6; }
+  /* respect users who prefer less motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+  header { border-bottom: 1px solid var(--border); padding: 28px 0 0; background: linear-gradient(180deg, #1c1913 0%, var(--bg) 100%); }
+  .brand { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .brand h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 30px; letter-spacing: -0.01em; }
+  .brand .ver { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; color: var(--text-faint); border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; align-self: center; cursor: pointer; background: transparent; transition: all 0.12s; }
+  .brand .ver:hover { color: var(--text); border-color: var(--text-faint); }
+  .lang { margin-left: auto; display: flex; gap: 2px; align-self: center; background: var(--bg-panel); border: 1px solid var(--border-strong); border-radius: 8px; padding: 2px; }
+  .langbtn { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; padding: 5px 11px; border: none; background: transparent; color: var(--text-dim); border-radius: 6px; cursor: pointer; transition: all 0.12s; }
+  .langbtn:hover:not(.active) { color: var(--text); }
+  .langbtn.active { background: var(--accent); color: #07203a; }
+  .tabs { display: flex; gap: 4px; margin-top: 22px; flex-wrap: wrap; }
+  .tab { font-family: inherit; font-size: 14px; font-weight: 500; background: transparent; color: var(--text-dim); border: none; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0; padding: 10px 16px 12px; cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s; }
+  .tab:hover:not(.active) { color: var(--text); background: var(--bg-panel); }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  .layout { display: flex; gap: 30px; align-items: flex-start; padding-top: 30px; }
+  .main { flex: 1; min-width: 0; }
+  .aside { width: 234px; flex-shrink: 0; position: sticky; top: 20px; }
+  @media (max-width: 940px) { .layout { flex-direction: column; } .aside { width: 100%; position: static; } }
+
+  .panel { display: none; animation: fade 0.25s ease; }
+  .panel.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .panel-head { margin-bottom: 20px; }
+  .panel-head h2 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 22px; letter-spacing: -0.01em; margin-bottom: 4px; }
+  .panel-head p { font-size: 14px; color: var(--text-dim); max-width: 680px; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 13px; align-items: center; }
+  .ctrl-label { font-size: 12px; color: var(--text-dim); margin-right: 4px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
+  .group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .divider { width: 1px; height: 22px; background: var(--border-strong); margin: 0 6px; flex-shrink: 0; }
+  .muted { font-size: 12px; color: var(--text-faint); font-style: italic; }
+
+  .btn { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; padding: 5px 11px; border-radius: 7px; border: 1px solid var(--border-strong); background: var(--bg-panel); color: var(--text); cursor: pointer; transition: all 0.12s; }
+  .btn:hover:not(.active) { background: var(--bg-panel-2); border-color: var(--text-faint); }
+  .btn.active { background: var(--accent); color: #07203a; border-color: var(--accent); font-weight: 700; }
+  .btn.dia.active { background: var(--third); color: #1f1405; border-color: var(--third); }
+  .btn.play { background: transparent; border-color: var(--root); color: var(--root); }
+  .btn.play:hover { background: rgba(107,165,58,0.14); }
+  .btn.play.loop { border-color: var(--accent); color: var(--accent); }
+  .btn.play.loop:hover:not(.active) { background: rgba(74,158,232,0.14); }
+
+  /* ---- chord progression sequencer ---- */
+  .seq { margin: 14px 0 6px; padding: 11px 13px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); }
+  .seq-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .seq-presets { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+  .btn.seq-preset { font-size: 11px; padding: 4px 9px; }
+  .seq-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; min-height: 32px; align-items: center; }
+  .seq-empty { font-size: 12px; color: var(--text-faint); font-style: italic; }
+  .seq-chip { display: inline-flex; align-items: center; gap: 7px; padding: 5px 7px 5px 10px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg-panel-2); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; transition: all 0.12s; }
+  .seq-chip.active { background: var(--root); color: #07203a; border-color: var(--root); box-shadow: 0 0 0 2px rgba(107,165,58,0.35); }
+  .seq-chip .nm { cursor: pointer; }
+  .seq-chip .bars { font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 6px; background: rgba(220,200,160,0.12); cursor: pointer; user-select: none; }
+  .seq-chip.active .bars { background: rgba(7,32,58,0.22); }
+  .seq-chip .x { cursor: pointer; opacity: 0.55; font-weight: 700; line-height: 1; padding: 0 1px; }
+  .seq-chip .x:hover { opacity: 1; }
+
+  select { font-family: 'Hanken Grotesk', sans-serif; font-size: 13px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg-panel); color: var(--text); cursor: pointer; }
+  select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .info { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 16px; margin-bottom: 18px; }
+  .info .big { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 16px; letter-spacing: 0.02em; }
+  .info .sub { color: var(--text-dim); margin-top: 5px; font-size: 13px; font-family: 'JetBrains Mono', monospace; }
+
+  .scroll { overflow-x: auto; padding-bottom: 10px; }
+  .scroll::-webkit-scrollbar { height: 8px; }
+  .scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+  .board { background: var(--wood); border-radius: 8px; padding: 10px 0; box-shadow: inset 0 1px 0 rgba(255,230,190,0.08), 0 4px 18px rgba(0,0,0,0.4); }
+  .srow { display: flex; align-items: center; height: 38px; }
+  .slabel { width: 30px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: rgba(240,230,200,0.7); text-align: center; flex-shrink: 0; }
+  .ocell { width: 30px; height: 100%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+  .ocell::before { content: ''; position: absolute; top: 50%; right: 0; width: 55%; height: 1.6px; transform: translateY(-50%); background: var(--line-string); z-index: 0; }
+  .nut { width: 7px; background: #d8cba8; flex-shrink: 0; height: 100%; border-radius: 1px; }
+  .cell { flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; border-right: 2px solid var(--line-fret); }
+  .cell::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; transform: translateY(-50%); background: var(--line-string); z-index: 0; }
+  .srow:nth-child(1) .cell::before { height: 1px; }
+  .srow:nth-child(2) .cell::before { height: 1.2px; }
+  .srow:nth-child(3) .cell::before { height: 1.5px; }
+  .srow:nth-child(4) .cell::before { height: 1.9px; }
+  .srow:nth-child(5) .cell::before { height: 2.3px; }
+  .srow:nth-child(6) .cell::before { height: 2.8px; }
+  .dot { width: 27px; height: 27px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; position: relative; z-index: 1; transition: transform 0.1s; color: #0e1408; box-shadow: 0 1px 3px rgba(0,0,0,0.4); cursor: pointer; }
+  .dot:hover { transform: scale(1.18); }
+  .dot.playing { transform: scale(1.34); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px #fff, 0 0 16px 3px rgba(255,255,255,0.55); z-index: 6; }
+  .d-root { background: var(--root); }
+  .d-third { background: var(--third); }
+  .d-fifth { background: var(--fifth); color: #07203a; }
+  .d-sev { background: var(--seventh); color: #2a0a16; }
+  .d-other { background: var(--fifth); color: #07203a; }
+  .d-ext { background: var(--ext); color: #160a2e; }
+  .d-natural { background: var(--natural); color: #07203a; }
+  .d-sharp { background: var(--sharp); color: #1f1405; }
+  .d-dim { background: rgba(220,200,160,0.22); color: rgba(240,235,224,0.6); box-shadow: none; }
+  .fretnums { display: flex; margin-left: 67px; padding-left: 7px; }
+  .fretnum { flex: 1; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); padding-top: 7px; }
+  .fretnum.mark { color: var(--text-dim); font-weight: 700; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px; }
+  .leg { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-dim); }
+  .leg-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
+  .hint { font-size: 13px; color: var(--text-dim); margin-top: 18px; padding: 12px 15px; background: var(--bg-panel); border-radius: var(--radius); border-left: 2px solid var(--accent); }
+
+  .aside-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 15px; }
+  .aside-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .aside-head span { font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+  .aside-toggle { background: transparent; border: none; color: var(--text-dim); font-size: 18px; cursor: pointer; line-height: 1; padding: 0 4px; }
+  .mini-title { font-size: 10px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin: 10px 0 5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .mini td { padding: 3px 2px; border-bottom: 1px solid var(--border); }
+  .mini tr:last-child td { border-bottom: none; }
+  .mini .chord { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; width: 30px; }
+  .mini .pill { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 21px; border-radius: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 11px; }
+  .p-root { background: var(--root); color: #0e1408; }
+  .p-third { background: var(--third); color: #1f1405; }
+  .p-fifth { background: var(--fifth); color: #07203a; }
+  .p-mthird { background: var(--seventh); color: #2a0a16; }
+  .aside-leg { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+  .aside-leg .leg { font-size: 11px; }
+  .cof-layout { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+  .cof-wrap { flex: 0 0 auto; }
+  .cof-side { flex: 1; min-width: 250px; }
+  #cof-svg { width: 360px; max-width: 100%; height: auto; display: block; }
+  .cof-node { cursor: pointer; }
+  .cof-node circle { transition: fill 0.15s, stroke 0.15s; }
+  .cof-node:hover circle { stroke: var(--text); }
+  .cof-node text { font-family: 'JetBrains Mono', monospace; font-weight: 700; pointer-events: none; }
+  #cof-info .sub b { font-weight: 700; }
+
+  /* ---- timing bar (always visible: tempo + metronome) + collapsible instrument toolbar ---- */
+  .tb-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 16px; }
+  .tb-bar .tb-group { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 9px; padding: 6px 11px; }
+  .tb-bar .tb-toggle { margin-left: auto; }
+  .tb-toggle { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg-panel); color: var(--text-dim); cursor: pointer; transition: all 0.12s; }
+  .tb-toggle:hover { color: var(--text); border-color: var(--text-faint); }
+  .tb-toggle.open { background: var(--bg-panel-2); color: var(--text); }
+  .tb-toggle .chev { transition: transform 0.18s; font-size: 10px; }
+  .tb-toggle.open .chev { transform: rotate(180deg); }
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); }
+  .toolbar.collapsed { display: none; }
+  .toolbar .tb-seg { font-size: 10px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.07em; }
+  .toolbar .tb-group, .tb-bar .tb-group { display: flex; align-items: center; gap: 7px; }
+  .toolbar .tb-label, .tb-bar .tb-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+  .toolbar select { font-size: 12px; padding: 5px 9px; }
+  .toolbar .divider { height: 20px; }
+  input[type="range"] { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 3px; background: var(--border-strong); outline: none; width: 116px; cursor: pointer; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border: none; border-radius: 50%; background: var(--accent); cursor: pointer; }
+  .bpm-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--text); min-width: 56px; }
+  .btn.metro.active { background: var(--root); color: #0e1408; border-color: var(--root); font-weight: 700; }
+  .btn.band.active { background: var(--ext); color: #11071f; border-color: var(--ext); font-weight: 700; }
+  .btn[disabled], .btn[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+  .audio-warn { font-size: 11px; color: var(--text-faint); align-self: center; }
+  /* global transport: visible on every tab while the loop or progression plays */
+  .tb-transport { display: inline-flex; align-items: center; gap: 8px; padding: 5px 8px 5px 11px; border: 1px solid var(--accent); border-radius: 9px; background: var(--bg-panel); }
+  .tb-transport[hidden] { display: none; }
+  .tb-transport-label { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .tb-transport-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 var(--accent); animation: tb-pulse 1.1s ease-out infinite; }
+  @keyframes tb-pulse { 0% { box-shadow: 0 0 0 0 rgba(74,158,232,0.55); } 70% { box-shadow: 0 0 0 6px rgba(74,158,232,0); } 100% { box-shadow: 0 0 0 0 rgba(74,158,232,0); } }
+  #tb-stop { padding: 4px 9px; }
+  /* shared musical-context bar (root + display mode), contextual per tab */
+  .context-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 18px; padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); }
+  .context-bar[hidden] { display: none; }
+  .context-bar .ctx-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  /* ---- chord diagrams ---- */
+  .chorddia { display: flex; flex-wrap: wrap; gap: 14px; margin: 4px 0 18px; align-items: flex-start; }
+  .chordbox { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px 10px; }
+  .chordbox .cb-name { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; margin-bottom: 8px; color: var(--text); }
+  .chordbox svg { display: block; }
+  .chordbox .cb-cap { font-size: 11px; color: var(--text-faint); margin-top: 7px; max-width: 150px; }
+  .cd-string { stroke: var(--line-string); stroke-width: 1.3; }
+  .cd-fret { stroke: var(--line-fret); stroke-width: 1.3; }
+  .cd-nut { stroke: #d8cba8; stroke-width: 4; }
+  .cd-dot { fill: var(--fifth); }
+  .cd-dot.root { fill: var(--root); }
+  .cd-mark { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; fill: var(--text-dim); }
+  .cd-pos { font-family: 'JetBrains Mono', monospace; font-size: 10px; fill: var(--text-faint); }
+
+  /* ---- left-handed: mirror the neck, keep glyphs readable ---- */
+  .board.lefty, .fretnums.lefty { transform: scaleX(-1); }
+  .board.lefty .dot, .board.lefty .slabel { transform: scaleX(-1); }
+  .board.lefty .dot:hover { transform: scaleX(-1) scale(1.18); }
+  .board.lefty .dot.playing { transform: scaleX(-1) scale(1.34); }
+  .fretnums.lefty .fretnum { transform: scaleX(-1); }
+
+  /* ---- mobile ---- */
+  @media (max-width: 600px) {
+    .wrap { padding: 0 14px; }
+    .brand h1 { font-size: 25px; }
+    .toolbar { gap: 8px 10px; }
+    input[type="range"] { width: 92px; }
+    .dot { width: 25px; height: 25px; }
+    .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: -14px; margin-right: -14px; padding: 0 14px; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { white-space: nowrap; flex-shrink: 0; }
+  }
+  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-faint); }
+
+  /* ---- changelog modal ---- */
+  .cl-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.62); display: none; align-items: flex-start; justify-content: center; padding: 60px 16px; z-index: 100; }
+  .cl-overlay.open { display: flex; animation: fade 0.18s ease; }
+  .cl-modal { background: var(--bg-panel); border: 1px solid var(--border-strong); border-radius: 14px; max-width: 560px; width: 100%; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 18px 50px rgba(0,0,0,0.5); }
+  .cl-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 12px; border-bottom: 1px solid var(--border); }
+  .cl-head h2 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 19px; }
+  .cl-close { font-family: 'JetBrains Mono', monospace; font-size: 15px; line-height: 1; color: var(--text-dim); background: transparent; border: 1px solid var(--border-strong); border-radius: 7px; padding: 5px 9px; cursor: pointer; transition: all 0.12s; }
+  .cl-close:hover { color: var(--text); border-color: var(--text-faint); }
+  .cl-body { padding: 6px 18px 18px; overflow-y: auto; }
+  .cl-rel { padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .cl-rel:last-child { border-bottom: none; }
+  .cl-rel-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .cl-ver { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--text); }
+  .cl-rel.current .cl-ver { color: var(--accent); }
+  .cl-badge { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #0e1408; background: var(--accent); border-radius: 5px; padding: 2px 6px; }
+  .cl-date { font-size: 11px; color: var(--text-faint); margin-left: auto; }
+  .cl-rel ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .cl-rel li { position: relative; padding-left: 16px; font-size: 13px; color: var(--text-dim); line-height: 1.45; }
+  .cl-rel li::before { content: '—'; position: absolute; left: 0; color: var(--text-faint); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <h1 data-i18n="brand">Гітарна студія</h1>
+      <button class="ver" id="app-ver" aria-haspopup="dialog"></button>
+      <div class="lang" id="lang-switch">
+        <button class="langbtn active" data-lang="uk">UK</button>
+        <button class="langbtn" data-lang="en">EN</button>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-panel="harmony" data-i18n="tab_harmony">Акорди / тріади</button>
+      <button class="tab" data-panel="scales" data-i18n="tab_scales">Гами / моди</button>
+      <button class="tab" data-panel="circle" data-i18n="tab_circle">Коло квінт</button>
+      <button class="tab" data-panel="notes" data-i18n="tab_notes">Ноти на грифі</button>
+    </nav>
+    <div class="tb-bar">
+      <div class="tb-group">
+        <span class="tb-label" data-i18n="tb_tempo">Темп</span>
+        <input type="range" id="tb-tempo" min="40" max="200" step="2" value="90" aria-label="Tempo">
+        <span class="bpm-val" id="tb-bpm">90 BPM</span>
+      </div>
+      <button class="btn metro" id="tb-metro" aria-pressed="false"></button>
+      <button class="btn band" id="tb-bass" aria-pressed="false"></button>
+      <button class="btn band" id="tb-drums" aria-pressed="false"></button>
+      <button class="btn play" id="g-play"></button>
+      <button class="btn play loop" id="g-loop"></button>
+      <div class="tb-transport" id="tb-transport" hidden>
+        <span class="tb-transport-dot"></span>
+        <span class="tb-transport-label" id="tb-transport-label"></span>
+        <button class="btn" id="tb-stop"></button>
+      </div>
+      <button class="tb-toggle" id="tb-toggle" aria-expanded="false" aria-controls="toolbar"><span data-i18n="tb_settings">Налаштування</span> <span class="chev">▾</span></button>
+    </div>
+    <div class="toolbar collapsed" id="toolbar">
+      <div class="tb-group">
+        <span class="tb-label" data-i18n="tb_tuning">Стрій</span>
+        <select id="tb-tuning"></select>
+      </div>
+      <button class="btn" id="tb-lefty" aria-pressed="false" data-i18n="tb_lefty">Ліворукий</button>
+      <div class="tb-group">
+        <span class="tb-label" data-i18n="tb_frets">Лади</span>
+        <select id="tb-frets"></select>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+<div class="layout">
+<div class="main">
+
+  <div class="context-bar" id="context-bar">
+    <div class="ctx-group"><span class="ctrl-label" data-i18n="lbl_root">Тоніка</span><div class="group" id="g-roots"></div></div>
+    <div class="divider"></div>
+    <button class="btn active" id="g-names" data-i18n="b_notes">Ноти</button>
+    <button class="btn" id="g-deg" data-i18n="b_intervals">Інтервали</button>
+  </div>
+
+  <section class="panel active" id="panel-harmony">
+    <div class="panel-head">
+      <h2 id="harmony-h">Тони акорду на грифі</h2>
+      <p id="harmony-p">Вибери тоніку і тип акорду — підсвітяться тоніка, терція, квінта (і септима для септакордів) по всьому грифу.</p>
+    </div>
+    <div class="row">
+      <span class="ctrl-label" data-i18n="lbl_view">Вид</span>
+      <div class="group">
+        <button class="btn active" id="hv-chords" data-i18n="view_chords">Тони акорду</button>
+        <button class="btn" id="hv-triads" data-i18n="view_triads">Форми тріад</button>
+      </div>
+    </div>
+
+    <div id="sub-chords">
+      <div class="row">
+        <span class="ctrl-label" data-i18n="lbl_chord">Акорд</span><div class="group" id="ch-quals"></div>
+      </div>
+      <div class="info" id="ch-info"></div>
+      <div class="chorddia" id="ch-diagram"></div>
+      <div class="seq" id="ch-seq">
+        <div class="seq-head">
+          <span class="ctrl-label" data-i18n="seq_title">Прогресія</span>
+          <button class="btn" id="seq-add" data-i18n="seq_add">Додати акорд</button>
+          <div class="divider"></div>
+          <span class="ctrl-label" data-i18n="seq_presets">Пресети</span>
+          <div class="seq-presets" id="seq-presets"></div>
+          <div class="divider"></div>
+          <button class="btn play" id="seq-play"></button>
+          <button class="btn" id="seq-loopbtn"></button>
+          <button class="btn" id="seq-clear" data-i18n="seq_clear">Очистити</button>
+        </div>
+        <div class="seq-strip" id="seq-strip"></div>
+      </div>
+      <div class="scroll"><div class="board"><div class="fretboard" id="ch-board"></div></div><div class="fretnums" id="ch-nums"></div></div>
+      <div class="legend">
+        <div class="leg"><span class="leg-dot" style="background:var(--root)"></span><span data-i18n="leg_root">Тоніка (1)</span></div>
+        <div class="leg"><span class="leg-dot" style="background:var(--third)"></span><span data-i18n="leg_third">Терція (3 / ♭3)</span></div>
+        <div class="leg"><span class="leg-dot" style="background:var(--fifth)"></span><span data-i18n="leg_fifth">Квінта (5)</span></div>
+        <div class="leg"><span class="leg-dot" style="background:var(--seventh)"></span><span data-i18n="leg_seventh">Септима (7 / ♭7)</span></div>
+        <div class="leg"><span class="leg-dot" style="background:var(--ext)"></span><span data-i18n="leg_ext">Розширення (6 · 9 · 11 · 13)</span></div>
+      </div>
+      <div class="hint" data-i18n="ch_hint">Грай гаму вільно, а на зміні акорду влучай у підсвічені ноти — вони звучать найстабільніше.</div>
+    </div>
+
+    <div id="sub-triads" hidden>
+      <div class="row"><span class="ctrl-label" data-i18n="lbl_chord">Акорд</span><div class="group" id="tr-quals"></div></div>
+      <div class="row"><span class="ctrl-label" data-i18n="lbl_set">Набір струн</span><div class="group" id="tr-sets"></div></div>
+      <div class="row"><span class="ctrl-label" data-i18n="lbl_inv">Обернення</span><div class="group" id="tr-invs"></div></div>
+      <div class="info" id="tr-info"></div>
+      <div class="scroll"><div class="board"><div class="fretboard" id="tr-board"></div></div><div class="fretnums" id="tr-nums"></div></div>
+      <div class="legend">
+        <div class="leg"><span class="leg-dot" style="background:var(--root)"></span><span data-i18n="leg_root">Тоніка (1)</span></div>
+        <div class="leg"><span class="leg-dot" style="background:var(--third)"></span><span data-i18n="leg_third">Терція (3 / ♭3)</span></div>
+        <div class="leg"><span class="leg-dot" style="background:var(--fifth)"></span><span data-i18n="leg_fifth">Квінта (5)</span></div>
+      </div>
+      <div class="hint" data-i18n="tr_hint">Тризвук на трьох сусідніх струнах — рухомий блок: кожне обернення повторюється вгору по грифу через 12 ладів. Вивчиш одну форму на одному наборі струн — отримаєш увесь гриф.</div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-scales">
+    <div class="panel-head">
+      <h2 data-i18n="sc_h">Гами і моди</h2>
+      <p data-i18n="sc_p">Вибери тоніку і гаму. Накладай акорд тональності, щоб бачити цільові ноти всередині гами, та ізолюй позицію для практики.</p>
+    </div>
+    <div class="row"><span class="ctrl-label" data-i18n="lbl_scale">Гама</span><select id="sc-select"></select></div>
+    <div class="row"><span class="ctrl-label" data-i18n="lbl_pos">Позиція</span><div class="group" id="sc-pos"></div></div>
+    <div class="row"><span class="ctrl-label" data-i18n="lbl_dia">Акорди тональності</span><div class="group" id="sc-diatonic"></div></div>
+    <div class="info" id="sc-info"></div>
+    <div class="scroll"><div class="board"><div class="fretboard" id="sc-board"></div></div><div class="fretnums" id="sc-nums"></div></div>
+    <div class="legend" id="sc-legend"></div>
+  </section>
+
+  <section class="panel" id="panel-circle">
+    <div class="panel-head">
+      <h2 data-i18n="cof_h">Коло квінт</h2>
+      <p data-i18n="cof_p">Тональності розташовані по квінтах. Сусіди — найближчі споріднені тональності: ліворуч субдомінанта (IV), праворуч домінанта (V). Натисни тональність, щоб побачити ключові знаки, паралель і акорди тональності.</p>
+    </div>
+    <div class="cof-layout">
+      <div class="cof-wrap"><svg id="cof-svg" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="cof-side">
+        <div class="info" id="cof-info"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn" id="cof-open"></button>
+        </div>
+        <div class="legend" style="margin-top:18px">
+          <div class="leg"><span class="leg-dot" style="background:var(--root)"></span><span data-i18n="leg_tonic">Тоніка</span></div>
+          <div class="leg"><span class="leg-dot" style="background:var(--fifth)"></span><span data-i18n="leg_subdom">Субдомінанта (IV)</span></div>
+          <div class="leg"><span class="leg-dot" style="background:var(--third)"></span><span data-i18n="leg_dom">Домінанта (V)</span></div>
+          <div class="leg"><span class="leg-dot" style="background:var(--seventh)"></span><span data-i18n="leg_rel">Паралель</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-notes">
+    <div class="panel-head">
+      <h2 data-i18n="nt_h">Всі ноти на грифі</h2>
+      <p data-i18n="nt_p">Довідник усіх нот. Натисни ноту в керуванні, щоб підсвітити її скрізь, або клікни по ноті на грифі, щоб почути.</p>
+    </div>
+    <div class="row">
+      <span class="ctrl-label" data-i18n="lbl_show">Показати</span>
+      <button class="btn active" id="nt-all" data-i18n="b_allnotes">Всі ноти</button>
+      <button class="btn" id="nt-nat" data-i18n="b_natonly">Тільки натуральні</button>
+    </div>
+    <div class="row">
+      <span class="ctrl-label" data-i18n="lbl_nat">Натуральні</span><div class="group" id="nt-natural"></div>
+      <div class="divider"></div>
+      <span class="ctrl-label" data-i18n="lbl_sharp">Дієзи</span><div class="group" id="nt-sharp"></div>
+      <div class="divider"></div>
+      <span class="ctrl-label" data-i18n="lbl_flat">Бемолі</span><div class="group" id="nt-flat"></div>
+      <div class="divider"></div>
+      <button class="btn" id="nt-reset" data-i18n="b_reset">скинути</button>
+    </div>
+    <div class="scroll"><div class="board"><div class="fretboard" id="nt-board"></div></div><div class="fretnums" id="nt-nums"></div></div>
+    <div class="legend">
+      <div class="leg"><span class="leg-dot" style="background:var(--natural)"></span><span data-i18n="leg_nat">Натуральна нота</span></div>
+      <div class="leg"><span class="leg-dot" style="background:var(--sharp)"></span><span data-i18n="leg_sharpflat">Дієз / бемоль</span></div>
+      <div class="leg"><span class="leg-dot" style="background:var(--root)"></span><span data-i18n="leg_highlight">Виділена нота</span></div>
+    </div>
+  </section>
+
+</div>
+
+<aside class="aside">
+  <div class="aside-card">
+    <div class="aside-head"><span data-i18n="side_title">Довідник акордів</span><button class="aside-toggle" id="aside-toggle">−</button></div>
+    <div id="aside-body">
+      <div class="mini-title" data-i18n="side_major">Мажорні (1 · 3 · 5)</div>
+      <table class="mini"><tbody id="mini-major"></tbody></table>
+      <div class="mini-title" data-i18n="side_minor">Мінорні (1 · ♭3 · 5)</div>
+      <table class="mini"><tbody id="mini-minor"></tbody></table>
+      <div class="aside-leg">
+        <div class="leg"><span class="leg-dot" style="background:var(--root)"></span><span data-i18n="side_root">Тоніка</span></div>
+        <div class="leg"><span class="leg-dot" style="background:var(--third)"></span><span data-i18n="side_third">Терція</span></div>
+        <div class="leg"><span class="leg-dot" style="background:var(--fifth)"></span><span data-i18n="side_fifth">Квінта</span></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+
+  <footer data-i18n="footer">Гітарна студія · стандартний стрій (E A D G B e) · працює офлайн</footer>
+</main>
+
+<div class="cl-overlay" id="cl-overlay" role="dialog" aria-modal="true" aria-labelledby="cl-title" hidden>
+  <div class="cl-modal">
+    <div class="cl-head">
+      <h2 id="cl-title" data-i18n="cl_title">Що нового</h2>
+      <button class="cl-close" id="cl-close" aria-label="close">✕</button>
+    </div>
+    <div class="cl-body" id="cl-body"></div>
+  </div>
+</div>
+
+<script>
+/* Single source of truth for the app version. Bump on each release and update
+   the changelog comment at the top of the file + the <meta name="version">. */
+const APP_VERSION = '1.11.0';
+/* Changelog — single source of truth for the in-app "What's new" modal.
+   Newest first; add a new entry on top each release. Bullets are localized. */
+const CHANGELOG = [
+  { v:'1.11.0', date:'2026-06-15',
+    en:['Playback controls are clearer: Listen and Loop now sit together in the timing bar, so hearing the current chord once (Listen) and looping it as a backing (Loop) are one obvious pair.',
+        'Loop now appears only on the chord-tones view where it applies; the transport chip is still there to stop playback from any tab.',
+        'The fretboard fits phones: a windowed fret range now scales to the screen with no sideways scrolling — only the full "All frets" view still scrolls. It re-fits when you rotate.',
+        'Sturdier on unusual browsers: if a browser has no audio support, the playback buttons are disabled with a note instead of doing nothing.'],
+    uk:['Керування відтворенням зрозуміліше: «Прослухати» і «Луп» тепер поруч у панелі темпу — почути поточний акорд один раз (Прослухати) та зациклити його як супровід (Луп) стали однією очевидною парою.',
+        '«Луп» з’являється лише у вкладі тонів акорду, де він діє; чип транспорту, як і раніше, зупиняє відтворення з будь-якої вкладки.',
+        'Гриф вміщується на телефонах: віконний діапазон ладів тепер масштабується під екран без бічної прокрутки — гортається лише повний вид «Усі лади». Підлаштовується при повороті.',
+        'Надійніше на незвичних браузерах: якщо браузер не підтримує звук, кнопки відтворення вимикаються з підказкою, а не лишаються «мертвими».'] },
+  { v:'1.10.0', date:'2026-06-14',
+    en:['Backing now plays as a band: turn on Bass and Drums in the timing bar and the loop or progression becomes a jam-along bed for improvising over.',
+        'A synthesized bass follows each chord — root on beat 1, the chord\u2019s fifth on beat 3 — and sits cleanly under the guitar.',
+        'An optional groove adds a kick on beats 1 and 3 with steady 8th-note hi-hats, accented on the downbeat.',
+        'The guitar comping is more human now: small note-to-note changes in loudness and timing, plus a softer push on beat 3 when the band is on.',
+        'Your Bass and Drums choices are remembered across reloads.'],
+    uk:['\u0421\u0443\u043f\u0440\u043e\u0432\u0456\u0434 \u0442\u0435\u043f\u0435\u0440 \u0437\u0432\u0443\u0447\u0438\u0442\u044c \u044f\u043a \u0433\u0443\u0440\u0442: \u0443\u0432\u0456\u043c\u043a\u043d\u0438 \u00ab\u0411\u0430\u0441\u00bb \u0456 \u00ab\u0423\u0434\u0430\u0440\u043d\u0456\u00bb \u0443 \u043f\u0430\u043d\u0435\u043b\u0456 \u0442\u0435\u043c\u043f\u0443 \u2014 \u0456 \u043b\u0443\u043f \u0447\u0438 \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0456\u044f \u0441\u0442\u0430\u044e\u0442\u044c \u043c\u0456\u043d\u0443\u0441\u0456\u0432\u043a\u043e\u044e \u0434\u043b\u044f \u0456\u043c\u043f\u0440\u043e\u0432\u0456\u0437\u0430\u0446\u0456\u0457.',
+        '\u0421\u0438\u043d\u0442\u0435\u0437\u043e\u0432\u0430\u043d\u0438\u0439 \u0431\u0430\u0441 \u0441\u043b\u0456\u0434\u0443\u0454 \u0437\u0430 \u043a\u043e\u0436\u043d\u0438\u043c \u0430\u043a\u043e\u0440\u0434\u043e\u043c \u2014 \u0442\u043e\u043d\u0456\u043a\u0430 \u043d\u0430 \u043f\u0435\u0440\u0448\u0456\u0439 \u0434\u043e\u043b\u0456, \u043a\u0432\u0456\u043d\u0442\u0430 \u043d\u0430 \u0442\u0440\u0435\u0442\u0456\u0439 \u2014 \u0456 \u0447\u0438\u0441\u0442\u043e \u043b\u044f\u0433\u0430\u0454 \u043f\u0456\u0434 \u0433\u0456\u0442\u0430\u0440\u0443.',
+        '\u0414\u043e\u0434\u0430\u0442\u043a\u043e\u0432\u0438\u0439 \u0433\u0440\u0443\u0432: \u0431\u043e\u0447\u043a\u0430 \u043d\u0430 1-\u0448\u0456\u0439 \u0456 3-\u0439 \u0434\u043e\u043b\u044f\u0445 \u0442\u0430 \u0440\u0456\u0432\u043d\u0456 \u0432\u043e\u0441\u044c\u043c\u0456 \u0445\u0430\u0439-\u0445\u0435\u0442\u0430 \u0437 \u0430\u043a\u0446\u0435\u043d\u0442\u043e\u043c \u043d\u0430 \u0441\u0438\u043b\u044c\u043d\u0456\u0439 \u0434\u043e\u043b\u0456.',
+        '\u0413\u0456\u0442\u0430\u0440\u043d\u0438\u0439 \u0430\u043a\u043e\u043c\u043f\u0430\u043d\u0435\u043c\u0435\u043d\u0442 \u0436\u0438\u0432\u0456\u0448\u0438\u0439: \u043d\u0435\u0432\u0435\u043b\u0438\u043a\u0456 \u0437\u043c\u0456\u043d\u0438 \u0433\u0443\u0447\u043d\u043e\u0441\u0442\u0456 \u0439 \u0447\u0430\u0441\u0443 \u043c\u0456\u0436 \u043d\u043e\u0442\u0430\u043c\u0438 \u0442\u0430 \u043c\u2019\u044f\u043a\u0456\u0448\u0438\u0439 \u0443\u0434\u0430\u0440 \u043d\u0430 3-\u0439 \u0434\u043e\u043b\u0456, \u043a\u043e\u043b\u0438 \u0433\u0443\u0440\u0442 \u0443\u0432\u0456\u043c\u043a\u043d\u0435\u043d\u043e.',
+        '\u0412\u0438\u0431\u0456\u0440 \u00ab\u0411\u0430\u0441\u00bb \u0456 \u00ab\u0423\u0434\u0430\u0440\u043d\u0456\u00bb \u0437\u0431\u0435\u0440\u0456\u0433\u0430\u0454\u0442\u044c\u0441\u044f \u043f\u0456\u0441\u043b\u044f \u043f\u0435\u0440\u0435\u0437\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f.'] },
+  { v:'1.9.0', date:'2026-06-14',
+    en:['Playback timing was rebuilt on a precise audio clock, so the metronome, loop and progression no longer drift out of time — especially on phones and in background tabs.',
+        'The tempo slider now glides smoothly while something is playing, instead of restarting the beat.',
+        'The lit notes during the loop and progression now stay locked to the sound.',
+        'Groundwork for the upcoming practice modes: separate internal audio channels and short correct / wrong / count-in cue sounds.'],
+    uk:['Тайминг відтворення перебудовано на точному аудіогодиннику — метроном, луп і прогресія більше не «пливуть» у часі, особливо на телефонах і у фонових вкладках.',
+        'Повзунок темпу тепер плавно змінює швидкість під час гри, а не перезапускає долю.',
+        'Підсвічені ноти під час лупа та прогресії тепер точно збігаються зі звуком.',
+        'Основа для майбутніх режимів тренування: окремі внутрішні аудіоканали та короткі звуки-підказки правильно / помилка / відлік.'] },
+  { v:'1.8.0', date:'2026-06-14',
+    en:['The guitar tone was reworked to sound more like a real instrument.',
+        'Notes now ring through a body resonance, so they sound like they come from a guitar body rather than a bare synthesized string.',
+        'Tuning is accurate across the whole neck \u2014 high notes no longer drift slightly flat.',
+        'Plucking responds to dynamics: harder is louder and brighter, with subtle note-to-note variation so long loops feel less robotic.',
+        'Low and high strings now have their own character \u2014 darker, longer-ringing bass and rounder treble.'],
+    uk:['\u0422\u0435\u043c\u0431\u0440 \u0433\u0456\u0442\u0430\u0440\u0438 \u043f\u0435\u0440\u0435\u0440\u043e\u0431\u043b\u0435\u043d\u043e, \u0449\u043e\u0431 \u0432\u0456\u043d \u0437\u0432\u0443\u0447\u0430\u0432 \u0431\u043b\u0438\u0436\u0447\u0435 \u0434\u043e \u0441\u043f\u0440\u0430\u0432\u0436\u043d\u044c\u043e\u0433\u043e \u0456\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442\u0430.',
+        '\u041d\u043e\u0442\u0438 \u0442\u0435\u043f\u0435\u0440 \u0437\u0432\u0443\u0447\u0430\u0442\u044c \u043a\u0440\u0456\u0437\u044c \u0440\u0435\u0437\u043e\u043d\u0430\u043d\u0441 \u043a\u043e\u0440\u043f\u0443\u0441\u0443 \u2014 \u043d\u0435\u043c\u043e\u0432 \u0456\u0437 \u0434\u0435\u043a\u0438 \u0433\u0456\u0442\u0430\u0440\u0438, \u0430 \u043d\u0435 \u0432\u0456\u0434 \u0433\u043e\u043b\u043e\u0457 \u0441\u0438\u043d\u0442\u0435\u0437\u043e\u0432\u0430\u043d\u043e\u0457 \u0441\u0442\u0440\u0443\u043d\u0438.',
+        '\u0411\u0443\u0434\u043e\u0432\u0430 \u0442\u043e\u0447\u043d\u0430 \u043f\u043e \u0432\u0441\u044c\u043e\u043c\u0443 \u0433\u0440\u0438\u0444\u0443 \u2014 \u0432\u0438\u0441\u043e\u043a\u0456 \u043d\u043e\u0442\u0438 \u0431\u0456\u043b\u044c\u0448\u0435 \u043d\u0435 \u0437\u0430\u043d\u0438\u0436\u0443\u044e\u0442\u044c\u0441\u044f.',
+        '\u0417\u0432\u0443\u043a \u0440\u0435\u0430\u0433\u0443\u0454 \u043d\u0430 \u0434\u0438\u043d\u0430\u043c\u0456\u043a\u0443: \u0441\u0438\u043b\u044c\u043d\u0456\u0448\u0438\u0439 \u0449\u0438\u043f\u043e\u043a \u2014 \u0433\u0443\u0447\u043d\u0456\u0448\u0435 \u0439 \u044f\u0441\u043a\u0440\u0430\u0432\u0456\u0448\u0435, \u0456\u0437 \u043b\u0435\u0433\u043a\u043e\u044e \u0432\u0430\u0440\u0456\u0430\u0446\u0456\u0454\u044e \u043c\u0456\u0436 \u043d\u043e\u0442\u0430\u043c\u0438, \u0449\u043e\u0431 \u0434\u043e\u0432\u0433\u0456 \u043f\u043e\u0432\u0442\u043e\u0440\u0438 \u043d\u0435 \u0437\u0432\u0443\u0447\u0430\u043b\u0438 \u043c\u0435\u0445\u0430\u043d\u0456\u0447\u043d\u043e.',
+        '\u041d\u0438\u0437\u044c\u043a\u0456 \u0439 \u0432\u0438\u0441\u043e\u043a\u0456 \u0441\u0442\u0440\u0443\u043d\u0438 \u0442\u0435\u043f\u0435\u0440 \u043c\u0430\u044e\u0442\u044c \u0432\u043b\u0430\u0441\u043d\u0438\u0439 \u0445\u0430\u0440\u0430\u043a\u0442\u0435\u0440 \u2014 \u0442\u0435\u043c\u043d\u0456\u0448\u0438\u0439 \u0456 \u0434\u043e\u0432\u0448\u0438\u0439 \u0431\u0430\u0441 \u0442\u0430 \u043c\u2019\u044f\u043a\u0448\u0456 \u0432\u0438\u0441\u043e\u043a\u0456.'] },
+  { v:'1.7.0', date:'2026-06-14',
+    en:['Chord vocabulary expanded from 7 to 21 types — sus2/sus4, 6 and m6, m7\u266d5, dim7, add9, 9/maj9/m9, 11, 13, 7\u266d9 and the 7\u266f9 "Hendrix" chord.',
+        'Extensions (6, 9, 11, 13) now have their own violet colour, and every tone is labelled by its true degree so a \u266f9 reads as \u266f9, not \u266d3.',
+        'Chord diagrams now generate a playable shape for every chord automatically, instead of showing "no simple shape" for the rarer ones.',
+        'You can now tab to any note on the fretboard and play it with Enter or Space.',
+        'On phones the frets are narrower and open in a 5-fret window, so the neck fits the screen better.',
+        'The app now remembers your full working state across reloads — chord quality, scale and position, triad set and inversion, circle selection, the highlighted note, and your built progression.'],
+    uk:['\u0421\u043b\u043e\u0432\u043d\u0438\u043a \u0430\u043a\u043e\u0440\u0434\u0456\u0432 \u0440\u043e\u0437\u0448\u0438\u0440\u0435\u043d\u043e \u0437 7 \u0434\u043e 21 \u0442\u0438\u043f\u0443 \u2014 sus2/sus4, 6 \u0456 m6, m7\u266d5, dim7, add9, 9/maj9/m9, 11, 13, 7\u266d9 \u0442\u0430 \u0430\u043a\u043e\u0440\u0434 7\u266f9 (\u00ab\u0413\u0435\u043d\u0434\u0440\u0456\u043a\u0441\u00bb).',
+        '\u0420\u043e\u0437\u0448\u0438\u0440\u0435\u043d\u043d\u044f (6, 9, 11, 13) \u0442\u0435\u043f\u0435\u0440 \u043c\u0430\u044e\u0442\u044c \u0444\u0456\u043e\u043b\u0435\u0442\u043e\u0432\u0438\u0439 \u043a\u043e\u043b\u0456\u0440, \u0430 \u043a\u043e\u0436\u0435\u043d \u0442\u043e\u043d \u043f\u043e\u0437\u043d\u0430\u0447\u0435\u043d\u043e \u0441\u0432\u043e\u0457\u043c \u0441\u0442\u0443\u043f\u0435\u043d\u0435\u043c, \u0442\u043e\u0436 \u266f9 \u0447\u0438\u0442\u0430\u0454\u0442\u044c\u0441\u044f \u044f\u043a \u266f9, \u0430 \u043d\u0435 \u266d3.',
+        '\u0414\u0456\u0430\u0433\u0440\u0430\u043c\u0438 \u0430\u043a\u043e\u0440\u0434\u0456\u0432 \u0442\u0435\u043f\u0435\u0440 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u043d\u043e \u0431\u0443\u0434\u0443\u044e\u0442\u044c \u0430\u043f\u043b\u0456\u043a\u0430\u0442\u0443\u0440\u0443 \u0434\u043b\u044f \u0431\u0443\u0434\u044c-\u044f\u043a\u043e\u0433\u043e \u0430\u043a\u043e\u0440\u0434\u0443.',
+        '\u0422\u0435\u043f\u0435\u0440 \u043c\u043e\u0436\u043d\u0430 \u043f\u0435\u0440\u0435\u0439\u0442\u0438 Tab\u2019\u043e\u043c \u0434\u043e \u0431\u0443\u0434\u044c-\u044f\u043a\u043e\u0457 \u043d\u043e\u0442\u0438 \u043d\u0430 \u0433\u0440\u0438\u0444\u0456 \u0442\u0430 \u0437\u0456\u0433\u0440\u0430\u0442\u0438 \u0457\u0457 \u043a\u043b\u0430\u0432\u0456\u0448\u0435\u044e Enter \u0430\u0431\u043e \u041f\u0440\u043e\u0431\u0456\u043b.',
+        '\u041d\u0430 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u0430\u0445 \u043b\u0430\u0434\u0438 \u0432\u0443\u0436\u0447\u0456 \u0439 \u0432\u0456\u0434\u043a\u0440\u0438\u0432\u0430\u044e\u0442\u044c\u0441\u044f \u0443 \u0432\u0456\u043a\u043d\u0456 \u043d\u0430 5 \u043b\u0430\u0434\u0456\u0432 \u2014 \u0433\u0440\u0438\u0444 \u043a\u0440\u0430\u0449\u0435 \u0432\u043c\u0456\u0449\u0430\u0454\u0442\u044c\u0441\u044f \u043d\u0430 \u0435\u043a\u0440\u0430\u043d\u0456.',
+        '\u0417\u0430\u0441\u0442\u043e\u0441\u0443\u043d\u043e\u043a \u0437\u0430\u043f\u0430\u043c\u2019\u044f\u0442\u043e\u0432\u0443\u0454 \u0432\u0435\u0441\u044c \u0440\u043e\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u0430\u043d \u043f\u0456\u0441\u043b\u044f \u043f\u0435\u0440\u0435\u0437\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f \u2014 \u0442\u0438\u043f \u0430\u043a\u043e\u0440\u0434\u0443, \u0433\u0430\u043c\u0443 \u0439 \u043f\u043e\u0437\u0438\u0446\u0456\u044e, \u043d\u0430\u0431\u0456\u0440 \u0456 \u043e\u0431\u0435\u0440\u043d\u0435\u043d\u043d\u044f \u0442\u0440\u0456\u0430\u0434\u0438, \u0432\u0438\u0431\u0456\u0440 \u043d\u0430 \u043a\u043e\u043b\u0456, \u0432\u0438\u0434\u0456\u043b\u0435\u043d\u0443 \u043d\u043e\u0442\u0443 \u0442\u0430 \u0437\u0456\u0431\u0440\u0430\u043d\u0443 \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0456\u044e.'] },
+  { v:'1.6.0', date:'2026-06-14',
+    en:['Removed the subtitle tagline — the header is cleaner and the tabs sit higher.',
+        'Added keyboard focus rings on every control and support for reduced-motion.',
+        'Tabs now scroll sideways on phones instead of wrapping, plus a subtle hover on each tab.'],
+    uk:['Прибрано підзаголовок — шапка чистіша, вкладки вище.',
+        'Додано фокус-рамки для клавіатури на всіх кнопках і підтримку зменшеної анімації.',
+        'На телефоні вкладки тепер прокручуються вбік замість переносу, плюс делікатне підсвічування при наведенні.'] },
+  { v:'1.5.0', date:'2026-06-13',
+    en:['Chord tones and Triads merged into one "Chords / triads" tab with a view toggle.',
+        'Root and Notes/Intervals are now one shared bar across Harmony and Scales — pick a root once, it follows you.',
+        'A single context-aware Play in the timing bar replaces the four separate Listen/Cadence buttons.'],
+    uk:['Тони акорду і Тріади об\'єднані в одну вкладку «Акорди / тріади» з перемикачем виду.',
+        'Тоніка і Ноти/Інтервали тепер спільні для Акордів і Гам — вибери тоніку раз, вона зберігається.',
+        'Одна кнопка «Грати» в панелі темпу замість чотирьох окремих кнопок прослуховування.'] },
+  { v:'1.4.0', date:'2026-06-13',
+    en:['Loop and progression now keep playing when you switch tabs — backing-track mode.',
+        'New transport in the timing bar shows what is playing and stops it from any tab.',
+        'Added this changelog (tap the version badge any time).'],
+    uk:['Луп і прогресія більше не зупиняються при перемиканні вкладок — режим мінусовки.',
+        'Новий індикатор у панелі темпу показує, що грає, і зупиняє з будь-якої вкладки.',
+        'Додано цей список змін (тисни на бейдж версії будь-коли).'] },
+  { v:'1.3.0', date:'2026-06-13',
+    en:['Tempo and metronome moved to an always-visible timing bar.',
+        'Settings now holds instrument options only — tuning, handedness, fret range.'],
+    uk:['Темп і метроном переїхали в завжди видиму панель темпу.',
+        'Налаштування тепер містять лише інструмент — стрій, рукість, діапазон ладів.'] },
+  { v:'1.2.0', date:'2026-06-13',
+    en:['Chord progression sequencer: presets, per-chord bar counts, board follows the active chord, cycle or once.'],
+    uk:['Секвенсер прогресій: пресети, кількість тактів на акорд, гриф слідує за активним акордом, цикл або один раз.'] },
+  { v:'1.1.0', date:'2026-06-13',
+    en:['Single-chord background loop.'],
+    uk:['Фоновий луп одного акорду.'] },
+  { v:'1.0.0', date:'2026-06-13',
+    en:['Initial release: chord tones, triads, scales and modes, circle of fifths, notes on the neck.'],
+    uk:['Перший випуск: тони акорду, тріади, гами й моди, коло квінт, ноти на грифі.'] },
+];
+/* ===================== i18n ===================== */
+const I18N = {
+  uk: {
+    brand:'Гітарна студія',
+    tab_chords:'Тони акорду', tab_triads:'Тріади', tab_scales:'Гами / моди', tab_circle:'Коло квінт', tab_notes:'Ноти на грифі',
+    tab_harmony:'Акорди / тріади', lbl_view:'Вид', view_chords:'Тони акорду', view_triads:'Форми тріад',
+    cof_h:'Коло квінт',
+    cof_p:'Тональності розташовані по квінтах. Сусіди — найближчі споріднені тональності: ліворуч субдомінанта (IV), праворуч домінанта (V). Натисни тональність, щоб побачити ключові знаки, паралель і акорди тональності.',
+    cof_sig:'Ключові знаки', cof_sig0:'без ключових знаків',
+    cof_rel_minor:'Паралельний мінор', cof_rel_major:'Паралельний мажор',
+    cof_neighbors:'Сусіди по колу', cof_subdom:'субдомінанта', cof_dom:'домінанта',
+    min_word:'мінор', b_cadence:'Прослухати I–IV–V', b_open_scales:'Відкрити в гамах',
+    leg_tonic:'Тоніка', leg_dom:'Домінанта (V)', leg_subdom:'Субдомінанта (IV)', leg_rel:'Паралель',
+    ch_h:'Тони акорду на грифі',
+    ch_p:'Вибери тоніку і тип акорду — підсвітяться тоніка, терція, квінта (і септима для септакордів) по всьому грифу. Натисни на ноту, щоб почути її.',
+    ch_hint:'Грай гаму вільно, а на зміні акорду влучай у підсвічені ноти — вони звучать найстабільніше.',
+    tr_h:'Тріади на грифі',
+    tr_p:'Вибери тоніку й тип тризвуку — на обраному наборі струн підсвітяться компактні форми акорду (аплікатури) у всіх трьох оберненнях по всій довжині грифу.',
+    tr_hint:'Тризвук на трьох сусідніх струнах — рухомий блок: кожне обернення повторюється вгору по грифу через 12 ладів. Вивчиш одну форму на одному наборі струн — отримаєш увесь гриф.',
+    sc_h:'Гами і моди',
+    sc_p:'Вибери тоніку і гаму. Накладай акорд тональності, щоб бачити цільові ноти всередині гами, та ізолюй позицію для практики.',
+    nt_h:'Всі ноти на грифі',
+    nt_p:'Довідник усіх нот. Натисни ноту в керуванні, щоб підсвітити її скрізь, або клікни по ноті на грифі, щоб почути.',
+    lbl_root:'Тоніка', lbl_chord:'Акорд', lbl_scale:'Гама', lbl_pos:'Позиція', lbl_dia:'Акорди тональності',
+    lbl_show:'Показати', lbl_nat:'Натуральні', lbl_sharp:'Дієзи', lbl_flat:'Бемолі', lbl_set:'Набір струн', lbl_inv:'Обернення',
+    b_notes:'Ноти', b_intervals:'Інтервали', b_listen:'Прослухати', b_loop:'Луп', b_reset:'скинути',
+    b_listen_tip:'Прослухати поточний вибір один раз', b_loop_tip:'Зациклити поточний акорд як супровід для імпровізації', b_loop_stop_tip:'Зупинити луп',
+    audio_off:'Звук недоступний у цьому браузері — відтворення вимкнено.',
+    seq_title:'Прогресія', seq_add:'Додати акорд', seq_presets:'Пресети', seq_clear:'Очистити',
+    seq_play:'Грати', seq_loop:'Цикл', seq_bars:'тактів', seq_empty:'Порожньо — додай поточний акорд або вибери пресет',
+    b_allnotes:'Всі ноти', b_natonly:'Тільки натуральні', b_clear:'Зняти',
+    pos_all:'Вся', inv_all:'Всі', inv_root:'Основне', inv_1st:'1-ше', inv_2nd:'2-ге',
+    leg_root:'Тоніка (1)', leg_third:'Терція (3 / ♭3)', leg_fifth:'Квінта (5)', leg_seventh:'Септима (7 / ♭7)', leg_ext:'Розширення (6 · 9 · 11 · 13)',
+    leg_nat:'Натуральна нота', leg_sharpflat:'Дієз / бемоль', leg_highlight:'Виділена нота',
+    leg_sc_other:'Інші ноти гами',
+    side_title:'Довідник акордів', side_major:'Мажорні (1 · 3 · 5)', side_minor:'Мінорні (1 · ♭3 · 5)',
+    side_root:'Тоніка', side_third:'Терція', side_fifth:'Квінта',
+    footer:'Гітарна студія · стандартний стрій (E A D G B e) · працює офлайн',
+    notes_word:'ноти', intervals_word:'Інтервали', degrees_word:'Ступені',
+    samenotes:'Ті самі ноти, що й', major_word:'мажор', mode_tail:'— змінюється лише тоніка',
+    overlay_msg:'Накладено акорд: цільові ноти підсвічені, решта гами приглушена',
+    dia_na:'недоступно для пентатоніки / блюзу',
+    strings_word:'струни',
+    inv_all_desc:'Усі три обернення на цьому наборі струн',
+    inv_root_desc:'Основне положення — у басу тоніка',
+    inv_1st_desc:'Перше обернення — у басу терція',
+    inv_2nd_desc:'Друге обернення — у басу квінта',
+    tb_settings:'Налаштування', tb_setup:'Інструмент', tb_playback:'Відтворення',
+    tb_tuning:'Стрій', tb_lefty:'Ліворукий', tb_frets:'Лади', tb_tempo:'Темп',
+    tb_metro_on:'Метроном', tb_metro_off:'Метроном',
+    tb_bass:'Бас', tb_drums:'Ударні',
+    tb_now_loop:'Луп', tb_now_seq:'Прогресія', tb_stop:'Стоп',
+    cl_title:'Що нового', cl_current:'зараз',
+    frets_all:'Усі', cd_title:'Як зіграти', cd_open:'відкритий акорд',
+    cd_barre:'барре, лад', cd_std:'аплікатура для стандартного строю',
+    cd_na:'немає простої форми', cd_calc:'обчислена аплікатура'
+  },
+  en: {
+    brand:'Guitar Studio',
+    tab_chords:'Chord tones', tab_triads:'Triads', tab_scales:'Scales / modes', tab_circle:'Circle of fifths', tab_notes:'Notes on the neck',
+    tab_harmony:'Chords / triads', lbl_view:'View', view_chords:'Chord tones', view_triads:'Triad shapes',
+    cof_h:'Circle of fifths',
+    cof_p:'Keys are arranged by fifths. Neighbours are the closest related keys: subdominant (IV) on the left, dominant (V) on the right. Tap a key to see its key signature, relative key and diatonic chords.',
+    cof_sig:'Key signature', cof_sig0:'no sharps or flats',
+    cof_rel_minor:'Relative minor', cof_rel_major:'Relative major',
+    cof_neighbors:'Neighbours on the circle', cof_subdom:'subdominant', cof_dom:'dominant',
+    min_word:'minor', b_cadence:'Play I–IV–V', b_open_scales:'Open in scales',
+    leg_tonic:'Tonic', leg_dom:'Dominant (V)', leg_subdom:'Subdominant (IV)', leg_rel:'Relative key',
+    ch_h:'Chord tones across the neck',
+    ch_p:'Pick a root and a chord type — the root, third, fifth (and seventh for seventh chords) light up across the whole neck. Tap a note to hear it.',
+    ch_hint:'Play freely, and on each chord change aim for the highlighted tones — they sound the most stable.',
+    tr_h:'Triads on the neck',
+    tr_p:'Pick a root and a triad type — compact chord shapes (fingerings) light up on the chosen string set, in all three inversions along the entire neck.',
+    tr_hint:'A triad on three adjacent strings is a movable block: each inversion repeats up the neck every 12 frets. Learn one shape on one string set and you get the whole neck.',
+    sc_h:'Scales and modes',
+    sc_p:'Pick a root and a scale. Overlay a chord from the key to see target tones inside the scale, and isolate a position for practice.',
+    nt_h:'All notes on the neck',
+    nt_p:'A reference for every note. Tap a note in the controls to highlight it everywhere, or tap a note on the neck to hear it.',
+    lbl_root:'Root', lbl_chord:'Chord', lbl_scale:'Scale', lbl_pos:'Position', lbl_dia:'Chords in key',
+    lbl_show:'Show', lbl_nat:'Naturals', lbl_sharp:'Sharps', lbl_flat:'Flats', lbl_set:'String set', lbl_inv:'Inversion',
+    b_notes:'Notes', b_intervals:'Intervals', b_listen:'Listen', b_loop:'Loop', b_reset:'reset',
+    b_listen_tip:'Hear the current selection once', b_loop_tip:'Loop the current chord as a backing to play over', b_loop_stop_tip:'Stop the loop',
+    audio_off:'Audio is unavailable in this browser — playback is disabled.',
+    seq_title:'Progression', seq_add:'Add chord', seq_presets:'Presets', seq_clear:'Clear',
+    seq_play:'Play', seq_loop:'Cycle', seq_bars:'bars', seq_empty:'Empty — add the current chord or pick a preset',
+    b_allnotes:'All notes', b_natonly:'Naturals only', b_clear:'Clear',
+    pos_all:'All', inv_all:'All', inv_root:'Root', inv_1st:'1st', inv_2nd:'2nd',
+    leg_root:'Root (1)', leg_third:'Third (3 / ♭3)', leg_fifth:'Fifth (5)', leg_seventh:'Seventh (7 / ♭7)', leg_ext:'Extensions (6 · 9 · 11 · 13)',
+    leg_nat:'Natural note', leg_sharpflat:'Sharp / flat', leg_highlight:'Selected note',
+    leg_sc_other:'Other scale tones',
+    side_title:'Chord reference', side_major:'Major (1 · 3 · 5)', side_minor:'Minor (1 · ♭3 · 5)',
+    side_root:'Root', side_third:'Third', side_fifth:'Fifth',
+    footer:'Guitar Studio · standard tuning (E A D G B e) · works offline',
+    notes_word:'notes', intervals_word:'Intervals', degrees_word:'Scale degrees',
+    samenotes:'Same notes as', major_word:'major', mode_tail:'— only the tonic changes',
+    overlay_msg:'Chord overlaid: target tones highlighted, the rest of the scale dimmed',
+    dia_na:'not available for pentatonic / blues',
+    strings_word:'strings',
+    inv_all_desc:'All three inversions on this string set',
+    inv_root_desc:'Root position — root in the bass',
+    inv_1st_desc:'First inversion — third in the bass',
+    inv_2nd_desc:'Second inversion — fifth in the bass',
+    tb_settings:'Settings', tb_setup:'Instrument', tb_playback:'Playback',
+    tb_tuning:'Tuning', tb_lefty:'Left-handed', tb_frets:'Frets', tb_tempo:'Tempo',
+    tb_metro_on:'Metronome', tb_metro_off:'Metronome',
+    tb_bass:'Bass', tb_drums:'Drums',
+    tb_now_loop:'Loop', tb_now_seq:'Progression', tb_stop:'Stop',
+    cl_title:'What\'s new', cl_current:'current',
+    frets_all:'All', cd_title:'How to play', cd_open:'open chord',
+    cd_barre:'barre, fret', cd_std:'fingering for standard tuning',
+    cd_na:'no simple shape', cd_calc:'computed voicing'
+  }
+};
+let lang = 'uk';
+function t(k){ return I18N[lang][k]; }
+
+/* ===================== CONSTANTS ===================== */
+const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const ROOTS = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+const FLAT_ROOTS = {'Eb':3,'Ab':8,'Bb':10};
+const FLAT_MAP = {1:'Db',3:'Eb',6:'Gb',8:'Ab',10:'Bb'};
+const ENHARM = {'C#':'Db','D#':'Eb','F#':'Gb','G#':'Ab','A#':'Bb'};
+/* tuning state is mutable (changed by the tuning selector). Strings ordered
+   high -> low to match the on-screen board (top row = high string). */
+let OPEN = [4,11,7,2,9,4];
+let OPEN_MIDI = [64,59,55,50,45,40];
+let SNAMES = ['e','B','G','D','A','E'];
+const FRETS = 22;
+const DOTS = [3,5,7,9,12,15,17,19,21];
+
+/* Alternate tunings, defined by MIDI note per string (high -> low). */
+const TUNINGS = [
+  {id:'standard', en:'Standard (E A D G B e)', uk:'Стандартний (E A D G B e)', midi:[64,59,55,50,45,40]},
+  {id:'dropd',    en:'Drop D (D A D G B e)',   uk:'Drop D (D A D G B e)',      midi:[64,59,55,50,45,38]},
+  {id:'dadgad',   en:'DADGAD',                 uk:'DADGAD',                    midi:[62,57,55,50,45,38]},
+  {id:'openg',    en:'Open G (D G D G B d)',   uk:'Open G (D G D G B d)',      midi:[62,59,55,50,43,38]},
+];
+let tuningIdx = 0, lefty = false;
+function applyTuning(){
+  const m = TUNINGS[tuningIdx].midi;
+  OPEN_MIDI = m.slice();
+  OPEN = m.map(x=>mod(x,12));
+  SNAMES = m.map(x=>{ const n=NOTES[mod(x,12)]; return n.replace('#','♯'); });
+}
+
+/* fret window (mobile zoom). lo<=1 means open strings + nut are shown. */
+const FRET_RANGES = [
+  {lo:1, hi:22, key:'frets_all'},
+  {lo:1, hi:5,  label:'1–5'},
+  {lo:5, hi:9,  label:'5–9'},
+  {lo:9, hi:12, label:'9–12'},
+];
+let fretRangeIdx = 0;
+function FRET_LO(){ return FRET_RANGES[fretRangeIdx].lo; }
+function FRET_HI(){ return FRET_RANGES[fretRangeIdx].hi; }
+
+/* tempo (BPM) drives all playback timing + the metronome. */
+let tempo = 90;
+function beat(){ return 60/tempo; }
+
+/* collapsible toolbar; default open on wide screens, collapsed on phones */
+let toolbarOpen = (typeof window!=='undefined' && window.innerWidth>700);
+/* the chord-reference sidebar is only shown on chord-oriented tabs */
+const ASIDE_TABS = ['harmony'];
+
+function mod(n,m){ return ((n%m)+m)%m; }
+/* dev-only diagnostic: surfaces errors that were previously swallowed silently,
+   without breaking playback for the user. No effect on the shipped behaviour. */
+function devWarn(){ try{ if(typeof console!=='undefined' && console.warn) console.warn.apply(console, ['[GuitarStudio]'].concat([].slice.call(arguments))); }catch(_){} }
+function noteName(pc, flat){ return (flat && FLAT_MAP[pc]) ? FLAT_MAP[pc] : NOTES[pc]; }
+function useFlatFor(label){ return FLAT_ROOTS[label] !== undefined || label === 'F'; }
+
+/* note spelling by scale degree: gives correct letter+accidental (Cm -> Eb, not D#),
+   distinguishes ♯4 vs ♭5, and falls back to a simple enharmonic name to avoid double accidentals */
+const LET = ['C','D','E','F','G','A','B'];
+const LET_PC = [0,2,4,5,7,9,11];
+const ACC = {'-1':'♭','0':'','1':'♯'};
+const DEG_OF = {0:1,3:3,4:3,6:5,7:5,8:5,10:7,11:7}; // chord interval -> diatonic degree
+function rootParts(lbl){
+  const li = LET.indexOf(lbl[0]); let acc=0;
+  for(let i=1;i<lbl.length;i++){ const c=lbl[i]; if(c==='#'||c==='♯')acc++; else if(c==='b'||c==='♭')acc--; }
+  return {li, acc};
+}
+function simpleName(pc, rootLbl){ return noteName(pc, useFlatFor(rootLbl)); }
+function spellNote(rootLbl, pc, degree){
+  if(!degree) return simpleName(pc, rootLbl);
+  const {li}=rootParts(rootLbl);
+  const idx=mod(li+(degree-1),7);
+  let acc=mod(pc-LET_PC[idx],12); if(acc>6) acc-=12;
+  if(acc<-1||acc>1) return simpleName(pc, rootLbl); // avoid double sharps/flats
+  return LET[idx]+ACC[acc];
+}
+
+/* ===================== AUDIO =====================
+   Plucked-string synthesis (Karplus-Strong): a short noise burst is fed
+   through a short delay line with a damping low-pass in the feedback loop.
+   This reproduces the inharmonic, brighter-then-mellowing decay of a real
+   string — high strings fade faster than low ones, just like the real thing.
+   Voices run through a shared bus: gentle compressor (keeps chords from
+   clipping) + a small convolution reverb for body/room. All offline. */
+let actx, master, backing, leadTarget, cue, bass, groove, busReady=false;
+function audio(){
+  if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } setupBus(); }
+  if(actx && actx.state==='suspended'){ actx.resume(); }
+  return actx;
+}
+function makeIR(dur, decay){
+  const rate=actx.sampleRate, len=Math.max(1,Math.floor(rate*dur));
+  const buf=actx.createBuffer(2,len,rate);
+  for(let ch=0; ch<2; ch++){ const d=buf.getChannelData(ch);
+    for(let i=0;i<len;i++){ d[i]=(Math.random()*2-1)*Math.pow(1-i/len, decay); } }
+  return buf;
+}
+function setupBus(){
+  if(busReady) return; busReady=true;
+  master=actx.createGain(); master.gain.value=0.8;
+  const comp=actx.createDynamicsCompressor();
+  comp.threshold.value=-16; comp.knee.value=22; comp.ratio.value=3.2;
+  comp.attack.value=0.003; comp.release.value=0.25;
+  const rev=actx.createConvolver(); rev.buffer=makeIR(1.5, 2.4);
+  const revGain=actx.createGain(); revGain.gain.value=0.14;
+  // body resonance: fixed peaking modes color every note like a guitar box
+  // (air/Helmholtz ~100 Hz, top plate ~200 Hz, mid cluster ~430 Hz)
+  const body=[ [100,1.1,4.0], [200,1.6,3.0], [430,2.2,2.6] ].map(([f,q,g])=>{
+    const b=actx.createBiquadFilter(); b.type='peaking'; b.frequency.value=f; b.Q.value=q; b.gain.value=g; return b;
+  });
+  master.connect(body[0]); body[0].connect(body[1]); body[1].connect(body[2]);  // dry, through the body
+  body[2].connect(comp); comp.connect(actx.destination);
+  master.connect(revGain); revGain.connect(rev); rev.connect(comp);             // wet (room)
+  // Named buses (Phase B) so later features can balance/duck independently:
+  //   backing    — the guitar voice (plucks, loop, sequencer); gets body + room.
+  //   leadTarget — reserved for Practice-mode target tones; same colour as backing.
+  //   cue        — UI clicks/cues (metronome, count-in, correct/wrong). Skips the
+  //                guitar body + reverb so it stays dry and crisp, but shares the limiter.
+  backing=actx.createGain();    backing.gain.value=1.0;    backing.connect(master);
+  leadTarget=actx.createGain(); leadTarget.gain.value=1.0; leadTarget.connect(master);
+  cue=actx.createGain();        cue.gain.value=0.9;        cue.connect(comp);
+  // Backing band (Phase C): bass + groove go straight to the limiter, skipping the
+  // guitar body resonance + room reverb so the low end stays tight and the drums dry.
+  bass=actx.createGain();       bass.gain.value=0.9;       bass.connect(comp);
+  groove=actx.createGain();     groove.gain.value=0.85;    groove.connect(comp);
+}
+/* Karplus-Strong buffer, cached per (pitch, string character). Fixed long render;
+   the per-voice gain envelope decides how long each note actually rings.
+   Adds: pick-position comb on the excitation, a fractional-delay allpass in the
+   loop for accurate tuning across the register (integer delay alone goes ~10-20
+   cents flat up high), and a woundness bias so low/wound strings ring longer and
+   keep more harmonic energy (metallic) while trebles are rounder. */
+const ksCache={};
+function ksBuffer(freq, wound){
+  const rate=actx.sampleRate, key=Math.round(freq*10)+'_'+wound;
+  if(ksCache[key]) return ksCache[key];
+  const a0=0.5 + 0.12*wound;            // loss-filter mix; higher = brighter, more metallic sustain
+  const baseDelay=1 - a0;               // loss filter averages with a newer neighbor → it SHORTENS the loop by ~(1-a0)
+  const Dtarget=rate/freq;
+  let residual=Dtarget + baseDelay;     // ...so aim long by that much; the allpass takes the fractional remainder
+  let N=Math.floor(residual);
+  let delta=residual - N;               // fractional remainder handled by the allpass
+  if(N<2){ N=2; delta=0; }
+  const c=(1-delta)/(1+delta);          // first-order allpass coefficient for fractional delay
+  const len=Math.floor(rate*2.8);
+  const buf=actx.createBuffer(1, len, rate), out=buf.getChannelData(0);
+  // excitation: white noise softened twice → warmer pick, less banjo-like
+  const burst=new Float32Array(N);
+  let s1=0, s2=0;
+  for(let i=0;i<N;i++){ const w=Math.random()*2-1; s1=0.55*s1+0.45*w; s2=0.5*s2+0.5*s1; burst[i]=s2; }
+  // pick position: comb the burst (null harmonics at ~1/pickPos); trebles a touch nearer the bridge
+  const pickPos=0.12 + 0.05*(1-wound);
+  const pd=Math.max(1, Math.round(N*pickPos));
+  const delay=new Float32Array(N);
+  for(let i=0;i<N;i++){ delay[i]=burst[i] - 0.9*(i>=pd?burst[i-pd]:0); }
+  const decay=0.9965 - Math.min(0.02, freq/45000) + 0.0008*wound;   // lower/wound strings ring a little longer
+  let idx=0, xprev=0, yprev=0;
+  for(let n=0;n<len;n++){
+    const cur=delay[idx]; out[n]=cur;
+    const nxt=delay[(idx+1)%N];
+    const v=decay*(a0*cur + (1-a0)*nxt);   // loss low-pass = string damping
+    const y=c*v + xprev - c*yprev;         // fractional-delay allpass = accurate tuning
+    xprev=v; yprev=y;
+    delay[idx]=y;
+    idx=(idx+1)%N;
+  }
+  ksCache[key]=buf; return buf;
+}
+function pluck(midi, t0, dur, vel){ const ctx=audio(); if(!ctx) return; pluckAt(midi, ctx.currentTime+(t0||0), dur, vel); }
+function pluckAt(midi, when, dur, vel){
+  const ctx=audio(); if(!ctx) return;
+  dur=dur||1.5;
+  vel=Math.max(0.05, Math.min(1, (vel==null?0.82:vel) * (0.94+Math.random()*0.12)));  // touch of humanization
+  const now=when;
+  const freq=440*Math.pow(2,(midi-69)/12);
+  const wound = freq<185 ? 1 : (freq<300 ? 0.5 : 0);     // register-based string character (wound low → plain high)
+  const src=ctx.createBufferSource(); src.buffer=ksBuffer(freq, wound);
+  src.detune.value=(Math.random()*8-4);                 // tiny human detune (cents)
+  const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=85;
+  const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=0.4;
+  const open=Math.min(9000, (freq*7+2200)*(0.7+0.5*vel));  // harder pluck = brighter
+  lp.frequency.setValueAtTime(open, now);
+  lp.frequency.exponentialRampToValueAtTime(Math.max(650, freq*3), now+Math.min(dur,1.6)); // ...mellowing
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(0.5*(0.4+0.6*vel), now+0.006);  // harder pluck = louder
+  g.gain.exponentialRampToValueAtTime(0.0001, now+dur+0.35);
+  src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(backing);
+  src.start(now); src.stop(now+Math.min(dur+0.5, 2.7));
+}
+/* ---- synced visual highlighting ---- */
+let playTimers=[];
+function clearPlayHighlights(){ playTimers.forEach(clearTimeout); playTimers=[]; document.querySelectorAll('.dot.playing').forEach(d=>d.classList.remove('playing')); }
+function setDotPlaying(boardEl, pc, on){ boardEl.querySelectorAll('.dot').forEach(d=>{ if(d.dataset.midi!=null && mod(parseInt(d.dataset.midi),12)===pc) d.classList.toggle('playing', on); }); }
+function flashAt(boardEl, pc, atMs){ playTimers.push(setTimeout(()=>setDotPlaying(boardEl,pc,true), atMs)); }
+function pulseAt(boardEl, pc, atMs, lenMs){ flashAt(boardEl,pc,atMs); playTimers.push(setTimeout(()=>setDotPlaying(boardEl,pc,false), atMs+lenMs)); }
+
+/* ===================== TRANSPORT SCHEDULER (Phase B) =====================
+   "Two clocks": a coarse setInterval wakes every SCHED_MS and *queues* audio
+   events up to LOOKAHEAD seconds ahead on the sample-accurate audio clock, so
+   the metronome / loop / sequencer no longer drift the way bare setInterval
+   playback does (worst on mobile and in background tabs). Each repeating job is
+   a "clock":  { interval():seconds, tick(time,count), next, count }.  interval()
+   is read live, so dragging the tempo slider glides instead of restarting.
+   Dot-lighting rides the same scheduled times through a requestAnimationFrame
+   queue that fires each event once the audio clock passes it — visuals stay
+   locked to the sound instead of to jittery setTimeouts. */
+const SCHED_MS=25, LOOKAHEAD=0.1, SCHED_LEAD=0.06;
+const clocks=new Set();
+let schedTimer=null;
+function schedAdvance(){
+  if(!actx) return;
+  const horizon=actx.currentTime+LOOKAHEAD;
+  clocks.forEach(c=>{ while(c.next<horizon){ c.tick(c.next, c.count); c.count++; c.next+=Math.max(0.02, c.interval()); } });
+}
+function addClock(c){ audio(); c.count=0; c.next=actx.currentTime+SCHED_LEAD; clocks.add(c); if(!schedTimer) schedTimer=setInterval(schedAdvance, SCHED_MS); schedAdvance(); }
+function removeClock(c){ clocks.delete(c); if(clocks.size===0 && schedTimer){ clearInterval(schedTimer); schedTimer=null; } }
+
+/* visual events scheduled on the audio clock, drained by rAF (not setTimeout) */
+const visualQ=[]; let visRAF=null;
+function enqueueVisual(time, fn){ visualQ.push({time, fn}); if(!visRAF) visRAF=requestAnimationFrame(visualDrain); }
+function clearVisualQ(){ visualQ.length=0; }
+function visualDrain(){
+  visRAF=null;
+  if(!actx) return;
+  const now=actx.currentTime;
+  visualQ.sort((a,b)=>a.time-b.time);
+  while(visualQ.length && visualQ[0].time<=now){ const v=visualQ.shift(); try{ v.fn(); }catch(e){ devWarn('visual callback failed', e); } }
+  if(visualQ.length || clocks.size) visRAF=requestAnimationFrame(visualDrain);
+}
+
+/* ---- cue sounds (cue bus): short synthesized UI feedback. The metronome uses
+   the cue bus; correct / wrong / count-in are foundation primitives consumed by
+   Practice, Ear-training and Rhythm modes (roadmap phases D, E, G). ---- */
+function cueBlip(when, freq, peak, len, type){
+  const ctx=audio(); if(!ctx) return;
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type=type||'square'; o.frequency.setValueAtTime(freq, when);
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.exponentialRampToValueAtTime(peak, when+0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, when+len);
+  o.connect(g).connect(cue); o.start(when); o.stop(when+len+0.02);
+}
+function playCue(kind, when){
+  const ctx=audio(); if(!ctx) return; when=when||ctx.currentTime;
+  if(kind==='correct'){ cueBlip(when, 880, 0.26, 0.09, 'triangle'); cueBlip(when+0.085, 1318.5, 0.26, 0.12, 'triangle'); }  // rising two-tone
+  else if(kind==='wrong'){ cueBlip(when, 220, 0.28, 0.16, 'sawtooth'); cueBlip(when+0.005, 207, 0.2, 0.18, 'sawtooth'); }     // low detuned buzz
+  else { cueBlip(when, 1500, 0.24, 0.05, 'square'); }                                                                         // count-in tick
+}
+
+/* chord/triad: roll up, each note lights and stays lit so the shape builds, then clears */
+function animArp(boardEl, base, ivs){
+  clearPlayHighlights();
+  const step=beat()/2;
+  ivs.forEach((iv,i)=>{ pluck(base+iv, i*step, 1.7); flashAt(boardEl, mod(base+iv,12), i*step*1000); });
+  playTimers.push(setTimeout(clearPlayHighlights, ((ivs.length-1)*step + 1.7)*1000));
+}
+/* scale: even run, a single moving highlight that hands off note to note */
+function animRun(boardEl, base, ivs){
+  clearPlayHighlights();
+  const step=beat()/2, dur=Math.min(0.5, step*1.1);
+  ivs.forEach((iv,i)=>{ pluck(base+iv, i*step, dur); pulseAt(boardEl, mod(base+iv,12), i*step*1000, step*1000*0.96); });
+}
+
+/* ===================== BACKING BAND (Phase C) =====================
+   Turns the loop / sequencer into a jam-along bed: a synthesized bass plays
+   root + fifth under the chord, the guitar comp is humanized (velocity accent +
+   micro-timing) with a softer push on beat 3, and an optional filtered-noise
+   groove (kick on 1 & 3, 8th-note hats) supplies the pulse. Everything is
+   scheduled per-bar from inside loopStrum / seqStrumStep, so it shares the bar
+   start time and current chord and stays perfectly aligned to Phase B's clock —
+   no separate drifting timer. Bass + groove only sound while a backing runs. */
+let bassOn=false, grooveOn=false;
+
+/* the chord's actual fifth, derived from its degree map: perfect (7) for most,
+   flat-5 (6) for dim / dim7 / m7b5, sharp-5 (8) for aug — so the bass never clashes. */
+function fifthInterval(qi){ const q=QUALITIES[qi]; const k=q.deg.indexOf(5); return k>=0 ? q.iv[k] : 7; }
+
+/* short white-noise buffer, cached, for the hi-hat */
+let _noiseBuf=null;
+function noiseBuf(){ if(_noiseBuf) return _noiseBuf;
+  const n=Math.floor(actx.sampleRate*0.1), b=actx.createBuffer(1,n,actx.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<n;i++) d[i]=Math.random()*2-1; _noiseBuf=b; return b; }
+
+/* bass voice: triangle fundamental + a quieter sine sub an octave down, through a
+   plucky lowpass that opens with velocity then closes — rounded, felt-not-heard. */
+function bassNote(when, midi, dur, vel){
+  const ctx=audio(); if(!ctx) return;
+  vel=Math.max(0.2, Math.min(1, vel==null?0.9:vel));
+  const freq=440*Math.pow(2,(midi-69)/12);
+  const tri=ctx.createOscillator(); tri.type='triangle'; tri.frequency.setValueAtTime(freq, when); tri.detune.value=(Math.random()*6-3);
+  const sub=ctx.createOscillator(); sub.type='sine';     sub.frequency.setValueAtTime(freq/2, when);
+  const subG=ctx.createGain(); subG.gain.value=0.45;
+  const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=0.7;
+  const open=Math.min(2600, freq*6+420)*(0.6+0.5*vel);
+  lp.frequency.setValueAtTime(open, when);
+  lp.frequency.exponentialRampToValueAtTime(Math.max(170, freq*2.2), when+Math.min(dur,0.7));
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.exponentialRampToValueAtTime(0.42*(0.5+0.5*vel), when+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, when+dur+0.12);
+  tri.connect(lp); sub.connect(subG); subG.connect(lp); lp.connect(g); g.connect(bass);
+  tri.start(when); tri.stop(when+dur+0.2); sub.start(when); sub.stop(when+dur+0.2);
+}
+/* kick: a sine that drops in pitch with a fast amp decay */
+function kickHit(when, vel){
+  const ctx=audio(); if(!ctx) return; vel=vel==null?1:vel;
+  const o=ctx.createOscillator(); o.type='sine';
+  o.frequency.setValueAtTime(125, when); o.frequency.exponentialRampToValueAtTime(46, when+0.11);
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.exponentialRampToValueAtTime(0.9*vel, when+0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, when+0.16);
+  o.connect(g).connect(groove); o.start(when); o.stop(when+0.2);
+}
+/* hi-hat: filtered white noise, very short */
+function hatHit(when, vel){
+  const ctx=audio(); if(!ctx) return; vel=vel==null?0.6:vel;
+  const src=ctx.createBufferSource(); src.buffer=noiseBuf();
+  const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=7200;
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.exponentialRampToValueAtTime(0.22*vel, when+0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, when+0.05);
+  src.connect(hp).connect(g).connect(groove); src.start(when); src.stop(when+0.08);
+}
+
+/* humanized chord comp: micro-timing jitter + per-note velocity variation and a
+   slight roll-off down the strum, so repeated bars don't sound machine-stamped. */
+function compStrum(base, ivs, when, vel, spread){
+  const barSec=beat()*4;
+  ivs.forEach((iv,i)=>{
+    const tt=when + i*spread + (Math.random()*0.006-0.003);
+    const v=vel*(0.9+Math.random()*0.16) - i*0.015;
+    pluckAt(base+iv, tt, Math.min(barSec+0.4,2.4), Math.max(0.4, v));
+  });
+}
+
+/* schedule one bar of the band (bass + groove) for a given chord at bar-start `when`.
+   Called from loopStrum / seqStrumStep so it always matches the bar and chord. */
+function scheduleBand(pc, qi, when){
+  const b=beat(), fifth=fifthInterval(qi), bassRoot=36+pc;
+  if(bassOn){
+    bassNote(when,                                   bassRoot,       b*1.9, 0.95);  // root on beat 1
+    bassNote(when+2*b + (Math.random()*0.012-0.006), bassRoot+fifth, b*1.7, 0.8);   // fifth on beat 3
+  }
+  if(grooveOn){
+    for(let k=0;k<8;k++){                                                            // 8th-note hats
+      const tt=when + k*(b/2) + (Math.random()*0.010-0.005);
+      hatHit(tt, k===0 ? 1 : (k%2===0 ? 0.7 : 0.5));                                 // accent the downbeat
+    }
+    kickHit(when,     1);                                                            // kick on 1
+    kickHit(when+2*b, 0.9);                                                          // kick on 3
+  }
+}
+function bandActive(){ return bassOn || grooveOn; }
+
+/* ---- metronome (scheduler clock → cue bus) ---- */
+let metroClock=null;
+function metroClick(when, accent){
+  const ctx=audio(); if(!ctx) return;
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type='square'; o.frequency.setValueAtTime(accent?1760:1100, when);
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.exponentialRampToValueAtTime(accent?0.32:0.2, when+0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, when+0.05);
+  o.connect(g).connect(cue); o.start(when); o.stop(when+0.06);
+}
+function metroToggle(){
+  const btn=document.getElementById('tb-metro');
+  if(metroClock){ removeClock(metroClock); metroClock=null; btn.classList.remove('active'); btn.setAttribute('aria-pressed','false'); setMetroLabel(); return; }
+  audio();
+  metroClock={ interval:()=>beat(), tick:(time,count)=>metroClick(time, count%4===0) };
+  addClock(metroClock);
+  btn.classList.add('active'); btn.setAttribute('aria-pressed','true'); setMetroLabel();
+}
+function setMetroLabel(){ const b=document.getElementById('tb-metro'); b.innerHTML=(metroClock?'&#9632; ':'&#9654; ')+t(metroClock?'tb_metro_on':'tb_metro_off'); b.setAttribute('aria-label', t('tb_metro_off')); }
+/* ---- backing band toggles (bass + groove). They take effect on the next bar
+   of whatever backing is running, and persist across reloads. ---- */
+function setBandLabels(){
+  const bb=document.getElementById('tb-bass');
+  if(bb){ bb.innerHTML='&#9834; '+t('tb_bass'); bb.classList.toggle('active', bassOn); bb.setAttribute('aria-pressed', bassOn?'true':'false'); bb.setAttribute('aria-label', t('tb_bass')); }
+  const db=document.getElementById('tb-drums');
+  if(db){ db.innerHTML='&#9835; '+t('tb_drums'); db.classList.toggle('active', grooveOn); db.setAttribute('aria-pressed', grooveOn?'true':'false'); db.setAttribute('aria-label', t('tb_drums')); }
+}
+function bassToggle(){ audio(); bassOn=!bassOn; setBandLabels(); saveState(); }
+function drumsToggle(){ audio(); grooveOn=!grooveOn; setBandLabels(); saveState(); }
+function retempo(){}  /* no-op: the metro clock reads beat() live, so tempo glides without a restart */
+
+/* ---- single-chord loop: re-strums the *current* chord at the top of every bar.
+   Reads gRoot/chQual live, so changing root or quality mid-loop just follows along.
+   Now a scheduler clock: bar interval read live; dots ride the audio-clock queue. */
+let loopClock=null;
+function loopStrum(when){
+  const ctx=audio(); if(!ctx) return;
+  const base=48+gRoot, ivs=QUALITIES[chQual].iv;
+  const barSec=beat()*4;
+  compStrum(base, ivs, when, 0.9, 0.028);                 // humanized downbeat strum
+  if(bandActive()) compStrum(base, ivs, when+2*beat(), 0.55, 0.022);   // softer push on beat 3
+  scheduleBand(gRoot, chQual, when);                      // bass + groove bed (no-op if both off)
+  const pcs=ivs.map(iv=>mod(base+iv,12));
+  enqueueVisual(when, ()=>{ const b=document.getElementById('ch-board'); pcs.forEach(pc=>setDotPlaying(b, pc, true)); updateGlobalTransport(); });
+  // brief clear before the next downbeat so the re-strum reads as a pulse
+  enqueueVisual(when+barSec*0.85, ()=>{ const b=document.getElementById('ch-board'); pcs.forEach(pc=>setDotPlaying(b, pc, false)); });
+}
+function stopLoopVisual(){ document.querySelectorAll('#ch-board .dot.playing').forEach(d=>d.classList.remove('playing')); }
+function loopToggle(){
+  const btn=document.getElementById('g-loop');
+  if(loopClock){ removeClock(loopClock); loopClock=null; clearVisualQ(); stopLoopVisual();
+    btn.classList.remove('active'); btn.setAttribute('aria-pressed','false'); setLoopLabel(); return; }
+  if(typeof seqStop==='function') seqStop();
+  audio();
+  loopClock={ interval:()=>beat()*4, tick:(time)=>loopStrum(time) };
+  addClock(loopClock);
+  btn.classList.add('active'); btn.setAttribute('aria-pressed','true'); setLoopLabel();
+}
+function stopLoop(){ if(!loopClock) return; removeClock(loopClock); loopClock=null; clearVisualQ(); stopLoopVisual();
+  const b=document.getElementById('g-loop'); if(b){ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); } setLoopLabel(); }
+function reloopTempo(){}  /* no-op: the loop clock reads beat() live, so tempo glides */
+function setLoopLabel(){ const b=document.getElementById('g-loop'); if(!b) return; b.innerHTML=(loopClock?'&#9632; ':'&#8635; ')+t('b_loop'); b.setAttribute('aria-label', t(loopClock?'b_loop_stop_tip':'b_loop_tip')); b.title=t(loopClock?'b_loop_stop_tip':'b_loop_tip'); updateGlobalTransport(); }
+
+/* ---- global transport chip (timing bar) ----
+   Mirrors whatever is currently sounding (single-chord loop or progression)
+   so it can be read and stopped from any tab. The Listen/Loop controls now
+   live together in the timing bar; the progression Play stays with its strip. */
+function updateGlobalTransport(){
+  const wrap=document.getElementById('tb-transport'); if(!wrap) return;
+  const label=document.getElementById('tb-transport-label');
+  const stop=document.getElementById('tb-stop');
+  stop.innerHTML='&#9632; '+t('tb_stop'); stop.setAttribute('aria-label', t('tb_stop'));
+  const cur=gRootLbl+QUALITIES[chQual].short;
+  if(seqClock){ label.textContent=t('tb_now_seq')+' · '+cur; wrap.hidden=false; }
+  else if(loopClock){ label.textContent=t('tb_now_loop')+' · '+cur; wrap.hidden=false; }
+  else { wrap.hidden=true; }
+}
+
+/* ---- chord progression sequencer ----
+   A progression is a list of steps {pc,lbl,qi,bars}. On play it walks the steps
+   bar by bar (re-strumming each bar), follows the active chord on the fretboard,
+   highlights the active chip, and optionally cycles. Shares the loop's visual
+   timer pool and is mutually exclusive with the single-chord loop. */
+const SEQ_PRESETS = [
+  { name:'ii–V–I',     steps:[[2,8,1],[7,6,1],[0,7,2]] },                 // Dm7 · G7 · Cmaj7
+  { name:'I–V–vi–IV',  steps:[[0,0,1],[7,0,1],[9,1,1],[5,0,1]] },         // C · G · Am · F
+  { name:'I–IV–V',     steps:[[0,0,1],[5,0,1],[7,0,1]] },                 // C · F · G
+  { name:'i–iv–V',     steps:[[0,1,1],[5,1,1],[7,6,1]] },                 // Cm · Fm · G7
+  { name:'Blues 12',   steps:[[0,6,1],[0,6,1],[0,6,1],[0,6,1],[5,6,1],[5,6,1],[0,6,1],[0,6,1],[7,6,1],[5,6,1],[0,6,1],[7,6,1]] },
+];
+let seq=[], seqClock=null, seqLoopOn=true, seqBar=0, seqStepIdx=-1, seqBarMap=[], seqSaved=null;
+
+function syncChordButtons(){
+  const rc=document.getElementById('g-roots');
+  if(rc){ [...rc.children].forEach(b=>{ const pc=FLAT_ROOTS[b.textContent]!==undefined?FLAT_ROOTS[b.textContent]:NOTES.indexOf(b.textContent); const on=pc===gRoot; b.classList.toggle('active',on); b.setAttribute('aria-pressed', on?'true':'false'); }); }
+  buildChQuals();
+}
+function setChord(pc,lbl,qi){ gRoot=pc; gRootLbl=lbl; chQual=qi; syncChordButtons(); renderChords(); }
+function seqChordName(st){ return st.lbl + QUALITIES[st.qi].short; }
+function renderSeq(){
+  const strip=document.getElementById('seq-strip'); if(!strip) return;
+  if(!seq.length){ strip.innerHTML=`<span class="seq-empty">${t('seq_empty')}</span>`; return; }
+  strip.innerHTML = seq.map((st,i)=>
+    `<span class="seq-chip${i===seqStepIdx?' active':''}" data-i="${i}"><span class="nm">${seqChordName(st)}</span>`+
+    `<span class="bars" data-bars="${i}" title="${t('seq_bars')}">${st.bars}</span>`+
+    `<span class="x" data-x="${i}" aria-label="remove">×</span></span>`).join('');
+}
+function buildSeqPresets(){ const c=document.getElementById('seq-presets'); if(!c) return;
+  c.innerHTML=SEQ_PRESETS.map((p,i)=>`<button class="btn seq-preset" data-p="${i}">${p.name}</button>`).join(''); }
+function applyPreset(p){ const r=gRoot; seq=p.steps.map(([off,qi,bars])=>{ const pc=mod(r+off,12); return {pc, lbl:ROOTS[pc], qi, bars}; }); seqStepIdx=-1; renderSeq(); if(seqClock) seqRebuild(); saveState(); }
+function seqAddCurrent(){ seq.push({pc:gRoot, lbl:gRootLbl, qi:chQual, bars:1}); renderSeq(); if(seqClock) seqRebuild(); saveState(); }
+function seqBuildMap(){ seqBarMap=[]; seq.forEach((st,i)=>{ for(let b=0;b<Math.max(1,st.bars);b++) seqBarMap.push(i); }); }
+function seqStrumStep(i, when){
+  const st=seq[i]; if(!st) return;
+  const ivs=QUALITIES[st.qi].iv, base=48+st.pc, barSec=beat()*4;
+  compStrum(base, ivs, when, 0.9, 0.028);                 // humanized downbeat strum
+  if(bandActive()) compStrum(base, ivs, when+2*beat(), 0.55, 0.022);   // softer push on beat 3
+  scheduleBand(st.pc, st.qi, when);                       // bass + groove follow the step's chord
+  const pcs=ivs.map(iv=>mod(base+iv,12));
+  enqueueVisual(when, ()=>{
+    if(i!==seqStepIdx){ seqStepIdx=i; setChord(st.pc, st.lbl, st.qi); renderSeq(); updateGlobalTransport(); }  // chord changed → follow on board + chip
+    const b=document.getElementById('ch-board'); pcs.forEach(pc=>setDotPlaying(b, pc, true));
+  });
+  enqueueVisual(when+barSec*0.85, ()=>{ const b=document.getElementById('ch-board'); pcs.forEach(pc=>setDotPlaying(b, pc, false)); });
+}
+function seqTick(when){
+  if(!seqBarMap.length){ seqStop(); return; }
+  seqStrumStep(seqBarMap[seqBar], when);
+  seqBar++;
+  if(seqBar>=seqBarMap.length){
+    if(seqLoopOn){ seqBar=0; }
+    else { removeClock(seqClock); seqClock=null; setSeqTransport(); enqueueVisual(when+beat()*4, ()=>seqStop()); }  // stop after the final bar rings
+  }
+}
+function seqPlay(){
+  if(!seq.length) return;
+  if(seqClock){ seqStop(); return; }      // transport is a play/stop toggle
+  stopLoop(); audio();
+  seqSaved={pc:gRoot, lbl:gRootLbl, qi:chQual};
+  seqBuildMap(); seqBar=0; seqStepIdx=-1;
+  seqClock={ interval:()=>beat()*4, tick:(time)=>seqTick(time) };
+  addClock(seqClock);
+  setSeqTransport();
+}
+function seqStop(){
+  if(seqClock){ removeClock(seqClock); seqClock=null; }
+  clearVisualQ(); stopLoopVisual();
+  seqStepIdx=-1;
+  if(seqSaved){ setChord(seqSaved.pc, seqSaved.lbl, seqSaved.qi); seqSaved=null; }
+  renderSeq(); setSeqTransport();
+}
+function seqRebuild(){ if(seqClock){ seqBuildMap(); if(seqBar>=seqBarMap.length) seqBar=0; } }  // clock keeps ticking; just refresh the map
+function reseqTempo(){}  /* no-op: the seq clock reads beat() live, so tempo glides */
+function seqLoopToggle(){ seqLoopOn=!seqLoopOn; setSeqTransport(); saveState(); }
+function seqClear(){ seq=[]; if(seqClock) seqStop(); seqStepIdx=-1; renderSeq(); saveState(); }
+function setSeqTransport(){
+  const p=document.getElementById('seq-play'); if(p){ p.innerHTML=(seqClock?'&#9632; ':'&#9654; ')+t('seq_play'); p.setAttribute('aria-label', t('seq_play')); p.classList.toggle('active', !!seqClock); }
+  const l=document.getElementById('seq-loopbtn'); if(l){ l.innerHTML='&#8635; '+t('seq_loop'); l.classList.toggle('active', seqLoopOn); l.setAttribute('aria-pressed', seqLoopOn?'true':'false'); }
+  updateGlobalTransport();
+}
+
+/* ===================== SHARED ===================== */
+function renderNums(el){
+  const lo=FRET_LO(), hi=FRET_HI(), showOpen=lo<=1;
+  let html='';
+  for(let f=lo; f<=hi; f++){ html+=`<div class="fretnum ${DOTS.includes(f)?'mark':''}">${f}</div>`; }
+  el.innerHTML=html;
+  el.style.marginLeft = (showOpen?67:30)+'px';
+  el.style.paddingLeft = (showOpen?7:0)+'px';
+  el.style.minWidth = boardWidth()+'px';
+  el.classList.toggle('lefty', lefty);
+}
+/* Responsive fret sizing (Phase C+): derive the fret-cell width from the width
+   actually available to the board, with a readable floor. A windowed range
+   (≤5 frets) then fits the viewport with no horizontal scroll; only the wide
+   "All frets" view falls below the floor and keeps the .scroll fallback.
+   Both .board and .fretnums are sized from boardWidth(), so dot/number
+   alignment is preserved exactly — only the per-cell pixel width adapts. */
+const CELL_MIN = 34, CELL_MAX = 200;
+function availW(){
+  if(typeof document==='undefined') return 976;
+  const m=document.querySelector('.main');
+  const w = m && m.clientWidth ? m.clientWidth : ((typeof window!=='undefined'?window.innerWidth:1024) - 48);
+  return Math.max(280, w);
+}
+function leftFixed(){ return FRET_LO()<=1 ? 67 : 30; }
+function cellW(){
+  const n = FRET_HI() - FRET_LO() + 1;
+  const fit = Math.floor((availW() - leftFixed()) / Math.max(1,n));
+  return Math.max(CELL_MIN, Math.min(CELL_MAX, fit));
+}
+function boardWidth(){ return leftFixed() + (FRET_HI()-FRET_LO()+1)*cellW(); }
+function renderBoard(boardEl, cellFn){
+  clearPlayHighlights();
+  boardEl.innerHTML='';
+  const lo=FRET_LO(), hi=FRET_HI(), showOpen=lo<=1;
+  SNAMES.forEach((sn,si)=>{
+    const row=document.createElement('div'); row.className='srow';
+    const lab=document.createElement('div'); lab.className='slabel'; lab.textContent=sn; row.appendChild(lab);
+    if(showOpen){
+      const open=document.createElement('div'); open.className='ocell';
+      const odot=cellFn(OPEN[si]%12, si, 0);
+      if(odot) open.appendChild(odot);
+      row.appendChild(open);
+      const nut=document.createElement('div'); nut.className='nut'; row.appendChild(nut);
+    }
+    for(let f=lo; f<=hi; f++){
+      const pc=(OPEN[si]+f)%12;
+      const cell=document.createElement('div'); cell.className='cell';
+      const dot=cellFn(pc,si,f);
+      if(dot) cell.appendChild(dot);
+      row.appendChild(cell);
+    }
+    boardEl.appendChild(row);
+  });
+  const panel=boardEl.closest('.board'); if(panel){ panel.style.minWidth=boardWidth()+'px'; panel.classList.toggle('lefty', lefty); }
+}
+function makeDot(cls,text,midi){
+  const d=document.createElement('div'); d.className='dot '+cls; d.textContent=text;
+  if(midi!=null){ d.dataset.midi=midi; d.tabIndex=0; d.setAttribute('role','button'); }
+  else { d.setAttribute('role','img'); }
+  d.setAttribute('aria-label',text);
+  return d;
+}
+function wirePlay(boardEl){
+  const trigger=d=>{ if(d==null||d.dataset.midi==null) return; pluck(parseInt(d.dataset.midi)); d.classList.add('playing'); setTimeout(()=>d.classList.remove('playing'), 420); };
+  boardEl.addEventListener('click',e=>{ trigger(e.target.closest('.dot')); });
+  boardEl.addEventListener('keydown',e=>{ if(e.key!=='Enter'&&e.key!==' ') return; const d=e.target.closest('.dot'); if(d&&d.dataset.midi!=null){ e.preventDefault(); trigger(d); } });
+}
+function buildRootBtns(container, current, onPick){
+  container.innerHTML='';
+  ROOTS.forEach(r=>{
+    const pc = FLAT_ROOTS[r]!==undefined ? FLAT_ROOTS[r] : NOTES.indexOf(r);
+    const b=document.createElement('button'); b.className='btn'+(pc===current?' active':''); b.textContent=r; b.setAttribute('aria-pressed', pc===current);
+    b.onclick=()=>{ [...container.children].forEach(x=>{x.classList.remove('active');x.setAttribute('aria-pressed','false');}); b.classList.add('active'); b.setAttribute('aria-pressed','true'); onPick(pc,r); };
+    container.appendChild(b);
+  });
+}
+
+/* ===================== CHORD TONES ===================== */
+const DEG_LABEL={0:'1',3:'♭3',4:'3',6:'♭5',7:'5',8:'♯5',10:'♭7',11:'7'};  // triad/overlay use (interval -> label)
+/* Chord qualities carry three parallel arrays so a single semitone interval can
+   mean different things in different chords (the interval-ambiguity problem):
+     iv  — semitone offsets (octave-aware: 9=14, 11=17, 13=21) for highlighting + audio
+     lab — display label per tone ('1','♭3','♭7','9','♯9','13', …)
+     deg — diatonic letter degree (1-7) that drives correct spelling
+           (9→2nd letter, 11→4th, 13→6th, etc.)
+   Colour is derived from the label, not the raw interval, via labClass(). */
+const QUALITIES=[
+  {short:'',     iv:[0,4,7],          lab:['1','3','5'],                deg:[1,3,5],         en:'Major',uk:'Мажор'},
+  {short:'m',    iv:[0,3,7],          lab:['1','♭3','5'],               deg:[1,3,5],         en:'Minor',uk:'Мінор'},
+  {short:'sus2', iv:[0,2,7],          lab:['1','2','5'],                deg:[1,2,5],         en:'Sus2',uk:'Sus2'},
+  {short:'sus4', iv:[0,5,7],          lab:['1','4','5'],                deg:[1,4,5],         en:'Sus4',uk:'Sus4'},
+  {short:'6',    iv:[0,4,7,9],        lab:['1','3','5','6'],            deg:[1,3,5,6],       en:'Sixth',uk:'Секст-акорд'},
+  {short:'m6',   iv:[0,3,7,9],        lab:['1','♭3','5','6'],           deg:[1,3,5,6],       en:'Minor 6',uk:'Мінорний 6'},
+  {short:'7',    iv:[0,4,7,10],       lab:['1','3','5','♭7'],           deg:[1,3,5,7],       en:'Dom 7',uk:'Домінант 7'},
+  {short:'maj7', iv:[0,4,7,11],       lab:['1','3','5','7'],            deg:[1,3,5,7],       en:'Maj 7',uk:'Мажор 7'},
+  {short:'m7',   iv:[0,3,7,10],       lab:['1','♭3','5','♭7'],          deg:[1,3,5,7],       en:'Min 7',uk:'Мінор 7'},
+  {short:'m7♭5', iv:[0,3,6,10],       lab:['1','♭3','♭5','♭7'],         deg:[1,3,5,7],       en:'Half-dim (m7♭5)',uk:'Напівзменш. (m7♭5)'},
+  {short:'dim',  iv:[0,3,6],          lab:['1','♭3','♭5'],              deg:[1,3,5],         en:'Dim',uk:'Зменшений'},
+  {short:'dim7', iv:[0,3,6,9],        lab:['1','♭3','♭5','♭♭7'],        deg:[1,3,5,7],       en:'Dim 7',uk:'Зменшений 7'},
+  {short:'aug',  iv:[0,4,8],          lab:['1','3','♯5'],               deg:[1,3,5],         en:'Aug',uk:'Збільшений'},
+  {short:'add9', iv:[0,4,7,14],       lab:['1','3','5','9'],            deg:[1,3,5,2],       en:'Add 9',uk:'Add 9'},
+  {short:'9',    iv:[0,4,7,10,14],    lab:['1','3','5','♭7','9'],       deg:[1,3,5,7,2],     en:'Dom 9',uk:'Домінант 9'},
+  {short:'maj9', iv:[0,4,7,11,14],    lab:['1','3','5','7','9'],        deg:[1,3,5,7,2],     en:'Maj 9',uk:'Мажор 9'},
+  {short:'m9',   iv:[0,3,7,10,14],    lab:['1','♭3','5','♭7','9'],      deg:[1,3,5,7,2],     en:'Min 9',uk:'Мінор 9'},
+  {short:'11',   iv:[0,7,10,14,17],   lab:['1','5','♭7','9','11'],      deg:[1,5,7,2,4],     en:'Dom 11',uk:'Домінант 11'},
+  {short:'13',   iv:[0,4,7,10,14,21], lab:['1','3','5','♭7','9','13'],  deg:[1,3,5,7,2,6],   en:'Dom 13',uk:'Домінант 13'},
+  {short:'7♭9',  iv:[0,4,7,10,13],    lab:['1','3','5','♭7','♭9'],      deg:[1,3,5,7,2],     en:'7♭9',uk:'7♭9'},
+  {short:'7♯9',  iv:[0,4,7,10,15],    lab:['1','3','5','♭7','♯9'],      deg:[1,3,5,7,2],     en:'7♯9 (Hendrix)',uk:'7♯9 (Гендрікс)'},
+];
+function qName(q){ return lang==='en'?q.en:q.uk; }
+/* colour by degree label (label-driven, robust across the whole vocabulary) */
+function labClass(lab){
+  if(lab==='1') return 'd-root';
+  if(lab==='3'||lab==='♭3') return 'd-third';
+  if(lab==='5'||lab==='♭5'||lab==='♯5') return 'd-fifth';
+  if(lab==='7'||lab==='♭7'||lab==='♭♭7') return 'd-sev';
+  return 'd-ext';   // 2 · 4 · 6 · 9 · ♭9 · ♯9 · 11 · ♯11 · 13 · ♭13
+}
+/* =================== APP MUSICAL STATE (single catalogue) ===================
+   State guardrail (Phase C+): the persisted musical state is intentionally a
+   small set of top-level lets, each declared next to the view that owns it.
+   To stop later phases (Practice / ear / rhythm) from multiplying ad-hoc
+   globals, keep ALL persisted state in this catalogue and route it through
+   saveState()/loadState() with a bounds-checked restore. Current members:
+     shared    : gRoot, gRootLbl, gMode            (this block)
+     chords    : chQual                            (this block)
+     triads    : trQual, trSet, trInv              (~"TRIADS view")
+     scales    : scIdx, scPos, scOverlay           (~"SCALES view")
+     notes     : ntFilter, ntRoot                  (~"NOTES view")
+     circle    : cofSel, cofMinor                  (~"CIRCLE view")
+     transport : tempo, lefty, bassOn, grooveOn, seqLoopOn, seq[]
+     ui        : lang, currentTab, tuningIdx, fretRangeIdx, toolbarOpen
+   New phases: add fields here (or in a `practice = {…}` object), then extend
+   saveState()/loadState() — do not introduce free-floating globals elsewhere.
+   ========================================================================== */
+/* shared musical context — one root + one display mode across Harmony & Scales */
+let gRoot=9, gRootLbl='A', gMode='names';
+let chQual=1;
+function chDegClass(iv){ if(iv===0)return'd-root'; if(iv===3||iv===4)return'd-third'; if([6,7,8].includes(iv))return'd-fifth'; return'd-sev'; }
+function buildChQuals(){
+  const c=document.getElementById('ch-quals'); c.innerHTML='';
+  QUALITIES.forEach((q,i)=>{ const b=document.createElement('button'); b.className='btn'+(i===chQual?' active':'');
+    b.textContent=q.short||'maj'; b.title=qName(q); b.setAttribute('aria-label', qName(q)); b.setAttribute('aria-pressed', i===chQual);
+    b.onclick=()=>{ chQual=i; buildChQuals(); renderChords(); saveState(); }; c.appendChild(b); });
+}
+function renderChords(){
+  const q=QUALITIES[chQual];
+  const map={}; q.iv.forEach((iv,i)=>{ map[(gRoot+iv)%12]={lab:q.lab[i], deg:q.deg[i]}; });
+  renderBoard(document.getElementById('ch-board'),(pc,si,f)=>{
+    const m=map[pc]; if(m===undefined) return null;
+    return makeDot(labClass(m.lab), gMode==='names'?spellNote(gRootLbl,pc,m.deg):m.lab, OPEN_MIDI[si]+f);
+  });
+  renderNums(document.getElementById('ch-nums'));
+  const notes=q.iv.map((iv,i)=>spellNote(gRootLbl,(gRoot+iv)%12,q.deg[i])).join(' – ');
+  const degs=q.lab.join('  ');
+  document.getElementById('ch-info').innerHTML=`<div class="big">${gRootLbl}${q.short} · ${qName(q)}: ${notes}</div><div class="sub">${t('intervals_word')}: ${degs}</div>`;
+  renderChordDiagram();
+}
+
+/* ---- Open / barre chord diagrams (standard-tuning reference) ----
+   Movable templates per quality, root on the 6th ("E") or 5th ("A") string.
+   Offsets are relative to the barre fret; null = muted string. We pick the
+   shape that sits lowest on the neck (and use an open shape when the barre
+   lands at fret 0). The result is the standard chord shape a guitarist learns. */
+const CHORD_SHAPES = {
+  '':     { E:[0,2,2,1,0,0], A:[null,0,2,2,2,0] },
+  'm':    { E:[0,2,2,0,0,0], A:[null,0,2,2,1,0] },
+  '7':    { E:[0,2,0,1,0,0], A:[null,0,2,0,2,0] },
+  'maj7': { E:[0,2,1,1,0,0], A:[null,0,2,1,2,0] },
+  'm7':   { E:[0,2,0,0,0,0], A:[null,0,2,0,1,0] },
+  'dim':  { A:[null,0,1,2,1,null] },
+  'aug':  { A:[null,0,3,2,2,1] },
+};
+const STD_OPEN = [4,11,7,2,9,4];        // standard tuning, high->low (board order)
+const STD_LOW6 = [4,9,2,7,11,4];        // string6..string1 pitch classes (low->high)
+/* curated open-position shapes (low6 -> high1; null = muted). Keyed pc_quality. */
+const OPEN_OVERRIDES = {
+  '0_':[null,3,2,0,1,0], '9_':[null,0,2,2,2,0], '7_':[3,2,0,0,0,3], '4_':[0,2,2,1,0,0], '2_':[null,null,0,2,3,2],
+  '9_m':[null,0,2,2,1,0], '4_m':[0,2,2,0,0,0], '2_m':[null,null,0,2,3,1],
+  '9_7':[null,0,2,0,2,0], '11_7':[null,2,1,2,0,2], '0_7':[null,3,2,3,1,0], '2_7':[null,null,0,2,1,2], '4_7':[0,2,0,1,0,0], '7_7':[3,2,0,0,0,1],
+  '0_maj7':[null,3,2,0,0,0], '9_maj7':[null,0,2,1,2,0], '2_maj7':[null,null,0,2,2,2], '4_maj7':[0,2,1,1,0,0], '5_maj7':[null,null,3,2,1,0], '7_maj7':[3,2,0,0,0,2],
+  '9_m7':[null,0,2,0,1,0], '2_m7':[null,null,0,2,1,1], '4_m7':[0,2,0,0,0,0],
+};
+function buildChordVoicing(rootPc, short){
+  const ov=OPEN_OVERRIDES[rootPc+'_'+short];
+  if(ov) return {frets:ov.slice(), barre:0};
+  const tmpl=CHORD_SHAPES[short]; if(!tmpl) return null;
+  const opts=[];
+  if(tmpl.E) opts.push({barre:mod(rootPc-4,12), off:tmpl.E});   // root on low E
+  if(tmpl.A) opts.push({barre:mod(rootPc-9,12), off:tmpl.A});   // root on A string
+  // prefer open (barre 0), then lowest barre
+  opts.sort((a,b)=>(a.barre===0?-1:b.barre===0?1:a.barre-b.barre));
+  const pick=opts[0];
+  const frets=pick.off.map(o=> o===null ? null : pick.barre+o );  // low6 -> high1
+  return {frets, barre:pick.barre};
+}
+/* Generalized voicing generator — removes the need to hand-curate a shape for
+   every quality. Given the chord's pitch classes, it scans 4-fret windows up
+   the neck and, on each string, takes the lowest fret in the window that lands
+   on a chord tone; it then mutes leading strings until the root sits in the
+   bass. Scored for coverage, string count, compactness and low position. Every
+   sounded note is a real chord tone by construction. Used only when no curated
+   open/barre shape exists, and labelled as a computed voicing. */
+function genVoicing(rootPc, ivs){
+  const need=[...new Set(ivs.map(i=>mod(rootPc+i,12)))];
+  let best=null, bestScore=-1e9;
+  for(let base=0; base<=12; base++){
+    const frets=[];                                   // index 0..5 = string6..string1 (low->high)
+    for(let s=0;s<6;s++){
+      const openPc=mod(STD_LOW6[s],12); let chosen=null;
+      for(let f=Math.max(0,base); f<=base+3; f++){ if(need.includes(mod(openPc+f,12))){ chosen=f; break; } }
+      frets.push(chosen);
+    }
+    // mute leading strings until the bass note is the root
+    let lo=0; while(lo<6 && (frets[lo]==null || mod(STD_LOW6[lo]+frets[lo],12)!==rootPc)){ frets[lo]=null; lo++; }
+    if(lo>=6) continue;                               // no root in the bass within this window
+    const cov=new Set(); let count=0; const span=[];
+    for(let s=0;s<6;s++){ if(frets[s]!=null){ cov.add(mod(STD_LOW6[s]+frets[s],12)); count++; if(frets[s]>0) span.push(frets[s]); } }
+    if(count<3) continue;                              // too thin to be a useful chord
+    const width=span.length?Math.max(...span)-Math.min(...span):0;
+    if(width>4) continue;
+    const missing=need.filter(pc=>!cov.has(pc)).length;
+    const score=-missing*100 + count*8 - base*1.5 - width*2;
+    if(score>bestScore){ bestScore=score; best={frets:frets.slice(), base}; }
+  }
+  if(!best) return null;
+  const played=best.frets.filter(x=>x!=null&&x>0);
+  return {frets:best.frets, barre:played.length?Math.min(...played):0, generated:true};
+}
+function renderChordDiagram(){
+  const cont=document.getElementById('ch-diagram');
+  const short=QUALITIES[chQual].short;
+  let v=buildChordVoicing(gRoot, short);
+  if(!v) v=genVoicing(gRoot, QUALITIES[chQual].iv);   // fall back to a computed shape
+  if(!v){ cont.innerHTML=`<div class="chordbox"><div class="cb-name">${gRootLbl}${short}</div><div class="cb-cap">${t('cd_na')}</div></div>`; return; }
+  const frets=v.frets;                      // low6 .. high1
+  const played=frets.filter(x=>x!==null && x>0);
+  const minF=played.length?Math.min(...played):0;
+  const maxF=played.length?Math.max(...played):0;
+  const baseFret = (maxF<=4 ? 1 : minF);    // start at nut if shape fits, else shift up
+  const span=4;                             // show 4 frets
+  // geometry
+  const W=120, H=140, padX=16, padTop=26, padBot=18;
+  const cols=6, rows=span;
+  const gw=(W-padX*2)/(cols-1), gh=(H-padTop-padBot)/rows;
+  const x=i=>padX+i*gw;                     // i: 0=low6 ... 5=high1
+  const y=r=>padTop+r*gh;                   // r: 0..span
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+  // frets (horizontal)
+  for(let r=0;r<=rows;r++){ const isNut=(baseFret===1 && v.barre===0 && r===0); s+=`<line class="${isNut?'cd-nut':'cd-fret'}" x1="${x(0)}" y1="${y(r)}" x2="${x(5)}" y2="${y(r)}"/>`; }
+  // strings (vertical)
+  for(let i=0;i<6;i++){ s+=`<line class="cd-string" x1="${x(i)}" y1="${y(0)}" x2="${x(i)}" y2="${y(rows)}"/>`; }
+  // position label when not at the nut
+  if(baseFret>1){ s+=`<text class="cd-pos" x="${x(0)-9}" y="${y(0)+gh*0.7}" text-anchor="end">${baseFret}fr</text>`; }
+  // root pitch classes of the chord, to colour root dots
+  const rootClass = pc => pc===gRoot;
+  // markers above nut (O = open, X = muted) and dots
+  frets.forEach((fr,li)=>{
+    const i=li;                              // li 0=low6 -> column 0 (board draws high on top, but a chord box is conventionally low E on left)
+    const col=i;                             // low E at left
+    const sx=x(col);
+    const stringPc = mod(STD_LOW6[li],12);
+    if(fr===null){ s+=`<text class="cd-mark" x="${sx}" y="${padTop-9}" text-anchor="middle">×</text>`; return; }
+    if(fr===0){ s+=`<text class="cd-mark" x="${sx}" y="${padTop-9}" text-anchor="middle">○</text>`; return; }
+    const r=fr-baseFret;                     // row index 0..span-1
+    if(r<0||r>=rows) return;
+    const cy=y(r)+gh/2;
+    const notePc=mod(stringPc+fr,12);
+    s+=`<circle class="cd-dot ${rootClass(notePc)?'root':''}" cx="${sx}" cy="${cy}" r="6.5"/>`;
+  });
+  s+=`</svg>`;
+  const cap = v.generated ? (v.barre>0 ? `${t('cd_calc')} · ${t('cd_barre')} ${v.barre}` : t('cd_calc'))
+            : v.barre===0 ? t('cd_open') : (lefty||tuningIdx!==0 ? t('cd_std') : `${t('cd_barre')} ${v.barre}`);
+  cont.innerHTML=`<div class="chordbox"><div class="cb-name">${gRootLbl}${short}</div>${s}<div class="cb-cap">${cap}</div></div>`;
+}
+
+/* ===================== TRIADS ===================== */
+const TRIADS=[
+  {short:'',iv:[0,4,7],en:'Major',uk:'Мажор'},
+  {short:'m',iv:[0,3,7],en:'Minor',uk:'Мінор'},
+  {short:'dim',iv:[0,3,6],en:'Dim',uk:'Зменшений'},
+  {short:'aug',iv:[0,4,8],en:'Aug',uk:'Збільшений'},
+];
+const STRING_SETS=[
+  {label:'1·2·3', idx:[2,1,0]},
+  {label:'2·3·4', idx:[3,2,1]},
+  {label:'3·4·5', idx:[4,3,2]},
+  {label:'4·5·6', idx:[5,4,3]},
+];
+const ROT=[[0,1,2],[1,2,0],[2,0,1]];
+let trQual=0, trSet=0, trInv=1;
+function nearestFret(open, pc, ref){
+  let base=mod(pc-open,12), best=base, bd=Math.abs(base-ref);
+  [base-12, base+12, base+24].forEach(c=>{ if(Math.abs(c-ref)<bd){ bd=Math.abs(c-ref); best=c; } });
+  return best;
+}
+function triFuncClass(o, iv){ if(o===0)return'd-root'; if(o===iv[1])return'd-third'; return'd-fifth'; }
+function triLabel(o, iv, pc, flat){ return gMode==='names' ? spellNote(gRootLbl,pc,DEG_OF[o]) : (o===0?'1':(o===iv[1]?DEG_LABEL[iv[1]]:DEG_LABEL[iv[2]])); }
+function triadCells(){
+  const tri=TRIADS[trQual], iv=tri.iv, set=STRING_SETS[trSet];
+  const invs = trInv===0 ? [0,1,2] : [trInv-1];
+  const [low,mid,high]=set.idx;
+  const cells={};
+  invs.forEach(inv=>{
+    const order=ROT[inv].map(i=>iv[i]);              // intervals bottom -> top
+    const pcs=order.map(o=>mod(gRoot+o,12));
+    const lf=mod(pcs[0]-OPEN[low],12);
+    const mf=nearestFret(OPEN[mid],pcs[1],lf);
+    const hf=nearestFret(OPEN[high],pcs[2],mf);
+    const pat=[[low,lf,order[0]],[mid,mf,order[1]],[high,hf,order[2]]];
+    const mn=Math.min(lf,mf,hf), mx=Math.max(lf,mf,hf);
+    for(let k=-2;k<=3;k++){ const sh=12*k; if(mn+sh<0||mx+sh>FRETS) continue;
+      pat.forEach(([si,fr,o])=>{ cells[si+'_'+(fr+sh)]=o; }); }
+  });
+  return {cells, iv};
+}
+function buildTrQuals(){
+  const c=document.getElementById('tr-quals'); c.innerHTML='';
+  TRIADS.forEach((q,i)=>{ const b=document.createElement('button'); b.className='btn'+(i===trQual?' active':''); b.textContent=qName(q); b.setAttribute('aria-pressed', i===trQual);
+    b.onclick=()=>{ trQual=i; buildTrQuals(); renderTriads(); saveState(); }; c.appendChild(b); });
+}
+function buildTrSets(){
+  const c=document.getElementById('tr-sets'); c.innerHTML='';
+  STRING_SETS.forEach((s,i)=>{ const b=document.createElement('button'); b.className='btn'+(i===trSet?' active':''); b.textContent=s.label; b.setAttribute('aria-pressed', i===trSet);
+    b.onclick=()=>{ trSet=i; buildTrSets(); renderTriads(); saveState(); }; c.appendChild(b); });
+}
+function buildTrInvs(){
+  const c=document.getElementById('tr-invs'); c.innerHTML='';
+  const labels=[t('inv_all'),t('inv_root'),t('inv_1st'),t('inv_2nd')];
+  labels.forEach((lab,i)=>{ const b=document.createElement('button'); b.className='btn'+(i===trInv?' active':''); b.textContent=lab; b.setAttribute('aria-pressed', i===trInv);
+    b.onclick=()=>{ trInv=i; buildTrInvs(); renderTriads(); saveState(); }; c.appendChild(b); });
+}
+function renderTriads(){
+  const {cells,iv}=triadCells(), tri=TRIADS[trQual], set=STRING_SETS[trSet];
+  renderBoard(document.getElementById('tr-board'),(pc,si,f)=>{
+    const o=cells[si+'_'+f]; if(o===undefined) return null;
+    return makeDot(triFuncClass(o,iv), triLabel(o,iv,pc), OPEN_MIDI[si]+f);
+  });
+  renderNums(document.getElementById('tr-nums'));
+  const notes=iv.map(i=>spellNote(gRootLbl,mod(gRoot+i,12),DEG_OF[i])).join(' – ');
+  const invDesc=[t('inv_all_desc'),t('inv_root_desc'),t('inv_1st_desc'),t('inv_2nd_desc')][trInv];
+  document.getElementById('tr-info').innerHTML=
+    `<div class="big">${gRootLbl}${tri.short} · ${qName(tri)} · ${t('strings_word')} ${set.label}: ${notes}</div><div class="sub">${invDesc}</div>`;
+}
+
+/* ===================== SCALES ===================== */
+const SDEG=['1','♭2','2','♭3','3','4','♭5','5','♭6','6','♭7','7'];
+const SCALES=[
+  {iv:[0,2,4,5,7,9,11],en:'Major (Ionian)',uk:'Мажор (іонійський)'},
+  {iv:[0,2,3,5,7,9,10],en:'Dorian',uk:'Дорійський'},
+  {iv:[0,1,3,5,7,8,10],en:'Phrygian',uk:'Фригійський'},
+  {iv:[0,2,4,6,7,9,11],en:'Lydian',uk:'Лідійський'},
+  {iv:[0,2,4,5,7,9,10],en:'Mixolydian',uk:'Міксолідійський'},
+  {iv:[0,2,3,5,7,8,10],en:'Aeolian (natural minor)',uk:'Еолійський (нат. мінор)'},
+  {iv:[0,1,3,5,6,8,10],en:'Locrian',uk:'Локрійський'},
+  {iv:[0,3,5,7,10],en:'Minor pentatonic',uk:'Мінорна пентатоніка'},
+  {iv:[0,2,4,7,9],en:'Major pentatonic',uk:'Мажорна пентатоніка'},
+  {iv:[0,3,5,6,7,10],en:'Blues (minor)',uk:'Блюзова (мінорна)'},
+  {iv:[0,2,3,5,7,8,11],en:'Harmonic minor',uk:'Гармонічний мінор'},
+  {iv:[0,2,3,5,7,9,11],en:'Melodic minor',uk:'Мелодичний мінор'},
+];
+function sName(s){ return lang==='en'?s.en:s.uk; }
+const MODE_OFF={1:2,2:4,3:5,4:7,5:9,6:11};
+const BOX_OFFSETS=[0,3,5,7,10];
+let scIdx=5, scPos=0, scOverlay=null;
+let diaList=[];
+function scClass(iv){ if(iv===0)return'd-root'; if(iv===3||iv===4)return'd-third'; return'd-other'; }
+function boxWindow(pos){ if(!pos) return null; const anchor=(gRoot-4+12)%12; const start=anchor+BOX_OFFSETS[pos-1]; return [start, start+4]; }
+function diatonic(){
+  const iv=SCALES[scIdx].iv; if(iv.length!==7) return [];
+  const flat=useFlatFor(gRootLbl); const res=[];
+  for(let d=0; d<7; d++){
+    const r=iv[d], th=iv[(d+2)%7], fi=iv[(d+4)%7];
+    const t3=(th-r+12)%12, t5=(fi-r+12)%12; let suf='', qiv=[0,4,7];
+    if(t3===4&&t5===7){suf='';qiv=[0,4,7];} else if(t3===3&&t5===7){suf='m';qiv=[0,3,7];}
+    else if(t3===3&&t5===6){suf='dim';qiv=[0,3,6];} else if(t3===4&&t5===8){suf='aug';qiv=[0,4,8];}
+    else {qiv=[0,t3,t5];suf='?';}
+    res.push({label:spellNote(gRootLbl,(gRoot+r)%12,d+1)+suf, rootPc:(gRoot+r)%12, iv:qiv, tag:'dia'+d});
+  }
+  return res;
+}
+function renderDiatonic(){
+  const cont=document.getElementById('sc-diatonic'); diaList=diatonic();
+  if(diaList.length===0){ cont.innerHTML=`<span class="muted">${t('dia_na')}</span>`; return; }
+  cont.innerHTML = diaList.map((c,i)=>`<button class="btn dia${scOverlay&&scOverlay.tag===c.tag?' active':''}" data-i="${i}">${c.label}</button>`).join('') + `<button class="btn" data-clear="1">${t('b_clear')}</button>`;
+}
+function renderScales(){
+  const s=SCALES[scIdx], flat=useFlatFor(gRootLbl);
+  const seven = s.iv.length===7;
+  const map={}, deg={}; s.iv.forEach((iv,di)=>{ const pc=(gRoot+iv)%12; map[pc]=iv; deg[pc]=di+1; });
+  const scName = pc => seven ? spellNote(gRootLbl, pc, deg[pc]) : simpleName(pc, gRootLbl);
+  const win=boxWindow(scPos);
+  let ovMap=null; if(scOverlay){ ovMap={}; scOverlay.iv.forEach(iv=>ovMap[(scOverlay.rootPc+iv)%12]=iv); }
+  renderBoard(document.getElementById('sc-board'),(pc,si,f)=>{
+    if(map[pc]===undefined) return null;
+    if(win && (f<win[0]||f>win[1])) return null;
+    let cls;
+    if(ovMap){ cls = (ovMap[pc]!==undefined) ? chDegClass(ovMap[pc]) : 'd-dim'; }
+    else { cls = scClass(map[pc]); }
+    return makeDot(cls, gMode==='names'?scName(pc):SDEG[map[pc]], OPEN_MIDI[si]+f);
+  });
+  renderNums(document.getElementById('sc-nums'));
+  const notes=s.iv.map(iv=>scName((gRoot+iv)%12)).join(' – ');
+  const degs=s.iv.map(iv=>SDEG[iv]).join(' ');
+  let html=`<div class="big">${gRootLbl} ${sName(s)}: ${notes}</div><div class="sub">${t('degrees_word')}: ${degs}</div>`;
+  if(MODE_OFF[scIdx]!==undefined){ const pr=noteName((gRoot-MODE_OFF[scIdx]+120)%12,flat); html+=`<div class="sub">${t('samenotes')} ${pr} ${t('major_word')} ${t('mode_tail')}</div>`; }
+  if(scOverlay){ html+=`<div class="sub" style="color:var(--third)">${t('overlay_msg')}</div>`; }
+  document.getElementById('sc-info').innerHTML=html;
+  const leg=document.getElementById('sc-legend');
+  if(scOverlay){ leg.innerHTML=
+    `<div class="leg"><span class="leg-dot" style="background:var(--root)"></span>${t('leg_root')}</div>`+
+    `<div class="leg"><span class="leg-dot" style="background:var(--third)"></span>${t('leg_third')}</div>`+
+    `<div class="leg"><span class="leg-dot" style="background:var(--fifth)"></span>${t('leg_fifth')}</div>`+
+    `<div class="leg"><span class="leg-dot" style="background:var(--seventh)"></span>${t('leg_seventh')}</div>`+
+    `<div class="leg"><span class="leg-dot" style="background:rgba(220,200,160,0.4)"></span>${t('leg_sc_other')}</div>`; }
+  else { leg.innerHTML=
+    `<div class="leg"><span class="leg-dot" style="background:var(--root)"></span>${t('leg_root')}</div>`+
+    `<div class="leg"><span class="leg-dot" style="background:var(--third)"></span>${t('leg_third')}</div>`+
+    `<div class="leg"><span class="leg-dot" style="background:var(--fifth)"></span>${t('leg_sc_other')}</div>`; }
+  renderDiatonic();
+}
+function buildScSelect(){
+  const sel=document.getElementById('sc-select'); sel.innerHTML='';
+  SCALES.forEach((s,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=sName(s); if(i===scIdx)o.selected=true; sel.appendChild(o); });
+}
+function buildScPos(){
+  const c=document.getElementById('sc-pos'); c.innerHTML='';
+  const labels=[t('pos_all'),'1','2','3','4','5'];
+  labels.forEach((lab,i)=>{ const b=document.createElement('button'); b.className='btn'+(i===scPos?' active':''); b.textContent=lab; b.setAttribute('aria-pressed', i===scPos);
+    b.onclick=()=>{ scPos=i; buildScPos(); renderScales(); saveState(); }; c.appendChild(b); });
+}
+
+/* ===================== ALL NOTES ===================== */
+const NAT=['C','D','E','F','G','A','B'], SHARP=['C#','D#','F#','G#','A#'], FLAT=['Db','Eb','Gb','Ab','Bb'];
+let ntFilter='all', ntRoot='';
+function ntMatch(note){ if(!ntRoot) return false; if(note===ntRoot) return true; if(ENHARM[note]===ntRoot) return true; const rev=Object.entries(ENHARM).find(([k,v])=>v===ntRoot); return rev && rev[0]===note; }
+function renderNotes(){
+  renderBoard(document.getElementById('nt-board'),(pc,si,f)=>{
+    const note=NOTES[pc], sharp=note.includes('#'), root=ntMatch(note);
+    if(ntFilter==='nat' && sharp && !root) return null;
+    let label=note; if(root && ENHARM[note] && FLAT.includes(ntRoot)) label=ENHARM[note];
+    return makeDot(root?'d-root':(sharp?'d-sharp':'d-natural'), label, OPEN_MIDI[si]+f);
+  });
+  renderNums(document.getElementById('nt-nums'));
+}
+
+/* ===================== CIRCLE OF FIFTHS ===================== */
+const COF=[
+  {i:0,  maj:'C',  majPc:0,  sig:0,  min:'Am',  minPc:9},
+  {i:1,  maj:'G',  majPc:7,  sig:1,  min:'Em',  minPc:4},
+  {i:2,  maj:'D',  majPc:2,  sig:2,  min:'Bm',  minPc:11},
+  {i:3,  maj:'A',  majPc:9,  sig:3,  min:'F♯m', minPc:6},
+  {i:4,  maj:'E',  majPc:4,  sig:4,  min:'C♯m', minPc:1},
+  {i:5,  maj:'B',  majPc:11, sig:5,  min:'G♯m', minPc:8},
+  {i:6,  maj:'G♭', majPc:6,  sig:6,  min:'E♭m', minPc:3, enh:'F♯ / G♭'},
+  {i:7,  maj:'D♭', majPc:1,  sig:-5, min:'B♭m', minPc:10},
+  {i:8,  maj:'A♭', majPc:8,  sig:-4, min:'Fm',  minPc:5},
+  {i:9,  maj:'E♭', majPc:3,  sig:-3, min:'Cm',  minPc:0},
+  {i:10, maj:'B♭', majPc:10, sig:-2, min:'Gm',  minPc:7},
+  {i:11, maj:'F',  majPc:5,  sig:-1, min:'Dm',  minPc:2},
+];
+const SHARP_ORDER=['F','C','G','D','A','E','B'], FLAT_ORDER=['B','E','A','D','G','C','F'];
+const ROMAN_MAJ=['I','ii','iii','IV','V','vi','vii°'], ROMAN_MIN=['i','ii°','III','iv','v','VI','VII'];
+const MAJ_IV=[0,2,4,5,7,9,11], MIN_IV=[0,2,3,5,7,8,10];
+let cofSel=0, cofMinor=false;
+function sigText(sig){
+  if(sig===0) return t('cof_sig0');
+  if(sig===6) return '6 ♯ / 6 ♭';
+  if(sig>0) return sig+' ♯ — '+SHARP_ORDER.slice(0,sig).map(x=>x+'♯').join(' ');
+  const a=-sig; return a+' ♭ — '+FLAT_ORDER.slice(0,a).map(x=>x+'♭').join(' ');
+}
+function buildDia(rootPc, sc, flat){
+  const res=[];
+  for(let d=0;d<7;d++){
+    const r=sc[d], th=sc[(d+2)%7], fi=sc[(d+4)%7];
+    const t3=(th-r+12)%12, t5=(fi-r+12)%12; let suf='';
+    if(t3===3&&t5===7)suf='m'; else if(t3===3&&t5===6)suf='dim'; else if(t3===4&&t5===8)suf='aug';
+    res.push(noteName((rootPc+r)%12,flat)+suf);
+  }
+  return res;
+}
+function pcToRootLabel(pc){ const i=ROOTS.findIndex(r=> (FLAT_ROOTS[r]!==undefined?FLAT_ROOTS[r]:NOTES.indexOf(r))===pc ); return ROOTS[i]; }
+function activateRoot(container, pc){ [...container.children].forEach(b=>{ const lbl=b.textContent; const p=FLAT_ROOTS[lbl]!==undefined?FLAT_ROOTS[lbl]:NOTES.indexOf(lbl); b.classList.toggle('active', p===pc); }); }
+function cofXY(i,r){ const a=(-90+i*30)*Math.PI/180; return [180+r*Math.cos(a), 180+r*Math.sin(a)]; }
+function renderCircle(){
+  const RO=132, RI=85, rMaj=27, rMin=21, dom=(cofSel+1)%12, sub=(cofSel+11)%12;
+  let s=`<circle cx="180" cy="180" r="${RO}" fill="none" stroke="var(--border)" stroke-width="1"/><circle cx="180" cy="180" r="${RI}" fill="none" stroke="var(--border)" stroke-width="1"/>`;
+  COF.forEach(c=>{
+    const i=c.i;
+    let mfill='var(--bg-panel-2)', mtext='var(--text)', nfill='var(--bg-panel)', ntext='var(--text-dim)';
+    const setRole=(isMaj)=>{
+      if(i===cofSel) return ['var(--root)','#0e1408'];
+      if(i===dom) return ['var(--third)','#1f1405'];
+      if(i===sub) return ['var(--fifth)','#07203a'];
+      return null;
+    };
+    if(!cofMinor){
+      const r=setRole(true); if(r){mfill=r[0];mtext=r[1];}
+      if(i===cofSel){nfill='var(--seventh)';ntext='#2a0a16';}
+    } else {
+      const r=setRole(false); if(r){nfill=r[0];ntext=r[1];}
+      if(i===cofSel){mfill='var(--seventh)';mtext='#2a0a16';}
+    }
+    const [mx,my]=cofXY(i,RO), [nx,ny]=cofXY(i,RI);
+    s+=`<g class="cof-node" data-i="${i}" data-type="maj" tabindex="0" role="button" aria-label="${c.maj} ${t('major_word')}"><circle cx="${mx}" cy="${my}" r="${rMaj}" fill="${mfill}" stroke="var(--border-strong)" stroke-width="1.5"/><text x="${mx}" y="${my}" text-anchor="middle" dominant-baseline="central" font-size="15" fill="${mtext}">${c.maj}</text></g>`;
+    s+=`<g class="cof-node" data-i="${i}" data-type="min" tabindex="0" role="button" aria-label="${c.min}"><circle cx="${nx}" cy="${ny}" r="${rMin}" fill="${nfill}" stroke="var(--border)" stroke-width="1.2"/><text x="${nx}" y="${ny}" text-anchor="middle" dominant-baseline="central" font-size="10.5" fill="${ntext}">${c.min}</text></g>`;
+  });
+  document.getElementById('cof-svg').innerHTML=s;
+  renderCofInfo();
+}
+function renderCofInfo(){
+  const c=COF[cofSel], useFlat=(c.sig<0||c.sig===6);
+  const keyPc=cofMinor?c.minPc:c.majPc;
+  const dia=buildDia(keyPc, cofMinor?MIN_IV:MAJ_IV, useFlat);
+  const roman=cofMinor?ROMAN_MIN:ROMAN_MAJ;
+  const keyName=cofMinor?c.min:(c.enh||c.maj), kind=cofMinor?t('min_word'):t('major_word');
+  const rel=cofMinor?`${t('cof_rel_major')}: ${(c.enh||c.maj)} ${t('major_word')}`:`${t('cof_rel_minor')}: ${c.min}`;
+  const sub=COF[(cofSel+11)%12], dom=COF[(cofSel+1)%12];
+  const subL=cofMinor?sub.min:sub.maj, domL=cofMinor?dom.min:dom.maj;
+  const diaHtml=dia.map((ch,idx)=>`<span style="display:inline-block;min-width:48px"><b style="color:var(--text-faint)">${roman[idx]}</b> ${ch}</span>`).join(' ');
+  document.getElementById('cof-info').innerHTML=
+    `<div class="big">${keyName} ${kind}</div>`+
+    `<div class="sub">${t('cof_sig')}: ${sigText(c.sig)}</div>`+
+    `<div class="sub">${rel}</div>`+
+    `<div class="sub">${t('cof_neighbors')}: ${subL} (${t('cof_subdom')}) · ${domL} (${t('cof_dom')})</div>`+
+    `<div class="sub" style="margin-top:9px;line-height:2">${diaHtml}</div>`;
+}
+
+/* ===================== SIDEBAR ===================== */
+const MAJ_TABLE=[['C','C','E','G'],['D','D','F#','A'],['E','E','G#','B'],['F','F','A','C'],['G','G','B','D'],['A','A','C#','E'],['B','B','D#','F#']];
+const MIN_TABLE=[['Cm','C','E♭','G'],['Dm','D','F','A'],['Em','E','G','B'],['Fm','F','A♭','C'],['Gm','G','B♭','D'],['Am','A','C','E'],['Bm','B','D','F#']];
+function fillMini(tbody,rows,thirdCls){ tbody.innerHTML=rows.map(r=>`<tr><td class="chord">${r[0]}</td><td><span class="pill p-root">${r[1]}</span></td><td><span class="pill ${thirdCls}">${r[2]}</span></td><td><span class="pill p-fifth">${r[3]}</span></td></tr>`).join(''); }
+
+/* ===================== APPLY LANGUAGE ===================== */
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.getAttribute('data-i18n'); if(I18N[lang][k]!==undefined) el.textContent=I18N[lang][k]; });
+  document.title = lang==='en' ? 'Guitar Studio — scales, modes, chords' : 'Гітарна студія — гами, моди, акорди';
+  document.getElementById('cof-open').textContent=t('b_open_scales');
+  const setPair=(onId,offId)=>{ const a=document.getElementById(onId),b=document.getElementById(offId); if(a){a.classList.add('active');a.setAttribute('aria-pressed','true');} if(b){b.classList.remove('active');b.setAttribute('aria-pressed','false');} };
+  gMode==='names'?setPair('g-names','g-deg'):setPair('g-deg','g-names');
+  ntFilter==='all'?setPair('nt-all','nt-nat'):setPair('nt-nat','nt-all');
+  buildChQuals(); buildTrQuals(); buildTrSets(); buildTrInvs(); buildScSelect(); buildScPos();
+  buildToolbar(); setMetroLabel(); setLoopLabel(); setBandLabels();
+  buildSeqPresets(); renderSeq(); setSeqTransport();
+  { const o=document.getElementById('cl-overlay'); if(o && !o.hidden) renderChangelog(); }
+  renderChords(); renderTriads(); renderScales(); renderNotes(); renderCircle();
+  setHView(hView); updateGlobalPlay();
+  if(typeof applyAudioAvailability==='function') applyAudioAvailability();
+  activateRoot(document.getElementById('g-roots'), gRoot);
+  document.querySelectorAll('[data-root]').forEach(b=>b.classList.toggle('active', !!ntRoot && b.dataset.root===ntRoot));
+  document.querySelectorAll('.langbtn').forEach(b=>b.classList.toggle('active', b.dataset.lang===lang));
+}
+
+/* ===================== TOOLBAR + PERSISTENCE ===================== */
+function buildToolbar(){
+  const tun=document.getElementById('tb-tuning');
+  tun.innerHTML=TUNINGS.map((tu,i)=>`<option value="${i}"${i===tuningIdx?' selected':''}>${lang==='en'?tu.en:tu.uk}</option>`).join('');
+  const fr=document.getElementById('tb-frets');
+  fr.innerHTML=FRET_RANGES.map((r,i)=>`<option value="${i}"${i===fretRangeIdx?' selected':''}>${r.key?t(r.key):r.label}</option>`).join('');
+  const tp=document.getElementById('tb-tempo'); tp.value=tempo;
+  document.getElementById('tb-bpm').textContent=tempo+' BPM';
+  const lb=document.getElementById('tb-lefty'); lb.classList.toggle('active', lefty); lb.setAttribute('aria-pressed', lefty);
+  applyToolbarState();
+}
+function applyToolbarState(){
+  const tb=document.getElementById('toolbar'), tg=document.getElementById('tb-toggle');
+  tb.classList.toggle('collapsed', !toolbarOpen);
+  tg.classList.toggle('open', toolbarOpen);
+  tg.setAttribute('aria-expanded', toolbarOpen);
+}
+function applyAsideState(){
+  const aside=document.querySelector('.aside');
+  if(aside) aside.style.display = ASIDE_TABS.includes(currentTab) ? '' : 'none';
+}
+function renderAllBoards(){ renderChords(); renderTriads(); renderScales(); renderNotes(); }
+/* re-fit responsive fret cells when the viewport width changes (rotation/resize) */
+if(typeof window!=='undefined'){
+  let _rzT=null, _rzW=window.innerWidth;
+  window.addEventListener('resize', ()=>{
+    if(window.innerWidth===_rzW) return;          // ignore height-only changes (mobile URL bar)
+    _rzW=window.innerWidth;
+    clearTimeout(_rzT); _rzT=setTimeout(()=>{ renderAllBoards(); renderCircle&&renderCircle(); }, 150);
+  });
+}
+
+const LS_KEY='guitarStudio.v1';
+let currentTab='harmony';
+function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({
+  lang, tab:currentTab, tuningIdx, fretRangeIdx, tempo, lefty, toolbarOpen,
+  gRoot, gRootLbl, gMode, hView,
+  chQual, scIdx, scPos, scOverlay,
+  trQual, trSet, trInv,
+  cofSel, cofMinor,
+  ntRoot, ntFilter,
+  seq, seqLoopOn,
+  bassOn, grooveOn
+})); }catch(e){ devWarn('state could not be saved (localStorage unavailable?)', e); } }
+function loadState(){ try{
+  const s=JSON.parse(localStorage.getItem(LS_KEY)||'null'); if(!s) return false;
+  if(s.lang==='uk'||s.lang==='en') lang=s.lang;
+  if(Number.isInteger(s.tuningIdx)&&TUNINGS[s.tuningIdx]) tuningIdx=s.tuningIdx;
+  if(Number.isInteger(s.fretRangeIdx)&&FRET_RANGES[s.fretRangeIdx]) fretRangeIdx=s.fretRangeIdx;
+  if(typeof s.tempo==='number'&&s.tempo>=40&&s.tempo<=200) tempo=s.tempo;
+  if(typeof s.lefty==='boolean') lefty=s.lefty;
+  if(typeof s.toolbarOpen==='boolean') toolbarOpen=s.toolbarOpen;
+  if(Number.isInteger(s.gRoot)&&s.gRoot>=0&&s.gRoot<12){ gRoot=s.gRoot; if(typeof s.gRootLbl==='string') gRootLbl=s.gRootLbl; }
+  if(s.gMode==='names'||s.gMode==='deg') gMode=s.gMode;
+  if(s.hView==='chords'||s.hView==='triads') hView=s.hView;
+  if(typeof s.tab==='string') currentTab = (s.tab==='chords'||s.tab==='triads') ? 'harmony' : s.tab;  // migrate merged tab
+  // ---- working musical state (added in 1.6.1) ----
+  if(Number.isInteger(s.chQual)&&QUALITIES[s.chQual]) chQual=s.chQual;
+  if(Number.isInteger(s.scIdx)&&SCALES[s.scIdx]) scIdx=s.scIdx;
+  if(Number.isInteger(s.scPos)&&s.scPos>=0&&s.scPos<=5) scPos=s.scPos;
+  if(s.scOverlay&&typeof s.scOverlay==='object'&&Number.isInteger(s.scOverlay.rootPc)&&Array.isArray(s.scOverlay.iv)&&typeof s.scOverlay.tag==='string')
+    scOverlay={rootPc:mod(s.scOverlay.rootPc,12), iv:s.scOverlay.iv.slice(), tag:s.scOverlay.tag};
+  if(Number.isInteger(s.trQual)&&TRIADS[s.trQual]) trQual=s.trQual;
+  if(Number.isInteger(s.trSet)&&STRING_SETS[s.trSet]) trSet=s.trSet;
+  if(Number.isInteger(s.trInv)&&s.trInv>=0&&s.trInv<=3) trInv=s.trInv;
+  if(Number.isInteger(s.cofSel)&&s.cofSel>=0&&s.cofSel<COF.length) cofSel=s.cofSel;
+  if(typeof s.cofMinor==='boolean') cofMinor=s.cofMinor;
+  if(s.ntFilter==='all'||s.ntFilter==='nat') ntFilter=s.ntFilter;
+  if(s.ntRoot===''||NAT.includes(s.ntRoot)||SHARP.includes(s.ntRoot)||FLAT.includes(s.ntRoot)) ntRoot=s.ntRoot;
+  if(typeof s.seqLoopOn==='boolean') seqLoopOn=s.seqLoopOn;
+  if(typeof s.bassOn==='boolean') bassOn=s.bassOn;
+  if(typeof s.grooveOn==='boolean') grooveOn=s.grooveOn;
+  if(Array.isArray(s.seq)){
+    seq = s.seq
+      .filter(st=>st&&Number.isInteger(st.pc)&&st.pc>=0&&st.pc<12&&Number.isInteger(st.qi)&&st.qi>=0&&st.qi<QUALITIES.length)
+      .map(st=>({pc:st.pc, lbl:(typeof st.lbl==='string'?st.lbl:ROOTS[st.pc]), qi:st.qi, bars:([1,2,4].includes(st.bars)?st.bars:1)}));
+  }
+}catch(e){ devWarn('saved state could not be restored; using defaults', e); return false; } return true; }
+
+/* ===================== WIRING ===================== */
+/* ---- shared root picker, display mode, sub-view toggle, global play ---- */
+function renderContextViews(){ renderChords(); renderTriads(); renderScales(); }
+function renderActiveContext(){ if(currentTab==='harmony'){ hView==='triads'?renderTriads():renderChords(); } else if(currentTab==='scales'){ renderScales(); } }
+buildRootBtns(document.getElementById('g-roots'), gRoot, (pc,r)=>{ gRoot=pc; gRootLbl=r; scOverlay=null; buildChQuals(); renderContextViews(); saveState(); });
+
+function setGMode(m){ gMode=m;
+  const on=document.getElementById(m==='names'?'g-names':'g-deg'), off=document.getElementById(m==='names'?'g-deg':'g-names');
+  on.classList.add('active'); on.setAttribute('aria-pressed','true'); off.classList.remove('active'); off.setAttribute('aria-pressed','false');
+  renderContextViews(); saveState();
+}
+document.getElementById('g-names').onclick=()=>setGMode('names');
+document.getElementById('g-deg').onclick=()=>setGMode('deg');
+
+let hView='chords';
+function setHView(v){ hView=v;
+  document.getElementById('sub-chords').hidden = v!=='chords';
+  document.getElementById('sub-triads').hidden = v!=='triads';
+  ['chords','triads'].forEach(k=>{ const b=document.getElementById('hv-'+k); b.classList.toggle('active', k===v); b.setAttribute('aria-pressed', k===v?'true':'false'); });
+  document.getElementById('harmony-h').textContent = t(v==='triads'?'tr_h':'ch_h');
+  document.getElementById('harmony-p').textContent = t(v==='triads'?'tr_p':'ch_p');
+  v==='triads'?renderTriads():renderChords();
+  updateGlobalPlay(); saveState();
+}
+document.getElementById('hv-chords').onclick=()=>setHView('chords');
+document.getElementById('hv-triads').onclick=()=>setHView('triads');
+
+function applyContextBar(){ document.getElementById('context-bar').hidden = !(currentTab==='harmony' || currentTab==='scales'); }
+function globalPlay(){
+  if(currentTab==='harmony'){
+    if(hView==='triads'){ const tri=TRIADS[trQual]; animArp(document.getElementById('tr-board'), 48+gRoot, tri.iv.concat([12])); }
+    else { const q=QUALITIES[chQual]; animArp(document.getElementById('ch-board'), 48+gRoot, q.iv.concat([12])); }
+  } else if(currentTab==='scales'){ const s=SCALES[scIdx]; animRun(document.getElementById('sc-board'), 48+gRoot, s.iv.concat([12])); }
+  else if(currentTab==='circle'){
+    const c=COF[cofSel], pc=cofMinor?c.minPc:c.majPc, b=48+pc, iv=cofMinor?[0,3,7]:[0,4,7], bt=beat();
+    [0,5,7,12].forEach((off,i)=>{ const base=b+off; iv.forEach((x,j)=>pluck(base+x, i*bt + j*0.018, Math.max(0.9, bt*1.4))); });
+  }
+}
+function updateGlobalPlay(){
+  const b=document.getElementById('g-play');
+  if(b){
+    b.hidden = (currentTab==='notes');
+    const cadence = currentTab==='circle';
+    b.innerHTML='&#9654; '+t(cadence?'b_cadence':'b_listen');
+    const tip=t(cadence?'b_cadence':'b_listen_tip');
+    b.setAttribute('aria-label', tip); b.title=tip;
+  }
+  const lp=document.getElementById('g-loop');
+  if(lp){
+    // The single-chord Loop applies only to the chord-tones view; while a
+    // backing keeps playing on other tabs, the transport chip is the Stop.
+    lp.hidden = !(currentTab==='harmony' && hView==='chords');
+    lp.classList.toggle('active', !!loopClock);
+    lp.setAttribute('aria-pressed', loopClock?'true':'false');
+    lp.innerHTML=(loopClock?'&#9632; ':'&#8635; ')+t('b_loop');
+    const ltip=t(loopClock?'b_loop_stop_tip':'b_loop_tip');
+    lp.setAttribute('aria-label', ltip); lp.title=ltip;
+  }
+}
+document.getElementById('g-play').onclick=globalPlay;
+document.getElementById('g-loop').onclick=loopToggle;
+
+setLoopLabel();
+
+buildSeqPresets();
+document.getElementById('seq-add').onclick=seqAddCurrent;
+document.getElementById('seq-clear').onclick=seqClear;
+document.getElementById('seq-play').onclick=seqPlay;
+document.getElementById('seq-loopbtn').onclick=seqLoopToggle;
+document.getElementById('seq-presets').addEventListener('click',e=>{ const b=e.target.closest('[data-p]'); if(b) applyPreset(SEQ_PRESETS[+b.dataset.p]); });
+document.getElementById('seq-strip').addEventListener('click',e=>{
+  const x=e.target.closest('[data-x]'); if(x){ seq.splice(+x.dataset.x,1); seqStepIdx=-1; if(!seq.length) seqStop(); renderSeq(); if(seqClock) seqRebuild(); saveState(); return; }
+  const bb=e.target.closest('[data-bars]'); if(bb){ const i=+bb.dataset.bars, cur=seq[i].bars; seq[i].bars = cur>=4?1:(cur===1?2:4); renderSeq(); if(seqClock) seqRebuild(); saveState(); return; }
+  const chip=e.target.closest('.seq-chip'); if(chip){ const st=seq[+chip.dataset.i]; if(st) setChord(st.pc, st.lbl, st.qi); }
+});
+renderSeq(); setSeqTransport();
+wirePlay(document.getElementById('ch-board'));
+
+wirePlay(document.getElementById('tr-board'));
+
+document.getElementById('sc-select').onchange=function(){ scIdx=parseInt(this.value); scOverlay=null; renderScales(); saveState(); };
+document.getElementById('sc-diatonic').addEventListener('click',e=>{
+  if(e.target.closest('[data-clear]')){ scOverlay=null; renderScales(); saveState(); return; }
+  const b=e.target.closest('.dia'); if(!b) return; const c=diaList[+b.dataset.i];
+  scOverlay = (scOverlay && scOverlay.tag===c.tag) ? null : {rootPc:c.rootPc, iv:c.iv, tag:c.tag};
+  renderScales(); saveState();
+});
+wirePlay(document.getElementById('sc-board'));
+
+document.getElementById('cof-svg').addEventListener('click',e=>{
+  const g=e.target.closest('.cof-node'); if(!g) return;
+  cofSel=+g.dataset.i; cofMinor=(g.dataset.type==='min'); renderCircle(); saveState();
+});
+document.getElementById('cof-svg').addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ') return;
+  const g=e.target.closest('.cof-node'); if(!g) return;
+  cofSel=+g.dataset.i; cofMinor=(g.dataset.type==='min'); renderCircle(); saveState(); e.preventDefault();
+});
+document.getElementById('cof-open').onclick=function(){
+  const c=COF[cofSel], pc=cofMinor?c.minPc:c.majPc;
+  gRoot=pc; gRootLbl=pcToRootLabel(pc); scIdx=cofMinor?5:0; scOverlay=null; scPos=0;
+  activateRoot(document.getElementById('g-roots'), pc);
+  buildScSelect(); buildScPos(); renderContextViews();
+  selectTab('scales');
+};
+
+(function(){ const mk=(arr,cont)=>arr.forEach(n=>{ const b=document.createElement('button'); b.className='btn'; b.textContent=n; b.dataset.root=n; cont.appendChild(b); }); mk(NAT,document.getElementById('nt-natural')); mk(SHARP,document.getElementById('nt-sharp')); mk(FLAT,document.getElementById('nt-flat')); })();
+document.getElementById('nt-all').onclick=function(){ntFilter='all';this.classList.add('active');this.setAttribute('aria-pressed','true');const o=document.getElementById('nt-nat');o.classList.remove('active');o.setAttribute('aria-pressed','false');renderNotes();saveState();};
+document.getElementById('nt-nat').onclick=function(){ntFilter='nat';this.classList.add('active');this.setAttribute('aria-pressed','true');const o=document.getElementById('nt-all');o.classList.remove('active');o.setAttribute('aria-pressed','false');renderNotes();saveState();};
+document.getElementById('nt-reset').onclick=function(){ntRoot='';document.querySelectorAll('[data-root]').forEach(b=>b.classList.remove('active'));renderNotes();saveState();};
+document.getElementById('panel-notes').addEventListener('click',e=>{
+  const b=e.target.closest('[data-root]'); if(!b) return; const n=b.dataset.root;
+  document.querySelectorAll('[data-root]').forEach(x=>x.classList.remove('active'));
+  if(n===ntRoot){ ntRoot=''; } else { ntRoot=n; b.classList.add('active'); }
+  renderNotes(); saveState();
+});
+wirePlay(document.getElementById('nt-board'));
+
+fillMini(document.getElementById('mini-major'),MAJ_TABLE,'p-third');
+fillMini(document.getElementById('mini-minor'),MIN_TABLE,'p-mthird');
+document.getElementById('aside-toggle').onclick=function(){ const b=document.getElementById('aside-body'); const hidden=b.style.display==='none'; b.style.display=hidden?'block':'none'; this.textContent=hidden?'−':'+'; this.setAttribute('aria-expanded', hidden); };
+
+function selectTab(name){
+  // Playback (loop / progression) deliberately persists across tabs — it acts
+  // as a backing track. The global transport chip lets you stop it from anywhere.
+  currentTab=name;
+  document.querySelectorAll('.tab').forEach(x=>{ const on=x.dataset.panel===name; x.classList.toggle('active',on); x.setAttribute('aria-selected',on); x.tabIndex=on?0:-1; });
+  document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active', x.id==='panel-'+name));
+  applyAsideState();
+  applyContextBar();
+  updateGlobalPlay();
+  renderActiveContext();
+  saveState();
+}
+(function initTabs(){
+  const tablist=document.getElementById('tabs'); tablist.setAttribute('role','tablist');
+  document.querySelectorAll('.tab').forEach(tb=>{ tb.setAttribute('role','tab'); tb.id='tab-'+tb.dataset.panel; tb.setAttribute('aria-controls','panel-'+tb.dataset.panel); const on=tb.classList.contains('active'); tb.setAttribute('aria-selected',on); tb.tabIndex=on?0:-1; });
+  document.querySelectorAll('.panel').forEach(p=>{ p.setAttribute('role','tabpanel'); p.setAttribute('aria-labelledby','tab-'+p.id.replace('panel-','')); });
+  tablist.addEventListener('keydown',e=>{
+    if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft') return;
+    const tabs=[...document.querySelectorAll('.tab')], cur=tabs.findIndex(x=>x.classList.contains('active'));
+    const nxt=tabs[(cur+(e.key==='ArrowRight'?1:tabs.length-1))%tabs.length];
+    selectTab(nxt.dataset.panel); nxt.focus(); e.preventDefault();
+  });
+})();
+document.getElementById('tabs').addEventListener('click',e=>{
+  const tb=e.target.closest('.tab'); if(!tb) return;
+  selectTab(tb.dataset.panel);
+});
+document.getElementById('lang-switch').addEventListener('click',e=>{
+  const b=e.target.closest('.langbtn'); if(!b||b.dataset.lang===lang) return;
+  lang=b.dataset.lang; applyLang(); saveState();
+});
+
+/* ---- toolbar wiring ---- */
+document.getElementById('tb-tuning').onchange=function(){ tuningIdx=+this.value; applyTuning(); renderAllBoards(); saveState(); };
+document.getElementById('tb-frets').onchange=function(){ fretRangeIdx=+this.value; renderAllBoards(); saveState(); };
+document.getElementById('tb-lefty').onclick=function(){ lefty=!lefty; this.classList.toggle('active',lefty); this.setAttribute('aria-pressed',lefty); renderAllBoards(); renderCircle(); saveState(); };
+document.getElementById('tb-tempo').oninput=function(){ tempo=+this.value; document.getElementById('tb-bpm').textContent=tempo+' BPM'; retempo(); reloopTempo(); reseqTempo(); };
+document.getElementById('tb-tempo').onchange=function(){ saveState(); };
+document.getElementById('tb-metro').onclick=metroToggle;
+document.getElementById('tb-bass').onclick=bassToggle;
+document.getElementById('tb-drums').onclick=drumsToggle;
+document.getElementById('tb-stop').onclick=function(){ if(seqClock) seqStop(); else stopLoop(); };
+document.getElementById('tb-toggle').onclick=function(){ toolbarOpen=!toolbarOpen; applyToolbarState(); saveState(); };
+
+/* ---- changelog modal ---- */
+function renderChangelog(){
+  const body=document.getElementById('cl-body'); if(!body) return;
+  body.innerHTML = CHANGELOG.map((r,i)=>{
+    const cur = r.v===APP_VERSION;
+    const bullets=(r[lang]||r.en).map(li=>`<li>${li}</li>`).join('');
+    return `<div class="cl-rel${cur?' current':''}"><div class="cl-rel-head">`+
+      `<span class="cl-ver">v${r.v}</span>`+
+      (cur?`<span class="cl-badge">${t('cl_current')}</span>`:'')+
+      `<span class="cl-date">${r.date}</span></div><ul>${bullets}</ul></div>`;
+  }).join('');
+}
+function openChangelog(){ const o=document.getElementById('cl-overlay'); renderChangelog(); o.hidden=false; o.classList.add('open'); }
+function closeChangelog(){ const o=document.getElementById('cl-overlay'); o.classList.remove('open'); o.hidden=true; }
+document.getElementById('app-ver').onclick=openChangelog;
+document.getElementById('cl-close').onclick=closeChangelog;
+document.getElementById('cl-overlay').addEventListener('click',e=>{ if(e.target.id==='cl-overlay') closeChangelog(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeChangelog(); });
+
+/* ---- graceful degradation when the browser has no Web Audio (Phase C+) ----
+   Disable the transport controls with a hint instead of leaving dead buttons. */
+function applyAudioAvailability(){
+  if(typeof window==='undefined') return true;
+  const ok = !!(window.AudioContext || window.webkitAudioContext);
+  if(ok){ const w=document.getElementById('audio-warn'); if(w) w.remove(); return true; }
+  ['g-play','g-loop','tb-metro','tb-bass','tb-drums','seq-play','seq-loopbtn'].forEach(id=>{
+    const el=document.getElementById(id); if(el){ el.disabled=true; el.setAttribute('aria-disabled','true'); el.title=t('audio_off'); }
+  });
+  const bar=document.querySelector('.tb-bar');
+  if(bar && !document.getElementById('audio-warn')){
+    const w=document.createElement('span'); w.id='audio-warn'; w.className='audio-warn'; w.textContent=t('audio_off'); bar.appendChild(w);
+  }
+  devWarn('Web Audio unavailable; playback controls disabled');
+  return false;
+}
+
+/* ---- init: restore saved state, apply tuning, render, restore tab ---- */
+const hadState = loadState();
+if(!hadState && typeof window!=='undefined' && window.innerWidth<=600) fretRangeIdx=1;  // phones default to a 5-fret window
+applyTuning();
+applyLang();
+selectTab(currentTab);
+applyAudioAvailability();
+document.getElementById('app-ver').textContent = 'v' + APP_VERSION;
+
+/* ---- test introspection hook (Phase C+) ----
+   Built ONLY when a harness sets window.__GS_ALLOW_TEST__ before the page loads,
+   so production carries zero footprint. Exposes pure musical helpers and a few
+   state accessors so the committed jsdom suite can assert behaviour without
+   reaching into closures. Never set this flag in the shipped app. */
+if (typeof window!=='undefined' && window.__GS_ALLOW_TEST__) {
+  window.__GS_TEST__ = {
+    APP_VERSION, I18N, QUALITIES, TRIADS, SCALES, COF, FRET_RANGES, SEQ_PRESETS,
+    fifthInterval, spellNote, rootParts, simpleName,
+    cellW, boardWidth, leftFixed, FRET_LO, FRET_HI,
+    schedAdvance, clocks, beat,
+    selectTab, setHView, loopToggle, seqPlay, seqAddCurrent, applyPreset, setChord,
+    setFret:(i)=>{ fretRangeIdx=i; },
+    initAudio:()=>audio(),
+    setCtxNow:(t)=>{ if(actx) actx.currentTime=t; },
+    state:()=>({ gRoot, gRootLbl, chQual, currentTab, hView,
+                 loop:!!loopClock, seq:!!seqClock, fretRangeIdx, lang, tempo })
+  };
+}
+</script>
+</body>
+</html>

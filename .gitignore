@@ -1,0 +1,12 @@
+# dev-only test deps — reinstalled from package-lock.json in CI
+tests/node_modules/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# logs
+npm-debug.log*
