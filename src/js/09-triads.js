@@ -124,5 +124,6 @@ function renderTriads(){
       return makeDot(triFuncClass(o,iv), triLabel(o,iv,pc), OPEN_MIDI[si]+f);
     }, triadLegendHTML(), t('tr_hint'));
   }
+  renderSuggester();
 }
 

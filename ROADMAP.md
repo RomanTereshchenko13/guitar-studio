@@ -10,7 +10,7 @@ Code is authored as small `src/js/NN-*.js` modules and concatenated by a pure-st
 `build.js` (no bundler, no transpile). Every item below is reachable with the Web Audio API
 and vanilla JS. New phases add new `src/` modules; they never add a dependency.
 
-_Last updated: 2026-06-16 · shipping: v1.16.0_
+_Last updated: 2026-06-16 · shipping: v1.17.0_
 
 ---
 
@@ -164,10 +164,21 @@ near-term change, landed on its own behind the green harness.
   existing sub-view pattern). Its note-highlighting is preserved; the richer note-finder is Phase 3.
   Old saved `notes`-tab state migrates to Scales + the Notes view.
 
-**1c — Reverse lookup (net-new value).** The questions players actually arrive with, currently
-impossible — and the biggest usefulness gain per unit of new code:
-- a **chord identifier** (frets/notes → name), and
-- a **scale/arpeggio suggester** (chord or progression → what to play over it).
+**1c — Reverse lookup (net-new value). ✅ Shipped v1.17.0.** The questions players actually arrive
+with, previously impossible — the biggest usefulness gain per unit of new code:
+- **Chord identifier** ✅ — an *Identify* view under Harmony: tap the notes on the shared board →
+  `identifyChord()` names the chord by exact pitch-class match across every quality at every root,
+  so genuine ambiguities surface as multiple names (C6 / Am7) and a non-root bass reads as a slash.
+  When nothing fits exactly, `nearChords()` falls back to the closest matches — naming the chord the
+  selection is one or two notes from and reporting the missing tone / extra note — so a real-world
+  voicing teaches the player instead of dead-ending on "unknown".
+- **Scale/arpeggio suggester** ✅ — the vestigial Chord-reference sidebar became a live "Play over
+  this" panel: for the current harmony chord it shows the arpeggio + every scale that contains the
+  chord tones (`scalesOverChord()`), each a chip that jumps to that scale in Scales — the first
+  taste of the reference→practice **seam** (spine #2). _(Progression-level suggestions deferred.)_
+
+> **IA note (decided during 1c):** Circle of Fifths stays its own tab. The Chord-reference sidebar
+> was replaced by the contextual suggester rather than removed.
 
 **1d — Feel pass (the polish bar, scoped).** Hold the "every phase ships feel" bar here rather
 than deferring all of it to Phase 9 — and ride 1b's board rebuild while the board is already

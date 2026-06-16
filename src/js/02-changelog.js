@@ -1,6 +1,13 @@
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.17.0', date:'2026-06-16',
+    en:['New "Identify" view under Chords / Triads: tap the notes you are playing on the neck and the app names the chord — including the real alternatives (e.g. C6 and Am7 are the same notes) and slash chords when the bass note is not the root.',
+        'When the notes don\'t fit any chord exactly, Identify now shows the closest matches instead of just "unknown" — naming the chord you are one or two notes away from and telling you which tone is missing or extra.',
+        'The sidebar is now a live "Play over this" panel instead of a static table: for the chord you are looking at it shows the arpeggio and the scales that fit, and tapping a scale jumps you straight to it.'],
+    uk:['Новий вид «Розпізнати» поряд з «Акордами / тріадами»: натисни на грифі ноти, які береш, — і програма назве акорд, разом зі справжніми варіантами (напр., C6 і Am7 — це ті самі ноти) та слеш-акордами, коли в басі не тоніка.',
+        'Коли ноти не складають жодного акорду точно, «Розпізнати» тепер показує найближчі варіанти замість простого «невідомо» — називає акорд, до якого бракує однієї-двох нот, і вказує, якої ноти бракує чи яка зайва.',
+        'Бічна панель тепер жива — «Що грати над цим» замість статичної таблиці: для акорду, який ти розглядаєш, вона показує арпеджіо та гами, що підходять, а дотик до гами одразу веде до неї.'] },
   { v:'1.16.0', date:'2026-06-16',
     en:['One fretboard instead of four: the chord-tones, triads, scale and notes views now share a single neck that just changes what it highlights, so switching views keeps the board steady in front of you.',
         'Fewer tabs: "Notes on the neck" moved from its own tab into a Notes view inside Scales (next to Scale), the same way Chords and Triads sit together under one tab.',

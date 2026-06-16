@@ -96,11 +96,6 @@ function renderCofInfo(){
     `<div class="sub" style="margin-top:9px;line-height:2">${diaHtml}</div>`;
 }
 
-/* ===================== SIDEBAR ===================== */
-const MAJ_TABLE=[['C','C','E','G'],['D','D','F#','A'],['E','E','G#','B'],['F','F','A','C'],['G','G','B','D'],['A','A','C#','E'],['B','B','D#','F#']];
-const MIN_TABLE=[['Cm','C','E♭','G'],['Dm','D','F','A'],['Em','E','G','B'],['Fm','F','A♭','C'],['Gm','G','B♭','D'],['Am','A','C','E'],['Bm','B','D','F#']];
-function fillMini(tbody,rows,thirdCls){ tbody.innerHTML=rows.map(r=>`<tr><td class="chord">${r[0]}</td><td><span class="pill p-root">${r[1]}</span></td><td><span class="pill ${thirdCls}">${r[2]}</span></td><td><span class="pill p-fifth">${r[3]}</span></td></tr>`).join(''); }
-
 /* ===================== APPLY LANGUAGE ===================== */
 function applyLang(){
   document.documentElement.lang = lang;

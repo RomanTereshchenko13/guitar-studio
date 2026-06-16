@@ -18,6 +18,17 @@ function sName(s){ return lang==='en'?s.en:s.uk; }
 /* mode family for the circle projection (1a): a major third (interval 4) puts a
    scale on the circle's major ring, a minor third (3) on the minor ring. */
 function isMajorFamily(i){ return SCALES[i].iv.includes(4); }
+/* scale-over-chord (1c): scale indices (rooted at rootPc) that contain every
+   chord tone — i.e. scales you can play over that chord. */
+function scalesOverChord(rootPc, chordPcs){
+  const need=chordPcs.map(pc=>mod(pc,12));
+  const out=[];
+  SCALES.forEach((s,i)=>{
+    const sp=new Set(s.iv.map(iv=>mod(rootPc+iv,12)));
+    if(need.every(pc=>sp.has(pc))) out.push(i);
+  });
+  return out;
+}
 const MODE_OFF={1:2,2:4,3:5,4:7,5:9,6:11};
 const BOX_OFFSETS=[0,3,5,7,10];
 let scIdx=5, scPos=0, scOverlay=null;

@@ -2,6 +2,12 @@
 
 _Generated from `src/js/02-changelog.js` by `build.js` — do not edit by hand._
 
+## v1.17.0 — 2026-06-16
+
+- New "Identify" view under Chords / Triads: tap the notes you are playing on the neck and the app names the chord — including the real alternatives (e.g. C6 and Am7 are the same notes) and slash chords when the bass note is not the root.
+- When the notes don't fit any chord exactly, Identify now shows the closest matches instead of just "unknown" — naming the chord you are one or two notes away from and telling you which tone is missing or extra.
+- The sidebar is now a live "Play over this" panel instead of a static table: for the chord you are looking at it shows the arpeggio and the scales that fit, and tapping a scale jumps you straight to it.
+
 ## v1.16.0 — 2026-06-16
 
 - One fretboard instead of four: the chord-tones, triads, scale and notes views now share a single neck that just changes what it highlights, so switching views keeps the board steady in front of you.

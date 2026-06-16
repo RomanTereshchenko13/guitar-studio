@@ -1,8 +1,16 @@
 <!DOCTYPE html>
 <!-- ===========================================================
      Guitar Studio
-     Version: 1.16.0  (2026-06-16)
+     Version: 1.17.0  (2026-06-16)
      Changelog:
+       1.17.0 — reverse lookup (Phase 1c). New "Identify" view under Harmony:
+               tap the notes you're playing on the neck and the app names the
+               chord (with the genuine alternatives, e.g. C6 / Am7, and slash
+               chords for a non-root bass). The old static chord-reference
+               sidebar became a live "Play over this" panel: for the current
+               chord it shows the arpeggio plus the scales that fit, each a chip
+               that jumps to that scale (the reference→practice seam). No new
+               dependencies.
        1.16.0 — one shared fretboard + fewer tabs (Phase 1b). The four separate
                boards (chord tones / triads / scale / notes) collapsed into one
                board that switches what it highlights. Notes folded from its own
@@ -138,7 +146,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="1.16.0">
+<meta name="version" content="1.17.0">
 <title>Гітарна студія — гами, моди, акорди</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -299,6 +307,12 @@
   .p-mthird { background: var(--seventh); color: #2a0a16; }
   .aside-leg { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
   .aside-leg .leg { font-size: 11px; }
+  /* "Play over this" suggester (1c) */
+  .sug-chord { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  .sug-row { font-size: 13px; color: var(--text); margin-bottom: 8px; line-height: 1.5; }
+  .sug-row .ctrl-label { display: block; margin-bottom: 4px; }
+  .sug-scales { gap: 6px; }
+  .sug-scales .btn { font-size: 12px; padding: 4px 9px; }
   .cof-layout { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
   .cof-wrap { flex: 0 0 auto; }
   .cof-side { flex: 1; min-width: 250px; }
@@ -492,6 +506,7 @@
       <div class="group">
         <button class="btn active" id="hv-chords" data-i18n="view_chords">Тони акорду</button>
         <button class="btn" id="hv-triads" data-i18n="view_triads">Форми тріад</button>
+        <button class="btn" id="hv-identify" data-i18n="view_identify">Розпізнати</button>
       </div>
     </div>
 
@@ -525,6 +540,16 @@
       <div class="info" id="tr-info"></div>
       <div class="cd-head"><span class="cd-h" data-i18n="tr_shapes">Форми тризвуку</span></div>
       <div class="chorddia" id="tr-diagram"></div>
+    </div>
+
+    <div id="sub-identify" hidden>
+      <div class="row">
+        <span class="ctrl-label" data-i18n="lbl_identify">Ноти</span>
+        <span class="cd-hint" data-i18n="id_p">Натисни на грифі ноти, які береш, — і дізнайся, що це за акорд.</span>
+        <div class="divider"></div>
+        <button class="btn" id="id-clear" data-i18n="b_clear">Зняти</button>
+      </div>
+      <div class="info" id="id-result"></div>
     </div>
   </section>
 
@@ -604,17 +629,9 @@
 
 <aside class="aside">
   <div class="aside-card">
-    <div class="aside-head"><span data-i18n="side_title">Довідник акордів</span><button class="aside-toggle" id="aside-toggle">−</button></div>
+    <div class="aside-head"><span id="suggest-title" data-i18n="suggest_title">Що грати над цим</span><button class="aside-toggle" id="aside-toggle">−</button></div>
     <div id="aside-body">
-      <div class="mini-title" data-i18n="side_major">Мажорні (1 · 3 · 5)</div>
-      <table class="mini"><tbody id="mini-major"></tbody></table>
-      <div class="mini-title" data-i18n="side_minor">Мінорні (1 · ♭3 · 5)</div>
-      <table class="mini"><tbody id="mini-minor"></tbody></table>
-      <div class="aside-leg">
-        <div class="leg"><span class="leg-dot" style="background:var(--root)"></span><span data-i18n="side_root">Тоніка</span></div>
-        <div class="leg"><span class="leg-dot" style="background:var(--third)"></span><span data-i18n="side_third">Терція</span></div>
-        <div class="leg"><span class="leg-dot" style="background:var(--fifth)"></span><span data-i18n="side_fifth">Квінта</span></div>
-      </div>
+      <div id="suggest-body"></div>
     </div>
   </div>
 </aside>
@@ -636,10 +653,17 @@
 <script>
 /* Single source of truth for the app version. Bump on each release and update
    the changelog comment at the top of the file + the <meta name="version">. */
-const APP_VERSION = '1.16.0';
+const APP_VERSION = '1.17.0';
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.17.0', date:'2026-06-16',
+    en:['New "Identify" view under Chords / Triads: tap the notes you are playing on the neck and the app names the chord — including the real alternatives (e.g. C6 and Am7 are the same notes) and slash chords when the bass note is not the root.',
+        'When the notes don\'t fit any chord exactly, Identify now shows the closest matches instead of just "unknown" — naming the chord you are one or two notes away from and telling you which tone is missing or extra.',
+        'The sidebar is now a live "Play over this" panel instead of a static table: for the chord you are looking at it shows the arpeggio and the scales that fit, and tapping a scale jumps you straight to it.'],
+    uk:['Новий вид «Розпізнати» поряд з «Акордами / тріадами»: натисни на грифі ноти, які береш, — і програма назве акорд, разом зі справжніми варіантами (напр., C6 і Am7 — це ті самі ноти) та слеш-акордами, коли в басі не тоніка.',
+        'Коли ноти не складають жодного акорду точно, «Розпізнати» тепер показує найближчі варіанти замість простого «невідомо» — називає акорд, до якого бракує однієї-двох нот, і вказує, якої ноти бракує чи яка зайва.',
+        'Бічна панель тепер жива — «Що грати над цим» замість статичної таблиці: для акорду, який ти розглядаєш, вона показує арпеджіо та гами, що підходять, а дотик до гами одразу веде до неї.'] },
   { v:'1.16.0', date:'2026-06-16',
     en:['One fretboard instead of four: the chord-tones, triads, scale and notes views now share a single neck that just changes what it highlights, so switching views keeps the board steady in front of you.',
         'Fewer tabs: "Notes on the neck" moved from its own tab into a Notes view inside Scales (next to Scale), the same way Chords and Triads sit together under one tab.',
@@ -776,7 +800,11 @@ const I18N = {
     brand:'Гітарна студія',
     tab_chords:'Тони акорду', tab_triads:'Тріади', tab_scales:'Гами / моди', tab_circle:'Коло квінт', tab_notes:'Ноти на грифі',
     tab_harmony:'Акорди / тріади', lbl_view:'Вид', view_chords:'Тони акорду', view_triads:'Форми тріад',
-    view_scale:'Гама', view_notes:'Ноти',
+    view_scale:'Гама', view_notes:'Ноти', view_identify:'Розпізнати',
+    id_h:'Розпізнавання акорду', id_p:'Натисни на грифі ноти, які береш, — і дізнайся, що це за акорд.',
+    lbl_identify:'Ноти', id_prompt:'Познач щонайменше 3 ноти на грифі.', id_none:'Невідомий акорд — спробуй іншу комбінацію.', id_also:'або',
+    id_near:'Найближче:', id_missing:'бракує', id_extra:'зайве',
+    suggest_title:'Що грати над цим', suggest_arp:'Арпеджіо', suggest_scales:'Гами, що підходять', suggest_none:'Обери акорд, щоб побачити, що грати.',
     cof_h:'Коло квінт',
     cof_p:'Тональності розташовані по квінтах. Сусіди — найближчі споріднені тональності: ліворуч субдомінанта (IV), праворуч домінанта (V). Натисни тональність, щоб побачити ключові знаки, паралель і акорди тональності.',
     cof_sig:'Ключові знаки', cof_sig0:'без ключових знаків',
@@ -835,7 +863,11 @@ const I18N = {
     brand:'Guitar Studio',
     tab_chords:'Chord tones', tab_triads:'Triads', tab_scales:'Scales / modes', tab_circle:'Circle of fifths', tab_notes:'Notes on the neck',
     tab_harmony:'Chords / triads', lbl_view:'View', view_chords:'Chord tones', view_triads:'Triad shapes',
-    view_scale:'Scale', view_notes:'Notes',
+    view_scale:'Scale', view_notes:'Notes', view_identify:'Identify',
+    id_h:'Chord identifier', id_p:'Tap the notes you are playing on the neck to name the chord.',
+    lbl_identify:'Notes', id_prompt:'Mark at least 3 notes on the neck.', id_none:'Unknown chord — try another combination.', id_also:'or',
+    id_near:'Closest:', id_missing:'missing', id_extra:'extra',
+    suggest_title:'Play over this', suggest_arp:'Arpeggio', suggest_scales:'Scales that fit', suggest_none:'Pick a chord to see what to play.',
     cof_h:'Circle of fifths',
     cof_p:'Keys are arranged by fifths. Neighbours are the closest related keys: subdominant (IV) on the left, dominant (V) on the right. Tap a key to see its key signature, relative key and diatonic chords.',
     cof_sig:'Key signature', cof_sig0:'no sharps or flats',
@@ -1592,10 +1624,11 @@ function wirePlay(boardEl){
    does the actual board + numbers + legend + hint draw. Legends are mode-specific
    text, generated here so the shared legend slot can switch with the mode. */
 function isBoardMode(mode){
-  if(mode==='chords') return currentTab==='harmony' && hView==='chords';
-  if(mode==='triads') return currentTab==='harmony' && hView==='triads';
-  if(mode==='scale')  return currentTab==='scales'  && scView==='scale';
-  if(mode==='notes')  return currentTab==='scales'  && scView==='notes';
+  if(mode==='chords')   return currentTab==='harmony' && hView==='chords';
+  if(mode==='triads')   return currentTab==='harmony' && hView==='triads';
+  if(mode==='identify') return currentTab==='harmony' && hView==='identify';
+  if(mode==='scale')    return currentTab==='scales'  && scView==='scale';
+  if(mode==='notes')    return currentTab==='scales'  && scView==='notes';
   return false;
 }
 function paintBoard(cellFn, legendHTML, hintHTML){
@@ -1695,7 +1728,81 @@ function labClass(lab){
 let gRoot=9, gRootLbl='A', gMode='names';
 let chQual=1;
 let chVoicing=0;   // index of the selected voicing card (open / E-barre / A-barre / computed)
+let idSel=[];      // Identify sub-view (1c): MIDIs the user has tapped on the board (transient scratch)
 function chDegClass(iv){ if(iv===0)return'd-root'; if(iv===3||iv===4)return'd-third'; if([6,7,8].includes(iv))return'd-fifth'; return'd-sev'; }
+
+/* ---- Reverse lookup (1c) ----
+   identifyChord: name a set of sounded pitch classes. Returns candidate chords
+   (best first): an exact pitch-class match against every quality at every root,
+   so genuine ambiguities surface as multiple names (C6 = Am7). The played bass
+   (lowest note) is preferred as the root, and a non-root bass reads as a slash. */
+function identifyChord(pcs, bassPc){
+  const sel=[...new Set(pcs.map(p=>mod(p,12)))].sort((a,b)=>a-b);
+  if(sel.length<3) return [];
+  const key=sel.join(',');
+  const out=[];
+  for(let root=0; root<12; root++){
+    QUALITIES.forEach(q=>{
+      const cpcs=[...new Set(q.iv.map(iv=>mod(root+iv,12)))].sort((a,b)=>a-b);
+      if(cpcs.join(',')===key){
+        const slash = (bassPc!=null && bassPc!==root);
+        out.push({ root, short:q.short, q, slash,
+                   name: ROOTS[root]+q.short + (slash?'/'+ROOTS[bassPc]:'') });
+      }
+    });
+  }
+  out.sort((a,b)=>{
+    const ab=(a.root===bassPc?0:1)-(b.root===bassPc?0:1); if(ab) return ab;   // bass = root first
+    return a.short.length - b.short.length;                                    // then simplest name
+  });
+  return out;
+}
+/* Closest-match fallback (1c): when no quality matches the played notes exactly,
+   name the chords the selection is one or two notes away from, so a real-world
+   voicing with a doubled/dropped tone still teaches the player what they hold.
+   For each candidate we report the chord tones MISSING (by degree label) and the
+   EXTRA notes played (by name), ranked by smallest total difference. */
+function nearChords(pcs, bassPc){
+  const sel=new Set(pcs.map(p=>mod(p,12)));
+  if(sel.size<3) return [];
+  const out=[];
+  for(let root=0; root<12; root++){
+    QUALITIES.forEach(q=>{
+      const cmap={};                                   // chord pitch class -> degree label
+      q.iv.forEach((iv,i)=>{ const pc=mod(root+iv,12); if(!(pc in cmap)) cmap[pc]=q.lab[i]; });
+      const cpcs=Object.keys(cmap).map(Number);
+      const missing=cpcs.filter(pc=>!sel.has(pc));     // chord tones the player didn't play
+      const extra=[...sel].filter(pc=>!(pc in cmap));  // played notes that aren't chord tones
+      const diff=missing.length+extra.length;
+      if(diff===0 || diff>2) return;                   // exact (handled elsewhere) or too far
+      if(cpcs.length-missing.length<2) return;         // too little overlap to call it "close"
+      const slash=(bassPc!=null && bassPc in cmap && bassPc!==root);
+      out.push({ root, q, short:q.short, slash, diff,
+                 name: ROOTS[root]+q.short + (slash?'/'+ROOTS[bassPc]:''),
+                 missing: missing.map(pc=>cmap[pc]),
+                 extra:   extra.map(pc=>NOTES[pc]) });
+    });
+  }
+  out.sort((a,b)=> a.diff-b.diff || a.missing.length-b.missing.length || a.short.length-b.short.length);
+  return out;
+}
+/* one-line description of how a near match differs from the played notes */
+function nearHint(c){
+  const parts=[];
+  if(c.missing.length) parts.push(t('id_missing')+' '+c.missing.join(' '));
+  if(c.extra.length)   parts.push(t('id_extra')+' '+c.extra.join(' '));
+  return parts.join(' · ');
+}
+function idSelPcs(){ return idSel.map(m=>mod(m,12)); }
+function idBassPc(){ return idSel.length ? mod(Math.min.apply(null, idSel),12) : null; }
+/* The chord the "Play over this" suggester reacts to: the live selection in each
+   harmony view (chord quality, triad, or the top Identify match). */
+function currentHarmonyChord(){
+  if(hView==='triads'){ const tri=TRIADS[trQual]; return {rootPc:gRoot, rootLbl:gRootLbl, short:tri.short, pcs:tri.iv.map(iv=>mod(gRoot+iv,12))}; }
+  if(hView==='identify'){ const c=identifyChord(idSelPcs(), idBassPc())[0]; if(!c) return null;
+    return {rootPc:c.root, rootLbl:ROOTS[c.root], short:c.short, pcs:c.q.iv.map(iv=>mod(c.root+iv,12))}; }
+  const q=QUALITIES[chQual]; return {rootPc:gRoot, rootLbl:gRootLbl, short:q.short, pcs:q.iv.map(iv=>mod(gRoot+iv,12))};
+}
 function buildChQuals(){
   const c=document.getElementById('ch-quals'); c.innerHTML='';
   QUALITIES.forEach((q,i)=>{ const b=document.createElement('button'); b.className='btn'+(i===chQual?' active':'');
@@ -1717,6 +1824,51 @@ function renderChords(){
       return makeDot(labClass(m.lab), gMode==='names'?spellNote(gRootLbl,pc,m.deg):m.lab, OPEN_MIDI[si]+f);
     }, chordLegendHTML(), t('ch_hint'));
   }
+  renderSuggester();
+}
+
+/* Identify sub-view (1c): the board shows every position; tapping toggles a note
+   into idSel (handled in wiring). The result panel names the selection. */
+function renderIdentify(){
+  const cands=identifyChord(idSelPcs(), idBassPc());
+  const el=document.getElementById('id-result');
+  if(el){
+    if(idSel.length<3) el.innerHTML=`<span class="muted">${t('id_prompt')}</span>`;
+    else if(cands.length) el.innerHTML=`<div class="big">${cands.slice(0,4).map(c=>c.name).join(` <span class="muted">${t('id_also')}</span> `)}</div>`;
+    else {
+      const near=nearChords(idSelPcs(), idBassPc());
+      if(!near.length) el.innerHTML=`<span class="muted">${t('id_none')}</span>`;
+      else el.innerHTML=`<div class="sub">${t('id_near')}</div>`+
+        near.slice(0,3).map(c=>`<div class="big">${c.name} <span class="muted">(${nearHint(c)})</span></div>`).join('');
+    }
+  }
+  renderSuggester();
+  if(isBoardMode('identify')){
+    const selSet=new Set(idSel);
+    paintBoard((pc,si,f)=>{
+      const midi=OPEN_MIDI[si]+f, sharp=NOTES[pc].includes('#');
+      return makeDot(selSet.has(midi)?'d-root':(sharp?'d-sharp':'d-natural'), NOTES[pc], midi);
+    }, notesLegendHTML(), t('id_p'));
+  }
+}
+
+/* "Play over this" sidebar (1c): for the live harmony chord, the arpeggio (chord
+   tones) plus every scale that contains them — each a chip that jumps to Scales
+   on that root+scale (the reference → practice seam, spine #2). */
+function renderSuggester(){
+  const body=document.getElementById('suggest-body'); if(!body) return;
+  const ch=currentHarmonyChord();
+  if(!ch){ body.innerHTML=`<span class="muted">${t('suggest_none')}</span>`; return; }
+  const q=QUALITIES.find(x=>x.short===ch.short);
+  const arp = q ? q.iv.map((iv,i)=>spellNote(ch.rootLbl, mod(ch.rootPc+iv,12), q.deg[i])).join(' · ')
+                : ch.pcs.map(pc=>simpleName(pc, ch.rootLbl)).join(' · ');
+  const chips = scalesOverChord(ch.rootPc, ch.pcs)
+    .map(i=>`<button class="btn dia" data-scale="${i}">${sName(SCALES[i])}</button>`).join('') || `<span class="muted">—</span>`;
+  body.innerHTML =
+    `<div class="sug-chord">${ch.rootLbl}${ch.short}</div>`+
+    `<div class="sug-row"><span class="ctrl-label">${t('suggest_arp')}</span> ${arp}</div>`+
+    `<div class="sug-row"><span class="ctrl-label">${t('suggest_scales')}</span></div>`+
+    `<div class="group sug-scales">${chips}</div>`;
 }
 
 /* ---- Open / barre chord diagrams (standard-tuning reference) ----
@@ -1999,6 +2151,7 @@ function renderTriads(){
       return makeDot(triFuncClass(o,iv), triLabel(o,iv,pc), OPEN_MIDI[si]+f);
     }, triadLegendHTML(), t('tr_hint'));
   }
+  renderSuggester();
 }
 
 /* ===================== SCALES ===================== */
@@ -2021,6 +2174,17 @@ function sName(s){ return lang==='en'?s.en:s.uk; }
 /* mode family for the circle projection (1a): a major third (interval 4) puts a
    scale on the circle's major ring, a minor third (3) on the minor ring. */
 function isMajorFamily(i){ return SCALES[i].iv.includes(4); }
+/* scale-over-chord (1c): scale indices (rooted at rootPc) that contain every
+   chord tone — i.e. scales you can play over that chord. */
+function scalesOverChord(rootPc, chordPcs){
+  const need=chordPcs.map(pc=>mod(pc,12));
+  const out=[];
+  SCALES.forEach((s,i)=>{
+    const sp=new Set(s.iv.map(iv=>mod(rootPc+iv,12)));
+    if(need.every(pc=>sp.has(pc))) out.push(i);
+  });
+  return out;
+}
 const MODE_OFF={1:2,2:4,3:5,4:7,5:9,6:11};
 const BOX_OFFSETS=[0,3,5,7,10];
 let scIdx=5, scPos=0, scOverlay=null;
@@ -2178,11 +2342,6 @@ function renderCofInfo(){
     `<div class="sub" style="margin-top:9px;line-height:2">${diaHtml}</div>`;
 }
 
-/* ===================== SIDEBAR ===================== */
-const MAJ_TABLE=[['C','C','E','G'],['D','D','F#','A'],['E','E','G#','B'],['F','F','A','C'],['G','G','B','D'],['A','A','C#','E'],['B','B','D#','F#']];
-const MIN_TABLE=[['Cm','C','E♭','G'],['Dm','D','F','A'],['Em','E','G','B'],['Fm','F','A♭','C'],['Gm','G','B♭','D'],['Am','A','C','E'],['Bm','B','D','F#']];
-function fillMini(tbody,rows,thirdCls){ tbody.innerHTML=rows.map(r=>`<tr><td class="chord">${r[0]}</td><td><span class="pill p-root">${r[1]}</span></td><td><span class="pill ${thirdCls}">${r[2]}</span></td><td><span class="pill p-fifth">${r[3]}</span></td></tr>`).join(''); }
-
 /* ===================== APPLY LANGUAGE ===================== */
 function applyLang(){
   document.documentElement.lang = lang;
@@ -2294,9 +2453,9 @@ function loadState(){ try{
 /* ---- shared root picker, display mode, sub-view toggle, global play ---- */
 /* Each render fn paints panel content for its mode and the ONE shared board only
    when its mode is active (isBoardMode), so a cross-view pass paints the board once. */
-function renderContextViews(){ renderChords(); renderTriads(); renderScales(); renderNotes(); }
+function renderContextViews(){ renderChords(); renderTriads(); renderIdentify(); renderScales(); renderNotes(); }
 function renderActiveContext(){
-  if(currentTab==='harmony'){ hView==='triads'?renderTriads():renderChords(); }
+  if(currentTab==='harmony'){ (hView==='identify'?renderIdentify:hView==='triads'?renderTriads:renderChords)(); }
   else if(currentTab==='scales'){ scView==='notes'?renderNotes():renderScales(); }
 }
 
@@ -2331,14 +2490,17 @@ let hView='chords';
 function setHView(v){ hView=v;
   document.getElementById('sub-chords').hidden = v!=='chords';
   document.getElementById('sub-triads').hidden = v!=='triads';
-  ['chords','triads'].forEach(k=>{ const b=document.getElementById('hv-'+k); b.classList.toggle('active', k===v); b.setAttribute('aria-pressed', k===v?'true':'false'); });
-  document.getElementById('harmony-h').textContent = t(v==='triads'?'tr_h':'ch_h');
-  document.getElementById('harmony-p').textContent = t(v==='triads'?'tr_p':'ch_p');
-  v==='triads'?renderTriads():renderChords();
+  document.getElementById('sub-identify').hidden = v!=='identify';
+  ['chords','triads','identify'].forEach(k=>{ const b=document.getElementById('hv-'+k); b.classList.toggle('active', k===v); b.setAttribute('aria-pressed', k===v?'true':'false'); });
+  const head = v==='identify'?'id':(v==='triads'?'tr':'ch');
+  document.getElementById('harmony-h').textContent = t(head+'_h');
+  document.getElementById('harmony-p').textContent = t(head+'_p');
+  (v==='identify'?renderIdentify:v==='triads'?renderTriads:renderChords)();
   updateGlobalPlay(); saveState();
 }
 document.getElementById('hv-chords').onclick=()=>setHView('chords');
 document.getElementById('hv-triads').onclick=()=>setHView('triads');
+document.getElementById('hv-identify').onclick=()=>setHView('identify');
 
 /* Scales-tab sub-view (1b): Scale | Notes — mirrors the Harmony Chords/Triads
    toggle. The folded-in Notes mode reuses the shared board + the context root. */
@@ -2370,7 +2532,8 @@ function globalPlay(){
 function updateGlobalPlay(){
   const b=document.getElementById('g-play');
   if(b){
-    b.hidden = (currentTab==='scales' && scView==='notes');   // nothing to "listen" to in the notes view
+    // nothing to "listen" to in the notes view or the identify picker
+    b.hidden = (currentTab==='scales' && scView==='notes') || (currentTab==='harmony' && hView==='identify');
     const cadence = currentTab==='circle';
     b.innerHTML='&#9654; '+t(cadence?'b_cadence':'b_listen');
     const tip=t(cadence?'b_cadence':'b_listen_tip');
@@ -2381,7 +2544,7 @@ function updateGlobalPlay(){
     // The single loop now applies to both harmony views: it loops the selected
     // chord voicing (chord-tones view) or the shown triad (triads view) as a
     // backing. It persists across tabs; the transport chip is the Stop.
-    lp.hidden = !(currentTab==='harmony');
+    lp.hidden = !(currentTab==='harmony' && hView!=='identify');
     lp.classList.toggle('active', !!loopClock);
     lp.setAttribute('aria-pressed', loopClock?'true':'false');
     lp.innerHTML=(loopClock?'&#9632; ':'&#8635; ')+t('b_loop');
@@ -2408,6 +2571,26 @@ document.getElementById('seq-strip').addEventListener('click',e=>{
 renderSeq(); setSeqTransport();
 // one shared board, wired once (1b): a dot click sounds that string, Enter/Space plays focused.
 wirePlay(document.getElementById('board'));
+/* Identify (1c): in identify mode a board tap toggles that note into the picked
+   set instead of just sounding it. Capture phase + stopPropagation so wirePlay's
+   pluck doesn't also fire; a freshly-picked note still sounds, as feedback. */
+document.getElementById('board').addEventListener('click', e=>{
+  if(!isBoardMode('identify')) return;
+  const d=e.target.closest('.dot'); if(!d || d.dataset.midi==null) return;
+  e.stopPropagation();
+  const midi=parseInt(d.dataset.midi), i=idSel.indexOf(midi);
+  if(i>=0) idSel.splice(i,1); else { idSel.push(midi); pluck(midi); }
+  renderIdentify();
+}, true);
+document.getElementById('id-clear').onclick=()=>{ idSel=[]; renderIdentify(); };
+/* the suggester's scale chips are the reference → practice seam (spine #2):
+   jump to that scale, on the chord's root, in the Scales tab. */
+document.getElementById('suggest-body').addEventListener('click', e=>{
+  const b=e.target.closest('[data-scale]'); if(!b) return;
+  const ch=currentHarmonyChord(); if(!ch) return;
+  setKey(ch.rootPc, ROOTS[ch.rootPc], +b.dataset.scale);
+  setScView('scale'); selectTab('scales');
+});
 /* chord cards: a dot click sounds that string; clicking elsewhere on a card
    selects that voicing (so Listen/Loop use it). Keyboard note-play stays on the
    fretboard, which is the fully focusable surface. */
@@ -2460,8 +2643,6 @@ document.getElementById('sub-notes').addEventListener('click',e=>{
   renderNotes(); saveState();
 });
 
-fillMini(document.getElementById('mini-major'),MAJ_TABLE,'p-third');
-fillMini(document.getElementById('mini-minor'),MIN_TABLE,'p-mthird');
 document.getElementById('aside-toggle').onclick=function(){ const b=document.getElementById('aside-body'); const hidden=b.style.display==='none'; b.style.display=hidden?'block':'none'; this.textContent=hidden?'−':'+'; this.setAttribute('aria-expanded', hidden); };
 
 function selectTab(name){
@@ -2564,6 +2745,8 @@ if (typeof window!=='undefined' && window.__GS_ALLOW_TEST__) {
     APP_VERSION, I18N, QUALITIES, TRIADS, SCALES, COF, FRET_RANGES, SEQ_PRESETS,
     fifthInterval, spellNote, rootParts, simpleName,
     diatonicTriads, isMajorFamily, ctxCofSel, ctxCofMinor, setKey,
+    identifyChord, nearChords, scalesOverChord, currentHarmonyChord, renderIdentify,
+    setIdSel:(arr)=>{ idSel=arr.slice(); },
     chordVoicings, voicingMidi, currentChordVoicing, currentTriadVoicing, STD_LOW6_MIDI, TRI_TO_QUAL,
     cellW, boardWidth, leftFixed, FRET_LO, FRET_HI,
     schedAdvance, clocks, beat,

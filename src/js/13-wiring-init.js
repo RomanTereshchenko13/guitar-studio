@@ -2,9 +2,9 @@
 /* ---- shared root picker, display mode, sub-view toggle, global play ---- */
 /* Each render fn paints panel content for its mode and the ONE shared board only
    when its mode is active (isBoardMode), so a cross-view pass paints the board once. */
-function renderContextViews(){ renderChords(); renderTriads(); renderScales(); renderNotes(); }
+function renderContextViews(){ renderChords(); renderTriads(); renderIdentify(); renderScales(); renderNotes(); }
 function renderActiveContext(){
-  if(currentTab==='harmony'){ hView==='triads'?renderTriads():renderChords(); }
+  if(currentTab==='harmony'){ (hView==='identify'?renderIdentify:hView==='triads'?renderTriads:renderChords)(); }
   else if(currentTab==='scales'){ scView==='notes'?renderNotes():renderScales(); }
 }
 
@@ -39,14 +39,17 @@ let hView='chords';
 function setHView(v){ hView=v;
   document.getElementById('sub-chords').hidden = v!=='chords';
   document.getElementById('sub-triads').hidden = v!=='triads';
-  ['chords','triads'].forEach(k=>{ const b=document.getElementById('hv-'+k); b.classList.toggle('active', k===v); b.setAttribute('aria-pressed', k===v?'true':'false'); });
-  document.getElementById('harmony-h').textContent = t(v==='triads'?'tr_h':'ch_h');
-  document.getElementById('harmony-p').textContent = t(v==='triads'?'tr_p':'ch_p');
-  v==='triads'?renderTriads():renderChords();
+  document.getElementById('sub-identify').hidden = v!=='identify';
+  ['chords','triads','identify'].forEach(k=>{ const b=document.getElementById('hv-'+k); b.classList.toggle('active', k===v); b.setAttribute('aria-pressed', k===v?'true':'false'); });
+  const head = v==='identify'?'id':(v==='triads'?'tr':'ch');
+  document.getElementById('harmony-h').textContent = t(head+'_h');
+  document.getElementById('harmony-p').textContent = t(head+'_p');
+  (v==='identify'?renderIdentify:v==='triads'?renderTriads:renderChords)();
   updateGlobalPlay(); saveState();
 }
 document.getElementById('hv-chords').onclick=()=>setHView('chords');
 document.getElementById('hv-triads').onclick=()=>setHView('triads');
+document.getElementById('hv-identify').onclick=()=>setHView('identify');
 
 /* Scales-tab sub-view (1b): Scale | Notes — mirrors the Harmony Chords/Triads
    toggle. The folded-in Notes mode reuses the shared board + the context root. */
@@ -78,7 +81,8 @@ function globalPlay(){
 function updateGlobalPlay(){
   const b=document.getElementById('g-play');
   if(b){
-    b.hidden = (currentTab==='scales' && scView==='notes');   // nothing to "listen" to in the notes view
+    // nothing to "listen" to in the notes view or the identify picker
+    b.hidden = (currentTab==='scales' && scView==='notes') || (currentTab==='harmony' && hView==='identify');
     const cadence = currentTab==='circle';
     b.innerHTML='&#9654; '+t(cadence?'b_cadence':'b_listen');
     const tip=t(cadence?'b_cadence':'b_listen_tip');
@@ -89,7 +93,7 @@ function updateGlobalPlay(){
     // The single loop now applies to both harmony views: it loops the selected
     // chord voicing (chord-tones view) or the shown triad (triads view) as a
     // backing. It persists across tabs; the transport chip is the Stop.
-    lp.hidden = !(currentTab==='harmony');
+    lp.hidden = !(currentTab==='harmony' && hView!=='identify');
     lp.classList.toggle('active', !!loopClock);
     lp.setAttribute('aria-pressed', loopClock?'true':'false');
     lp.innerHTML=(loopClock?'&#9632; ':'&#8635; ')+t('b_loop');
@@ -116,6 +120,26 @@ document.getElementById('seq-strip').addEventListener('click',e=>{
 renderSeq(); setSeqTransport();
 // one shared board, wired once (1b): a dot click sounds that string, Enter/Space plays focused.
 wirePlay(document.getElementById('board'));
+/* Identify (1c): in identify mode a board tap toggles that note into the picked
+   set instead of just sounding it. Capture phase + stopPropagation so wirePlay's
+   pluck doesn't also fire; a freshly-picked note still sounds, as feedback. */
+document.getElementById('board').addEventListener('click', e=>{
+  if(!isBoardMode('identify')) return;
+  const d=e.target.closest('.dot'); if(!d || d.dataset.midi==null) return;
+  e.stopPropagation();
+  const midi=parseInt(d.dataset.midi), i=idSel.indexOf(midi);
+  if(i>=0) idSel.splice(i,1); else { idSel.push(midi); pluck(midi); }
+  renderIdentify();
+}, true);
+document.getElementById('id-clear').onclick=()=>{ idSel=[]; renderIdentify(); };
+/* the suggester's scale chips are the reference → practice seam (spine #2):
+   jump to that scale, on the chord's root, in the Scales tab. */
+document.getElementById('suggest-body').addEventListener('click', e=>{
+  const b=e.target.closest('[data-scale]'); if(!b) return;
+  const ch=currentHarmonyChord(); if(!ch) return;
+  setKey(ch.rootPc, ROOTS[ch.rootPc], +b.dataset.scale);
+  setScView('scale'); selectTab('scales');
+});
 /* chord cards: a dot click sounds that string; clicking elsewhere on a card
    selects that voicing (so Listen/Loop use it). Keyboard note-play stays on the
    fretboard, which is the fully focusable surface. */
@@ -168,8 +192,6 @@ document.getElementById('sub-notes').addEventListener('click',e=>{
   renderNotes(); saveState();
 });
 
-fillMini(document.getElementById('mini-major'),MAJ_TABLE,'p-third');
-fillMini(document.getElementById('mini-minor'),MIN_TABLE,'p-mthird');
 document.getElementById('aside-toggle').onclick=function(){ const b=document.getElementById('aside-body'); const hidden=b.style.display==='none'; b.style.display=hidden?'block':'none'; this.textContent=hidden?'−':'+'; this.setAttribute('aria-expanded', hidden); };
 
 function selectTab(name){
@@ -272,6 +294,8 @@ if (typeof window!=='undefined' && window.__GS_ALLOW_TEST__) {
     APP_VERSION, I18N, QUALITIES, TRIADS, SCALES, COF, FRET_RANGES, SEQ_PRESETS,
     fifthInterval, spellNote, rootParts, simpleName,
     diatonicTriads, isMajorFamily, ctxCofSel, ctxCofMinor, setKey,
+    identifyChord, nearChords, scalesOverChord, currentHarmonyChord, renderIdentify,
+    setIdSel:(arr)=>{ idSel=arr.slice(); },
     chordVoicings, voicingMidi, currentChordVoicing, currentTriadVoicing, STD_LOW6_MIDI, TRI_TO_QUAL,
     cellW, boardWidth, leftFixed, FRET_LO, FRET_HI,
     schedAdvance, clocks, beat,

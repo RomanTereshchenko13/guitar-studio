@@ -154,6 +154,12 @@
   .p-mthird { background: var(--seventh); color: #2a0a16; }
   .aside-leg { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
   .aside-leg .leg { font-size: 11px; }
+  /* "Play over this" suggester (1c) */
+  .sug-chord { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  .sug-row { font-size: 13px; color: var(--text); margin-bottom: 8px; line-height: 1.5; }
+  .sug-row .ctrl-label { display: block; margin-bottom: 4px; }
+  .sug-scales { gap: 6px; }
+  .sug-scales .btn { font-size: 12px; padding: 4px 9px; }
   .cof-layout { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
   .cof-wrap { flex: 0 0 auto; }
   .cof-side { flex: 1; min-width: 250px; }

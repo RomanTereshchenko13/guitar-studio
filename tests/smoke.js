@@ -167,7 +167,8 @@ if (T) {
   ok('i18n: no keys only in en', onlyEn.length === 0, onlyEn.join(', '));
   ['b_listen_tip','b_loop_tip','b_loop_stop_tip','audio_off',
    'cd_voicings','cd_eshape','cd_ashape','cd_fret','cd_pick_hint','tr_shapes',
-   'view_scale','view_notes'].forEach(k => {
+   'view_scale','view_notes','view_identify','suggest_title','suggest_scales',
+   'id_near','id_missing','id_extra'].forEach(k => {
     ok('i18n new key present (uk+en): ' + k,
        T.I18N.uk[k] !== undefined && T.I18N.en[k] !== undefined);
   });
@@ -283,6 +284,51 @@ if (T) {
     ok('1a: saved state carries the mode (scIdx)', saved.scIdx === 5);
     ok('1a: derived circle selection is not persisted',
        saved.cofSel === undefined && saved.cofMinor === undefined);
+  })();
+
+  /* ---- 1c: reverse lookup (chord identifier + scale suggester) ---- */
+  (function reverseLookup() {
+    const id = (pcs, bass) => T.identifyChord(pcs, bass).map(c => c.name);
+    // exact pitch-class identification
+    ok('1c: {C,E,G} → C', id([0, 4, 7], 0)[0] === 'C', id([0, 4, 7], 0).join(','));
+    ok('1c: {C,E,G,B} → Cmaj7', id([0, 4, 7, 11], 0)[0] === 'Cmaj7');
+    ok('1c: {C,E♭,G,B♭} → Cm7', id([0, 3, 7, 10], 0)[0] === 'Cm7');
+    ok('1c: fewer than 3 notes → no name', T.identifyChord([0, 4], 0).length === 0);
+    // genuine ambiguity surfaces as multiple names (Am7 = C6)
+    const amb = id([0, 4, 7, 9], 9);            // bass A
+    ok('1c: {A,C,E,G}/A → Am7 ranks first', amb[0] === 'Am7', amb.join(','));
+    ok('1c: same set also nameable as C6', amb.some(n => n.indexOf('C6') === 0), amb.join(','));
+    // a non-root bass reads as a slash chord
+    ok('1c: C major over E bass → C/E', id([0, 4, 7], 4).indexOf('C/E') >= 0, id([0, 4, 7], 4).join(','));
+
+    // closest-match fallback when no quality fits exactly
+    const near = T.nearChords([0, 4, 11], 0);          // C E B — Cmaj7 with the 5th dropped
+    const cm7 = near.find(c => c.name === 'Cmaj7');
+    ok('1c: {C,E,B} reads as Cmaj7 missing the 5th',
+       !!cm7 && cm7.missing.indexOf('5') >= 0, near.map(c => c.name).join(','));
+    const plusOne = T.nearChords([0, 4, 7, 1], 0).find(c => c.name === 'C');  // C major + one extra note
+    ok('1c: an extra note reads as the chord plus an extra', !!plusOne && plusOne.extra.length === 1);
+    ok('1c: no near match for fewer than 3 notes', T.nearChords([0, 4], 0).length === 0);
+
+    // scales that fit a chord
+    const idxByName = {}; T.SCALES.forEach((s, i) => { idxByName[s.en] = i; });
+    const fit = T.scalesOverChord(0, [0, 4, 7, 11]);   // Cmaj7
+    ok('1c: Cmaj7 fits C Ionian', fit.indexOf(idxByName['Major (Ionian)']) >= 0);
+    ok('1c: Cmaj7 fits C Lydian', fit.indexOf(idxByName['Lydian']) >= 0);
+    ok('1c: Cmaj7 does NOT fit C natural minor', fit.indexOf(idxByName['Aeolian (natural minor)']) < 0);
+
+    // identify board mode + the live suggester
+    T.selectTab('harmony'); T.setHView('identify');
+    ok('1c: identify is the active board mode', T.isBoardMode('identify') === true);
+    ok('1c: Listen hidden in identify view', win.document.getElementById('g-play').hidden === true);
+    T.setIdSel([48, 52, 55]); T.renderIdentify();      // C E G
+    ok('1c: identify result names the chord', /C/.test(win.document.getElementById('id-result').textContent));
+    ok('1c: suggester offers scale chips for the chord',
+       win.document.getElementById('suggest-body').querySelectorAll('[data-scale]').length > 0);
+    T.setIdSel([48, 52, 59]); T.renderIdentify();      // C E B — no exact fit → closest match
+    ok('1c: identify shows a closest match when nothing fits exactly',
+       /Cmaj7/.test(win.document.getElementById('id-result').textContent));
+    T.setIdSel([]); T.setHView('chords');
   })();
 
   /* ---- Phase A: equal-temperament tuning target ---- */

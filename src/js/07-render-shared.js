@@ -104,10 +104,11 @@ function wirePlay(boardEl){
    does the actual board + numbers + legend + hint draw. Legends are mode-specific
    text, generated here so the shared legend slot can switch with the mode. */
 function isBoardMode(mode){
-  if(mode==='chords') return currentTab==='harmony' && hView==='chords';
-  if(mode==='triads') return currentTab==='harmony' && hView==='triads';
-  if(mode==='scale')  return currentTab==='scales'  && scView==='scale';
-  if(mode==='notes')  return currentTab==='scales'  && scView==='notes';
+  if(mode==='chords')   return currentTab==='harmony' && hView==='chords';
+  if(mode==='triads')   return currentTab==='harmony' && hView==='triads';
+  if(mode==='identify') return currentTab==='harmony' && hView==='identify';
+  if(mode==='scale')    return currentTab==='scales'  && scView==='scale';
+  if(mode==='notes')    return currentTab==='scales'  && scView==='notes';
   return false;
 }
 function paintBoard(cellFn, legendHTML, hintHTML){
