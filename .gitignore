@@ -5,6 +5,9 @@ tests/node_modules/
 # committed, GitHub Pages-served artifact; dist/ copies are not published)
 dist/
 
+# throwaway screenshots from tools/shoot.js (dev-only visual inspection)
+tools/shots/
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db
