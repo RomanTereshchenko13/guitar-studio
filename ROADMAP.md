@@ -1,312 +1,420 @@
 # Guitar Studio — Roadmap
 
-Sound realism and a practice/training mode, planned as dependency-ordered phases.
-Zero-dependency, single-file *output* remains a hard constraint throughout: every
-item below is achievable with the Web Audio API and vanilla JS, no libraries. As of
-v1.12.x the app is authored as small modules under `src/` and assembled into the shipped
-`index.html` by a pure-string `build.js` (concatenation only — no bundler, no transpile,
-no runtime dependency added). New phases add their code as new `src/js/NN-*.js` modules.
+The next chapter is not "more features." It's turning what we have — a strong **reference**
+app plus a planned set of **drills** — into **one learning system** where a single musical
+context flows from reference into practice and back, the app tracks what you know, and
+practice covers *both* halves of real playing.
 
-_Last updated: 2026-06-16 · current shipping version: v1.14.0_
+**Hard constraint throughout:** zero runtime dependencies, shipped as a single `index.html`.
+Code is authored as small `src/js/NN-*.js` modules and concatenated by a pure-string
+`build.js` (no bundler, no transpile). Every item below is reachable with the Web Audio API
+and vanilla JS. New phases add new `src/` modules; they never add a dependency.
+
+_Last updated: 2026-06-16 · shipping: v1.14.0_
+
+---
+
+## Where we are
+
+The reference app and audio engine are mature. Shipped so far (full detail in `CHANGELOG.md`):
+
+- **Tone** — a guitar-like Karplus-Strong voice (body resonance, pick position, velocity,
+  fractional tuning, per-string timbre). _(v1.8)_
+- **Audio engine** — lookahead "two-clocks" scheduler (no more timer drift), named buses,
+  synth cue sounds. The gate for anything timed. _(v1.9)_
+- **Backing band** — synth bass, humanized comping, groove click + snare backbeat. _(v1.10, v1.14)_
+- **Release hardening** — responsive/mobile fretboard, committed jsdom test harness + CI,
+  graceful audio-unavailable degradation, one documented state catalogue. _(v1.11)_
+- **Voicing parity** — canonical voicing set per chord (open + E/A barre), selectable cards,
+  triad inversions, context-aware Listen/Loop. _(v1.12)_
+
+So the foundation is done. What's missing is everything that makes it a *system*.
+
+> **Naming note.** The old `A–H` / `C+` / `R` phase labels grew inconsistent and are retired.
+> Shipped work now lives in "Where we are" above; forward work uses the numbered phases below.
+
+---
+
+## The thesis: one system, not two halves
+
+Today the app is a **reference encyclopedia** (chords, scales, triads, circle of fifths, a
+backing band) bolted next to a **planned drill set**. Two good halves that don't know about
+each other. Worse, even *within* the reference the tabs are islands — each is its own mini-app
+with its own board, and the diatonic-chord logic is implemented twice.
+
+The whole roadmap below exists to fix that. A real learning system has a spine and a shape:
+
+```
+   EAR        pitch recognition        ‖   rhythm dictation
+ ──────────────────────────────────────────────────────────────
+ FOUND-    timing / subdivision  ·  fretboard knowledge  ·  mic input
+ ATIONS
+ ──────────────────────────────────────────────────────────────
+   PLAY     LEAD  — play OVER the changes  ‖  RHYTHM — play THE changes
+            chord tones → arpeggios        ‖  changes → strum patterns
+            → guided improvisation         ‖  → comping → groove
+ ──────────────────────────────────────────────────────────────
+  SPINE     one musical context   ·   reference ↔ practice seam   ·   learner model
+```
+
+Most guitarists are rhythm players most of the time, so the **Rhythm** pillar is not a
+complement to soloing — it's the broader-audience half, and we already own the engine for it
+(the backing band). The two pillars sit on shared foundations, and everything rests on the
+spine.
+
+---
+
+## The spine (what makes it a system)
+
+Three cross-cutting pieces that every phase hangs off. Build them once; reuse them everywhere.
+
+1. **One musical context.** A first-class key/context (root + mode) that *every* view reflects.
+   Pick "A minor" once and notes, scales, harmony, circle, the sequencer, and the drills all
+   follow. Replaces the current shared-root-only state; lives in the documented state
+   catalogue and rides `saveState()` / `loadState()`.
+2. **The reference ↔ practice seam.** Relationships are *navigable*, bidirectionally, on the
+   same content: from any reference view → "drill / ear-train / jam this"; from any drill →
+   "show it on the neck / explain why." This is the literal difference between two halves and
+   one system.
+3. **The learner model.** The app knows what you know. Per-item history, accuracy, and a
+   spaced-repetition queue that resurfaces what you miss — the engine that decides *what to
+   practice next* and powers streaks, progress, and (later) the guided path. Starts simple,
+   grows as phases land.
 
 ---
 
 ## Guiding principles
 
-- **Stay zero-dependency; ship single-file.** No DSP rewrite, no sample libraries, no
-  runtime deps. Body filters, comb excitation, allpass tuning, scheduler, onset
-  detection — all small additions, not a new engine. Code lives in `src/` modules and
-  is concatenated into one `index.html` by `build.js`; the build adds no dependency.
-- **Validate musically, not just syntactically.** Each phase ships with checks in the
-  jsdom harness (spectral/tuning checks for tone, grid-timing checks for the scheduler,
-  drill-logic and scoring-window checks for practice).
-- **Each phase should stand on its own** where possible, so partial progress is shippable.
-- **Honest framing of feedback-free features.** A practice feature that can't hear the
-  player is a coach/guide, not scored training — label it as such.
+- **Stay zero-dependency; ship single-file.** Small additions, not a new engine.
+- **One context, one source of truth.** No more parallel mini-apps or duplicated music theory.
+
+### Dependency policy
+
+The guarantee worth defending is *behavioural*, not purist: **one file, fetches nothing, no
+runtime/supply-chain dependency, works offline.** Third-party code is allowed only when it is
+(a) **permissively licensed** (MIT / BSD / 0BSD / Apache-2.0 — **never copyleft**, since GPL
+would relicense the whole single-file output), (b) **vendored** — its source copied into `src/`,
+audited, and concatenated by `build.js` so nothing is fetched at runtime — and (c) solving a
+genuinely hard, already-solved problem we shouldn't re-derive. Under that bar, the sanctioned
+additions are:
+
+- **Pitch detection — `pitchy` (0BSD), vendored.** The one code dependency, for Phase 8 / F2;
+  re-deriving YIN/McLeod badly is the moonshot's main failure mode. _(Rejected: `pitchfinder` —
+  GPL-3.0, would relicense the app.)_
+- **Free platform API (no dependency):** `AudioWorklet` (off-main-thread synth + mic analysis).
+- **Small inlined sound assets (CC0 / public-domain only):** a few drum one-shots and a guitar-
+  body / room **convolution impulse response**. Assets, not libraries; base64-inlined, license
+  verified at selection time — they keep the single-file guarantee.
+
+Everything else stays hand-rolled (theory, scheduler, synth, UI, onset detection, PWA, share links).
+- **Validate musically, not just syntactically.** Each phase ships harness checks (spectral/
+  tuning for tone, grid-timing for the scheduler, drill-logic + scoring-window for practice).
+- **Each phase stands on its own** where possible, so partial progress is shippable.
+- **Honest framing of feedback-free features.** A drill that can't *hear* the player is a
+  coach, not scored training — label it as such, and never ship a scored tier on tap input
+  (touch latency corrupts timing, especially on mobile).
+- **A coach tier still has to feel rewarding.** "Timed but not scored" is the honest label, but
+  it's also a retention risk: the screen-only tiers (note-naming, one-minute changes, the visual
+  metronome) have to earn their keep on streaks, pace, and visible progress *without* a score, or
+  they won't get used. Make "does this feel good unscored?" an explicit acceptance check per
+  drill — it's the real product risk for Phases 3, 5, and 7 before the mic lands, not an
+  afterthought.
 
 ---
 
-## Phase A — Tone realism  (standalone · low risk) → ✅ shipped v1.8.0
+> **Reading the phase tags.** Each phase carries a rough **Size** (S/M/L/XL — effort, not
+> calendar) and **Risk** (low/med/high — chance it needs rework or fights the platform).
+> Deliberately coarse: enough to show that Phase 4 and Phase 8 are not the same bet, not a
+> commitment to estimates.
 
-Make the Karplus-Strong voice sound more like a guitar. The current synth is already
-strong (double-softened excitation, pitch-dependent decay, averaging-lowpass loop
-damping, attack-brightness rolloff, per-note detune). These additions fill what it does
-*not* model yet. Ordered by perceptual payoff per unit of code:
+## Phase 1 — Unify  (spine + reference · foundational)
 
-1. **Body resonance (biggest win).** The master bus reverb is a *room*, not a *body*.
-   Add 2–3 peaking biquads on the bus tuned to a guitar's fixed body modes
-   (~100 Hz air/Helmholtz, ~200 Hz top plate, ~400–500 Hz cluster). This is what makes
-   an isolated note read as "guitar body" instead of "filtered pluck."
-2. **Pick position.** Comb the excitation burst in `ksBuffer` (mix it with a copy delayed
-   by ~1/5–1/8 of the period) to null harmonics the way a real pluck point does —
-   round near the neck, nasal near the bridge.
-3. **Velocity → brightness + level.** Add a velocity argument to `pluck` that scales both
-   excitation amplitude and the opening lowpass cutoff. Harder = louder *and* brighter.
-   Also the main cure for robotic, fatiguing loops.
-4. **Fractional tuning + light stiffness.** `N = Math.round(rate/freq)` quantizes the
-   delay length, so upper-register notes drift out of tune. A single allpass in the loop
-   gives fractional delay (correct pitch) and, detuned slightly, the stretched overtones
-   that wound strings actually have. Fixes a correctness bug *and* adds realism.
-5. **Per-string timbre.** Pass the string index (already known at call sites) into `pluck`
-   and bias brightness/decay/stiffness — wound bass strings darker/longer/more inharmonic
-   than plain trebles. Makes chords sound voiced rather than stacked.
+**Size:** L — split into 1a–1d below, each shippable · **Risk:** med (the one-board refactor)
 
-_Lower priority polish:_ two-stage decay (fast prompt → slow sustain), stereo width /
-subtle per-string chorus, sympathetic resonance.
+The keystone. Build the spine at the reference level and tidy the shell, *before* stacking
+practice on top — the backbone here is exactly what the later phases reuse. Phase 1 is the one
+phase that resists "stands on its own," so it ships as four ordered, independently-releasable
+steps: foundational logic first (low risk, fully assertable), the risky refactor isolated in the
+middle, net-new features, then a scoped feel pass last.
 
-**Validation:** FFT peak vs target frequency (tuning), spectral centroid shift with
-velocity, no regression in existing playback.
+**1a — Spine + dedup (foundational · low risk).** Pure logic, minimal UI churn; ship this alone.
+- **One musical context** (spine #1) wired through every existing view. Replaces the current
+  shared-root-only state (today just `gRoot`/`gRootLbl` plus per-tab selections); lives in the
+  documented state catalogue and rides `saveState()` / `loadState()` with a bounds-checked
+  restore like everything else.
+- **One diatonic source.** Collapse the duplicated diatonic logic — `diatonic()` (scales) and
+  `buildDia()` (circle), which already disagree on edge cases (the `'?'`/`aug` fallbacks) — into
+  a single helper both call. Removes a real correctness-drift risk; assert parity against *both*
+  old outputs before deleting the duplicate.
 
----
+**1b — One board, modes (the risky refactor · isolated).** The highest-risk near-term change, so
+it lands on its own behind the green harness and ships by itself.
+- **One board, not four.** Collapse the four separate DOM boards (`ch`/`tr`/`sc`/`nt`) into a
+  single board that switches what it highlights — less code, consistent behaviour, the home for
+  the context. Keep the responsive + a11y assertions green throughout.
+- **Consolidate control strips.** Group the many separate button rows (quality / set / inversion
+  / position / root) into one compact control area.
+- **Fewer tabs.** Fold the **Notes on fretboard** tab into a "Notes" *mode* on the unified board
+  (4 tabs → 3). Its one unique function — highlight every instance of a note — is what the
+  Phase 3 note-finder does, interactively and better; it doesn't need its own tab.
 
-## Phase B — Audio engine foundation  (the gate for everything timed) → ✅ shipped v1.9.0
+**1c — Reverse lookup (net-new value).** The questions players actually arrive with, currently
+impossible — and the biggest usefulness gain per unit of new code:
+- a **chord identifier** (frets/notes → name), and
+- a **scale/arpeggio suggester** (chord or progression → what to play over it).
 
-Finding: individual notes are sample-accurate (`pluck` schedules on `ctx.currentTime`),
-but the rhythmic grid — metronome, loop, sequencer — runs on `setInterval`/`setTimeout`
-and drifts (worse on mobile and in background tabs). The dot-lighting sync
-(`flashAt`/`pulseAt`) is also `setTimeout`-based.
+**1d — Feel pass (the polish bar, scoped).** Hold the "every phase ships feel" bar here rather
+than deferring all of it to Phase 9 — and ride 1b's board rebuild while the board is already
+open. Pure CSS / Web Animations, transform/opacity only, gated on `prefers-reduced-motion` (the
+global reset already neutralizes CSS animation; any JS-driven motion checks it explicitly), and
+the dot/cell-count harness assertions stay green throughout. The app already lights played notes
+off the scheduler's RAF visual queue and fades panels on tab-switch; this adds the cheap wins
+that build on that, since an audio/timing app's animation should make *sound and rhythm visible*:
+- **Beat pulse** — a subtle downbeat pulse while the loop/backing band plays, reusing the
+  existing scheduler + visual queue, so rhythm is *seen*, not just heard (pitch already is).
+- **Pluck ripple** — a one-shot expanding halo from a dot on pluck; slots into the existing
+  `.playing` toggle, reads as sound emanating, satisfying on touch.
+- **Board-change stagger** — a brief (~150 ms) staggered fade/scale-in when the context, chord,
+  or scale changes, so a re-render reads as a transition instead of a hard cut.
+- **Circle relationship motion** — animate the tonic→subdominant→dominant sweep / connecting arc
+  on key selection, turning a static recolor into a visible harmonic relationship.
 
-- **Lookahead scheduler.** Replace the timer-driven metronome/loop/sequencer with the
-  "two clocks" pattern: a ~25 ms `setInterval` that *queues* audio events slightly ahead
-  using `ctx.currentTime`. Move dot-lighting onto the same scheduled events so visuals
-  stop drifting too. Fixes what already ships and is the prerequisite for any scored or
-  play-along drill.
-- **Named buses.** Split `master` into `backing` / `lead-target` / `cue`, each with its
-  own gain, so later features can balance and duck.
-- **Cue sounds.** Short synthesized correct / wrong / count-in cues on the cue bus.
+Broader feel — onboarding, empty/error states, drill responsiveness — stays Phase 9's; 1d is
+just the reference-level polish that belongs with the views being built here.
 
-**Validation:** scheduled event times vs the intended grid; no regression in metronome,
-loop, or sequencer playback.
-
----
-
-## Phase C — Backing realism  (builds on B) → ✅ shipped v1.10.0
-
-- Synthesized **bass** (root/fifth on the downbeats) under the progression.
-- **Humanization:** velocity + micro-timing variation on the comping.
-- Optional groove click (filtered-noise hat/kick, snare backbeat on 2 & 4 added v1.14.0).
-
-Turns the existing sequencer into a real jam-along bed for improv practice.
-
-_v1.14.0 follow-up: snare backbeat (2 & 4) added to the groove; one-shot Listen previews
-decoupled from the practice tempo (Loop / progression Play still follow it)._
-
----
-
-## Phase C+ — Release hardening  (gate before Phase D) → ✅ shipped v1.11.0
-
-Not new capability — the readiness pass that makes the app safe to publish and keeps the
-codebase from sprawling once the Practice phases start adding their own state. Three
-workstreams, in priority order:
-
-1. **Responsive fretboard (the headline · biggest reach win).** ✅ Done. Root cause was a
-   hard `min-width: 1150px` on `.board`. Fixed by deriving the fret-cell width from the
-   width actually available (with a 34 px readable floor), so a windowed range (≤5 frets)
-   fits a phone with no horizontal scroll; only the wide "All frets" view falls below the
-   floor and keeps the `.scroll` fallback. The board re-fits on rotation/resize. The
-   separate fret-0 / open-string column and the playback-dot alignment both survive the
-   reflow (asserted by the harness at 360 / 390 / 414 px).
-2. **Commit the test harness.** ✅ Done. The multi-stage jsdom suite now lives in `tests/`
-   with an `npm test` script and a dev-only `jsdom` devDependency (the app stays
-   zero-dependency at runtime). Added the checks the later phases assume: scheduler
-   grid-timing (Phase B), backing bass-note correctness incl. ♭5/♯5 (Phase C), and an
-   equal-temperament tuning-target check (Phase A — a true spectral/FFT check needs a real
-   AudioContext, noted as out of scope for jsdom). A GitHub Action runs the gate on push.
-3. **State + error-handling guardrail.** ✅ Done. The silent `catch(e){}` swallows now log a
-   dev `console.warn`, and a browser without `AudioContext` degrades gracefully — playback
-   controls are disabled with a hint instead of being dead buttons. The loose musical-state
-   globals are now documented as one catalogue (the sanctioned "clear, documented grouping"
-   rather than a risky rename), so the Practice / ear / rhythm phases extend it through
-   `saveState()` / `loadState()` instead of multiplying top-level globals.
-
-_Also shipped in v1.11.0 (not originally a C+ item): playback-control clarity — the per-chord
-**Listen** and **Loop** were consolidated into the timing bar as one obvious pair (hear once
-vs keep going as a backing), with Loop shown only where it applies; the progression Play/Cycle
-stays with its strip._
-
-**Validation:** headless render at 360 / 390 / 414 px asserts no horizontal overflow in
-windowed fret ranges, with intact open-string column + dot alignment; `npm test` green as
-the release gate; audio-unavailable path degrades without throwing.
+**Validation:** the single diatonic helper reproduces the old scales + circle output (assert
+parity before deleting the duplicate); context round-trips through localStorage; the chord
+identifier names known shapes; the one-board refactor keeps the responsive + a11y assertions
+green; the feel pass leaves those assertions green and is fully neutralized under reduced-motion.
 
 ---
 
-## v1.12.0 — Voicing parity polish  (pre-D consistency pass) → ✅ shipped v1.12.0
+## Phase 2 — Complete the reference  (content · trickles alongside)
 
-A focused cleanup before Phase D, closing the chord/triad anatomy gap surfaced in review.
-The chord diagram now shows the canonical voicing set per chord — open (where one exists)
-plus the E-shape (root on string 6) and A-shape (root on string 5) barre forms, deduped by
-resolved fret array. Cards are selectable: the single context-aware Listen / Loop play the
-selected voicing in its real register (so an open chord and its barre form actually sound
-different), and card dots are live (click a string) and coloured by chord function. Triads
-gained the matching anatomy — a shape card per inversion (normalized to a fully-fretted
-movable block), Listen plays the displayed inversion / string set, and **Loop is now shown
-in the triads view too**, looping the shown triad as a backing with the bass following its
-true fifth (♭5 dim / ♯5 aug). Strums sweep low→high instead of stacking. Extended jazz
-chords keep their single computed voicing — there is no canonical CAGED set for a 13.
+**Size:** M · **Risk:** low — reuses the existing triad/board rendering.
 
-**Validation:** smoke suite 193/193 (added voicing-correctness + triad-loop coverage; flipped
-the old "Loop hidden on triads" assertion); an independent exhaustive check confirms across
-all 12 roots × every quality (240 combinations) that every sounded note is a real chord tone,
-no two cards share a fret array, and barre roots land on the correct string. Still
-zero-dependency at runtime.
+Fill the genuine content gaps, roughly by payoff:
+
+- **Arpeggios** — the chord↔scale bridge, played melodically up the neck. Reuses triad rendering.
+- **Intervals on the neck** — the visual counterpart to Phase 4's interval ear training.
+- **CAGED** — surfaced as the explicit framework connecting chord shapes, scale positions, and
+  arpeggios (the pieces already exist; the *system* doesn't).
+- **Capo** — core for the rhythm/acoustic audience (we have alternate tunings but not this).
+
+_Lower priority:_ deeper voicings (full-chord inversions / drop-2 / slash chords) for
+intermediate+ players; modes shown as a *family* (relationship to the parent major) instead of
+a flat list of twelve scales.
 
 ---
 
-## Phase D — Practice mode v1  (screen-based, no mic)
+## Phase 3 — Practice core  (where the spine pays off)
 
-New **Practice** tab. Two drills first, both reusing the fretboard rendering + B's
-scheduler + cues:
+**Size:** L · **Risk:** med — the learner model is net-new; pin its schema first (below).
 
-- **Fretboard note-naming.** App asks for a note; you tap every instance; timed and scored.
-  Solid and pure-screen — but note this is table-stakes (several free apps do it well), so
-  it's the floor of the Practice tab, not its draw.
-- **Chord-tone location / recognition.** The progression loops with C's backing; target tones
-  light per chord; you tap inside a scoring window; scored on accuracy and timing. **Framing
-  matters:** without a mic this trains *where the chord tones are* (recognition + location),
-  not soloing — it is a theory/rhythm game, not guitar practice. Don't market it as the latter.
+The **Practice** tab and the machinery every drill shares:
 
-**Decision to resolve before building drill 2 — tap vs. play.** If the user taps the on-screen
-fretboard, drill 2 is a pure-screen recognition game (ships in D). If the intent is for them to
-play their *real* guitar to the lit targets, that needs F1 onset detection and is really a Phase F
-feature — building a latency-corrupted tap version first would be throwaway. Pick one explicitly;
-the recommendation is: ship the recognition framing in D, defer the play-your-guitar version to F.
+- **Practice shell + session scoring**, reusing the unified board + the scheduler + cue sounds.
+- **Learner model v1** (spine #3): per-item history, streaks, spaced-repetition queue. **Pin the
+  persisted shape before building on it** — every later phase hangs off this, so it gets the same
+  bounds-checked `loadState` discipline as the rest of the state. The v1 shape, deliberately
+  minimal and namespaced so any phase can mint items without a schema change:
 
-**Latency calibration belongs here, not in F.** D's scoring window already needs to account for
-`outputLatency`; add a small one-time calibration/offset step in D rather than deferring all
-latency UX to the mic phases.
+  ```
+  learner: {
+    v: 1,
+    items: {                          // key = stable id, e.g. "note:E:str6" / "interval:P5"
+      "<id>": { seen, correct, streak, ease, due }   // counts + SRS (ease factor, next-due epoch)
+    },
+    sessions: [ { t, drill, score } ] // bounded ring buffer, newest last
+  }
+  ```
+  The SRS fields (`ease`/`due`) are an SM-2-lite the queue reads to decide what to resurface. The
+  shape grows by adding item namespaces, never by reshaping; a `v` bump + migration is the only
+  sanctioned way it changes.
+- **Latency calibration.** A one-time offset the scoring window reads — needed now for tap
+  windows, reused later by mic windows. Not a mic-only concern.
+- **First drill: fretboard note-naming.** App asks for a note; you tap every instance; timed
+  and scored. Pure-screen, low-risk — the table-stakes floor of the tab.
+- **The seam** (spine #2) wired in: jump from any reference view into a drill on that content.
 
-**Retention is a first-class workstream, not a footnote.** "Light progress stats" undersells what
-makes a practice app sticky. Track per-drill history, streaks, and a simple spaced-repetition queue
-(resurface the notes/chords you miss most). Persist through the full-state localStorage added in
-v1.7.0 with bounds-checked restores. This is the difference between a one-session toy and a daily tool.
-
-**Note on input:** these are tap-based, so timing scores are subject to touch latency —
-acceptable for note-finding, weaker for strict-timing drills. Strict timing is properly
-solved by Phase F's onset detection.
-
-**Validation:** drill logic, scoring-window correctness, latency-offset applied to the window,
+**Validation:** drill logic, scoring-window correctness with the calibration offset applied,
 persistence of stats + streak/SRS state.
 
 ---
 
-## Phase E — Ear training  (builds on B buses + A tone)
+## Phase 4 — Ear  (foundation · parallel, independent)
 
-Interval and chord-quality recognition: prompt on the lead voice, multiple-choice answer,
-cue feedback. Mostly audio + simple UI. Naturally bilingual (EN/UK) like the rest of the app.
+**Size:** S · **Risk:** low — multiple-choice on the existing audio buses; nothing new underneath.
 
-**Underranked — pull forward.** E has no dependency on D: it's audio-only, low-risk, and high
-value-per-effort. Nothing forces D → E, so E can run in parallel with D (or even precede D's
-second drill). Treat it as cheap independent value rather than a strictly-later phase.
+Recognition by sound — feeds both pillars, depends on nothing but the audio buses:
 
----
+- **Pitch:** interval and chord-quality recognition; prompt on the lead voice, multiple-choice
+  answer, cue feedback.
+- **Rhythm:** rhythmic dictation — hear a figure, clap/tap it back (the time-axis mirror of
+  interval training).
 
-## Phase F — Real instrument input  (ambitious · optional)
-
-Mic input via `AnalyserNode`, split into two capabilities because they differ sharply in
-difficulty:
-
-- **F1 — Onset detection (when).** Energy / spectral-flux attack detection. *Simpler* than
-  pitch tracking, and the enabler for rhythm scoring (Phase G). Can land first.
-- **F2 — Pitch detection (which).** Monophonic autocorrelation / YIN. Turns note-naming and
-  matching drills into "play it on your actual guitar." Scope to single notes first;
-  polyphonic chord recognition is a separate, much harder problem.
-
-Both need latency compensation in the scoring window and a permission + calibration step.
-Highest risk in the roadmap; gate carefully.
-
-**F1 is nearer-term than its position suggests.** Onset detection alone is a comparatively light
-lift, and it is the actual unlock for the app's differentiator: practicing on a *real* guitar is
-something the free-tier competitors don't do well. F1 is what makes both chord-tone targeting
-(Phase D drill 2, play version) and rhythm scoring (Phase G) real instead of tap-latency games.
-Worth promoting ahead of D's timing-dependent work. F2 (pitch) remains the moonshot; F1 does not.
+Bilingual EN/UK like everything else. Low-risk, high value-per-effort; can run in parallel
+with Phases 1–3.
 
 ---
 
-## Phase G — Rhythm & subdivision training  (builds on B; scored tier needs F1)
+## Phase 5 — Rhythm pillar  (play THE changes · broad audience)
 
-**Goal:** subdivision fluency and picking-hand consistency — play steady 8th notes,
-triplets, and 16th notes cleanly in time, ideally over the app's own scale/triad content.
+**Size:** L · **Risk:** med — many coach tiers; scoring waits on F1 (Phase 8).
 
-> **Scope note.** The original idea was "8th notes, triads, 16th notes." Read as a
-> rhythmic ladder, the middle rung is *triplets* (8ths → triplets → 16ths). Triad
-> *arpeggios* are excellent *content* to play in any of those subdivisions, so both
-> readings converge: a subdivision trainer that runs over scales/triads.
+The half of playing nearly everyone does, built mostly by turning the existing backing band
+into something the user plays *along with*. Coach tiers ship with no mic:
 
-Two tiers:
+- **Chord-change fluency** — switch cleanly between shapes in time; score clean changes per
+  cycle (the famous "one-minute changes"). We already have every shape.
+- **Strumming-pattern trainer** — down/up patterns on the beat grid, synced to the scheduler;
+  see and hear the pattern even without scoring.
+- **Comping the progression** — play the right chord at the right time as the progression
+  cycles (the rhythm-side mirror of chord-tone targeting).
+- **Groove / feel** — accents, syncopation, palm-mute dynamics, swing.
 
-- **Coach tier (needs B only).** Pick a subdivision (8th / triplet / 16th) and tempo; the
-  app plays an accented click grid, visually pulses the subdivision, and can walk a chosen
-  scale or triad shape note-by-note across the grid so there's something musical to play.
-  This is a smart metronome + visual coach — useful, but *not scored*.
-- **Scored tier (needs F1 onset detection).** Score timing accuracy and evenness against
-  the grid, flag rushing/dragging, and ladder the tempo (auto-bump BPM when consistently
-  in the pocket). This is where it becomes real training.
+Scored versions need Phase 8's onset detection — and a strum is a *big* transient, so onset
+scoring works **better** here than on single notes. The scored rhythm tier may arrive before
+clean lead scoring.
 
-**Why it makes sense:** subdivision command is a core improviser skill (progressive
-rock / blues / jazz / Govan-style playing), it reuses the existing scale + triad material,
-and onset detection is a lighter lift than full pitch tracking — so the scored version can
-arrive without waiting on polyphonic detection.
+_Sound win (per the dependency policy):_ the groove is currently fully synthesized. A few
+small **CC0 drum one-shots** (kick / snare / hat) and one **guitar-body or room convolution IR**
+(via `ConvolverNode`), base64-inlined, are the cheapest jump in realism here — assets, not
+libraries, so the single-file guarantee holds.
 
-**Honest caveat:** before mic onset detection exists, this is a coaching metronome, not
-feedback-based training. Don't ship the scored tier on tap input — touch latency corrupts
-timing scores, especially on mobile.
+---
+
+## Phase 6 — Lead pillar  (play OVER the changes)
+
+**Size:** L · **Risk:** med-high — real scoring needs F2 (the moonshot).
+
+The improviser's half — turning fretboard knowledge into melody:
+
+- **Chord-tone targeting** — the progression loops with backing; target tones light per chord;
+  you hit them inside a scoring window. *Honest framing:* without a mic this trains *where the
+  chord tones are* (recognition/location), not soloing — a theory/rhythm game, not guitar
+  practice. Don't market it as the latter.
+- **Arpeggios over changes** — play the right arpeggio shape through a progression (reuses
+  Phase 2 content).
+- **Guided improvisation** — phrasing, motif/call-and-response, target-note soloing prompts.
+
+Coach/recognition tiers ship on screen; the real "play your guitar and get scored" version
+needs Phase 8 (F2 pitch).
+
+---
+
+## Phase 7 — Timing & subdivision  (foundation for both pillars)
+
+**Size:** S · **Risk:** low as a coach metronome; med once F1 scores it.
+
+Subdivision command — 8th notes → triplets → 16th notes, cleanly and evenly — over the app's
+own scale/triad content. A core improviser *and* rhythm-guitar skill; serves both pillars.
+
+- **Coach tier (no mic):** pick a subdivision + tempo; accented click grid, visual pulse, and
+  a chosen scale/triad walked note-by-note across the grid so there's something to play. A
+  smart visual metronome — useful, *not scored*.
+- **Scored tier (needs Phase 8 / F1):** score timing accuracy and evenness, flag rushing/
+  dragging, and ladder the tempo (auto-bump BPM when consistently in the pocket).
+
+---
+
+## Phase 8 — Real-instrument input  (mic · the unlock · highest risk)
+
+**Size:** XL · **Risk:** high — DSP + AudioWorklet + latency + permissions; gate carefully.
+
+Mic via `AnalyserNode`, split by difficulty. This is what turns every "coach" tier above into
+*scored training* on a real guitar — the app's true differentiator. Gate carefully.
+
+- **F1 — Onset (when).** Energy / spectral-flux attack detection — **hand-rolled** (the light
+  lift). The enabler for the **Rhythm pillar** and **Timing** scored tiers; can — and should —
+  land first, and onset is *easier* on a strum's big transient than on a single note.
+- **F2 — Pitch (which).** Monophonic YIN/McLeod via **vendored `pitchy` (0BSD)** — the one
+  sanctioned dependency, rather than re-deriving it badly. Unlocks the **Lead pillar** scored
+  tier and real-guitar note-naming. Single notes first; polyphonic chord recognition remains
+  the moonshot.
+
+**Substrate (free platform API, no dependency):** **AudioWorklet** — run the mic analysis (and
+ideally the synth) off the main thread, or scoring latency will be unacceptable. Treat as a
+requirement of this phase, not an option.
+
+Both audio paths need latency compensation (the Phase 3 calibration) and a permission step.
+
+_Deferred / niche:_ Web MIDI could give perfect input for the few players with a MIDI guitar or
+pickup, but that audience is tiny and the mic path already covers everyone — not planned.
+
+---
+
+## Phase 9 — Product layer  (good tool → competitive product · runs throughout)
+
+**Size:** M · **Risk:** low — no DSP; all high-leverage product work.
+
+Finishing the phases above makes an excellent free *toolbox*. These three turn it into a
+product people find, adopt, and recommend — none of them DSP, all high-leverage:
+
+- **Guided path (curriculum).** An opinionated "start here → next" thread that chains existing
+  content, riding the learner model (spine #3). Turns scattered tools into a sense of progress.
+- **Distribution & shareability.** Installable PWA (offline, "add to home screen"); shareable
+  deep links that encode an app state (every share is a discovery channel); a few crawlable
+  landing pages for SEO. Currently absent and cheap.
+- **Polish & feel.** Onboarding/first-run, drill responsiveness and animation, cue sound,
+  empty/error states — the bar "good" actually lives at, owned by no other phase.
+
+**Honest scope.** Even complete, this wins its *niche* — the best free, private, no-login,
+install-free, bilingual tool unifying reference + jamming + practice — not a head-to-head win
+over Rocksmith / Yousician / Fender Play (polyphonic feedback, licensed song libraries, full
+curricula). That's a real, defensible audience; just a different game.
 
 ---
 
 ## Suggested sequence
 
 ```
-A  (tone)            ✅ shipped v1.8.0
+Phase 1  Unify (spine + reference)           ← foundational; everything reuses it
+   │     1a spine + dedup → 1b one board → 1c reverse lookup → 1d feel pass
    │
-B  (scheduler/buses) ✅ shipped v1.9.0  ── the gate; also fixed existing drift
+   ├─ Phase 2  Complete the reference          (content; trickles alongside)
    │
-C  (backing realism) ✅ shipped v1.10.0
-   │
-C+ (release hardening) ✅ shipped v1.11.0  ── mobile board + committed tests + state guardrail
-   │                       GATE CLEARED: public launch + user-facing practice now unblocked
-   ├── D  (practice v1: note-naming, chord-tone targeting)   ← do next
-   ├── E  (ear training)
-   └── F1 (onset) ── G scored tier (rhythm/subdivision)
-        └── F2 (pitch) ── real-guitar note-naming / matching
+   └─ Phase 3  Practice core                   (shell, scoring, learner model v1, note-finder)
+         │
+         ├─ Phase 4  Ear                        (parallel; independent of 1–3)
+         ├─ Phase 5  Rhythm pillar              (broad audience; reuses backing) ── needs F1 to score
+         ├─ Phase 6  Lead pillar                ────────────────────────────────── needs F2 to score
+         └─ Phase 7  Timing & subdivision       (small; feeds 5 & 6) ───────────── needs F1 to score
+               │
+               └─ Phase 8  Mic input            F1 (onset) → scores 5 & 7
+                                                F2 (pitch) → scores 6 + real note-naming
+
+Phase 9  Product layer                          (curriculum / distribution / polish — throughout)
 ```
 
-Recommendation: A–C+ are shipped — the release gate is cleared, so a public launch and the
-user-facing practice features are unblocked.
+**Reading the order:**
 
-**Revised emphasis (value vs. uniqueness).** The naïve order builds the *safest* phase first (D
-is screen-only drills that overlap heavily with free apps) and gates the *differentiator* (real-
-guitar input) last. A better-leveraged path:
-
-1. Ship the **note-naming** half of D quickly (cheap, table-stakes floor) and stand up the
-   **retention layer** (history / streaks / spaced repetition) alongside it — that's the actual
-   stickiness, independent of any one drill.
-2. Pull **E (ear training)** forward in parallel — independent, low-risk, high value-per-effort.
-3. **Promote F1 (onset)** ahead of D's timing-dependent chord-tone *play* version and the Phase G
-   scored tier. F1 is a light lift and is what makes the app's unique selling point — practice on
-   your real guitar — actually work, instead of latency-corrupted tap games.
-4. **F2 (pitch)** stays the moonshot; G's coach tier (B-only) can ship any time as a smart
-   metronome regardless.
-
-So: D is still a fine *next* increment, but treat its second drill as recognition-only (or defer
-to F), front-load retention + E, and bring F1 forward rather than leaving it near the end.
+- **Phase 1 first, non-negotiable.** The spine is the backbone the practice phases reuse;
+  building practice before it means refactoring the practice UI later.
+- **Phases 2 and 4 are cheap and parallel** — trickle reference content and ship ear training
+  alongside the bigger work.
+- **Rhythm (5) before Lead (6)** — broader audience, and the backing engine already exists.
+- **Timing (7) is small** and feeds both pillars; do it early as a coach metronome.
+- **Phase 8 is the unlock, not the start.** Build the coach tiers (5/6/7) on screen first, then
+  F1 retro-scores rhythm + timing (it lands before F2 — strum onsets are easy). F2 is the moonshot.
+- **Know what's backloaded.** By design, Phases 1–7 produce an excellent *coach + reference
+  toolbox*; the stated true differentiator — "play your real guitar and get scored" — lives
+  entirely in Phase 8. That's the correct risk order (prove the coach tiers cheaply on screen
+  first), but it means the product-defining bet is also the last and riskiest. So every coach
+  tier must be worth shipping *without* its eventual mic score, never a placeholder for it.
+- **Phase 9 runs throughout** — ship the PWA + share links the moment there's anything worth
+  sharing; hold a polish bar on every phase rather than deferring feel to the end.
 
 ---
 
 ## Cross-cutting concerns
 
-- **Mobile:** audio unlock on user gesture (already required); account for
-  `outputLatency` in any scoring window. The fixed-width, scroll-bound fretboard is
-  addressed in C+ (responsive board); keep new Practice UI within the reflowed layout.
-- **Latency calibration:** a one-time calibration/offset step that scoring windows read from.
-  Lands in Phase D (its tap windows already need it), shared by F's mic windows later — not a
-  mic-only concern.
-- **Retention / progress:** the engine that turns drills into a daily habit — per-drill history,
-  streaks, and a spaced-repetition queue that resurfaces frequently-missed notes/chords. A
-  first-class workstream introduced in Phase D, reused by every later practice phase. Rides the
-  existing full-state localStorage with bounds-checked restores.
-- **i18n:** every new label, drill name, and cue caption needs EN + UK entries
-  (symmetric dictionaries — enforced by the test harness).
-- **Persistence:** practice stats and drill settings ride the existing full-state
-  localStorage; add them with bounds-checked restores like the v1.7.0 fields.
-- **Accessibility:** dots are keyboard-reachable as of v1.7.0; keep new interactive
-  elements focusable and Enter/Space-activatable.
+- **Mobile:** audio unlock on user gesture (already required); account for `outputLatency` in
+  any scoring window; keep all new UI within the reflowed responsive layout.
+- **i18n:** every label, drill name, and cue caption needs symmetric EN + UK entries (enforced
+  by the harness).
+- **Persistence:** the musical context, drill settings, and learner-model state all ride the
+  full-state localStorage with bounds-checked restores — added through `saveState()` /
+  `loadState()`, never as free-floating globals.
+- **Accessibility:** keep new interactive elements focusable and Enter/Space-activatable.
+- **Tests are the release gate:** `npm test` green on every phase; the CI action runs on push.
