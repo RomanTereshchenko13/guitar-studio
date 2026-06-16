@@ -110,11 +110,11 @@ function applyLang(){
   const setPair=(onId,offId)=>{ const a=document.getElementById(onId),b=document.getElementById(offId); if(a){a.classList.add('active');a.setAttribute('aria-pressed','true');} if(b){b.classList.remove('active');b.setAttribute('aria-pressed','false');} };
   gMode==='names'?setPair('g-names','g-deg'):setPair('g-deg','g-names');
   ntFilter==='all'?setPair('nt-all','nt-nat'):setPair('nt-nat','nt-all');
-  buildChQuals(); buildTrQuals(); buildTrSets(); buildTrInvs(); buildScSelect(); buildScPos();
+  buildChQuals(); buildArpQuals(); buildArpPos(); buildTrQuals(); buildTrSets(); buildTrInvs(); buildScSelect(); buildScPos();
   buildToolbar(); setMetroLabel(); setLoopLabel(); setBandLabels();
   buildSeqPresets(); renderSeq(); setSeqTransport();
   { const o=document.getElementById('cl-overlay'); if(o && !o.hidden) renderChangelog(); }
-  renderChords(); renderTriads(); renderScales(); renderNotes(); renderCircle();
+  renderChords(); renderArp(); renderTriads(); renderScales(); renderNotes(); renderCircle();
   setHView(hView); setScView(scView); updateGlobalPlay();
   if(typeof applyAudioAvailability==='function') applyAudioAvailability();
   activateRoot(document.getElementById('g-roots'), gRoot);

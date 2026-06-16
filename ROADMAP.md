@@ -10,7 +10,7 @@ Code is authored as small `src/js/NN-*.js` modules and concatenated by a pure-st
 `build.js` (no bundler, no transpile). Every item below is reachable with the Web Audio API
 and vanilla JS. New phases add new `src/` modules; they never add a dependency.
 
-_Last updated: 2026-06-16 · shipping: v1.19.0_
+_Last updated: 2026-06-16 · shipping: v1.20.0_
 
 ---
 
@@ -240,11 +240,24 @@ green; the feel pass leaves those assertions green and is fully neutralized unde
 
 Fill the genuine content gaps, roughly by payoff:
 
-- **Arpeggios** — the chord↔scale bridge, played melodically up the neck. Reuses triad rendering.
+- **Arpeggios** ✅ **Shipped v1.20.0.** A new *Arpeggio* view under Harmony: the live chord (shares
+  `chQual` with chord-tones, so switching views keeps the chord — the bridge) shown as a melodic
+  shape. Reuses the chord-tone board paint + the scale-view box window to isolate one practice
+  position; Listen runs it ascending up the neck (`animRun`) instead of strummed. One new view
+  button, no extra control layers.
 - **Intervals on the neck** — the visual counterpart to Phase 4's interval ear training.
-- **CAGED** — surfaced as the explicit framework connecting chord shapes, scale positions, and
-  arpeggios (the pieces already exist; the *system* doesn't).
-- **Capo** — core for the rhythm/acoustic audience (we have alternate tunings but not this).
+  _(Deferred from the v1.20.0 increment: overlaps the existing Names/Intervals degree display and
+  Phase 4; revisit alongside the ear-training work.)_
+- **CAGED** ✅ **Shipped v1.20.0.** Surfaced as a labelling layer (no new tab): the major scale's
+  five positions are relabelled with their `E·D·C·A·G` shapes (the app anchors positions at
+  `(root−4)+BOX_OFFSETS`, so position 1..5 land on those shapes up the neck), and the panel names
+  the chord form each box is built around. Restricted to Ionian, where the scale root *is* the
+  parent-major root and the mapping is exact — modes anchor to their own root, so labelling them
+  would be wrong.
+- **Capo** ✅ **Shipped v1.20.0.** A `capo` setting (0–7) in the collapsed toolbar next to Tuning /
+  Frets — zero new visible surface. A capo doesn't move pitches, so highlighting math is untouched;
+  the board dims the frets behind it and draws a brass bar at the capo fret (a movable nut). Rides
+  `saveState()` / `loadState()` bounds-checked.
 
 _Lower priority:_ deeper voicings (full-chord inversions / drop-2 / slash chords) for
 intermediate+ players; modes shown as a *family* (relationship to the parent major) instead of

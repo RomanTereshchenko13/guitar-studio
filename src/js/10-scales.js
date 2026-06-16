@@ -31,6 +31,15 @@ function scalesOverChord(rootPc, chordPcs){
 }
 const MODE_OFF={1:2,2:4,3:5,4:7,5:9,6:11};
 const BOX_OFFSETS=[0,3,5,7,10];
+/* CAGED (Phase 2): the app's five scale positions cycle through the five movable
+   chord shapes. With positions anchored at (root−4)+BOX_OFFSETS, position 1..5
+   land on the E·D·C·A·G shapes going up the neck. This mapping is exact only for
+   the MAJOR scale (Ionian), where the scale root IS the parent-major root; for
+   modes the boxes anchor to the mode root, not the parent, so the letters would
+   be wrong — so CAGED labels are shown for Ionian only (isCAGEDScale). */
+const CAGED_BY_POS=['E','D','C','A','G'];
+function isCAGEDScale(){ return scIdx===0; }
+function cagedShapeName(letter){ return lang==='en' ? letter+'-shape' : 'форма '+letter; }
 let scIdx=5, scPos=0, scOverlay=null;
 let scView='scale';   // Scales-tab sub-view: 'scale' | 'notes' (folded-in Notes mode, 1b)
 let diaList=[];
@@ -60,6 +69,7 @@ function renderScales(){
   const degs=s.iv.map(iv=>SDEG[iv]).join(' ');
   let html=`<div class="big">${gRootLbl} ${sName(s)}: ${notes}</div><div class="sub">${t('degrees_word')}: ${degs}</div>`;
   if(MODE_OFF[scIdx]!==undefined){ const pr=noteName((gRoot-MODE_OFF[scIdx]+120)%12,flat); html+=`<div class="sub">${t('samenotes')} ${pr} ${t('major_word')} ${t('mode_tail')}</div>`; }
+  if(isCAGEDScale() && scPos>0){ const letter=CAGED_BY_POS[scPos-1]; html+=`<div class="sub">CAGED · ${cagedShapeName(letter)} — ${t('caged_desc')}</div>`; }
   if(scOverlay){ html+=`<div class="sub" style="color:var(--third)">${t('overlay_msg')}</div>`; }
   document.getElementById('sc-info').innerHTML=html;
   renderDiatonic();
@@ -83,8 +93,14 @@ function buildScSelect(){
 }
 function buildScPos(){
   const c=document.getElementById('sc-pos'); c.innerHTML='';
+  const caged=isCAGEDScale();
   const labels=[t('pos_all'),'1','2','3','4','5'];
-  labels.forEach((lab,i)=>{ const b=document.createElement('button'); b.className='btn'+(i===scPos?' active':''); b.textContent=lab; b.setAttribute('aria-pressed', i===scPos);
-    b.onclick=()=>{ scPos=i; buildScPos(); renderScales(); saveState(); }; c.appendChild(b); });
+  labels.forEach((lab,i)=>{
+    const b=document.createElement('button'); b.className='btn'+(i===scPos?' active':'');
+    if(caged && i>=1){ const letter=CAGED_BY_POS[i-1]; const title=t('lbl_pos')+' '+i+' · '+cagedShapeName(letter); b.textContent=letter; b.title=title; b.setAttribute('aria-label', title); }
+    else { b.textContent=lab; b.setAttribute('aria-label', lab); }
+    b.setAttribute('aria-pressed', i===scPos);
+    b.onclick=()=>{ scPos=i; buildScPos(); renderScales(); saveState(); }; c.appendChild(b);
+  });
 }
 

@@ -2,6 +2,13 @@
 
 _Generated from `src/js/02-changelog.js` by `build.js` — do not edit by hand._
 
+## v1.20.0 — 2026-06-16
+
+- Phase 2 — completing the reference: arpeggios, a capo, and the CAGED framework, added without crowding the three-tab layout.
+- New "Arpeggio" view under Chords / triads: the same chord, shown as a melodic shape you run up the neck. Listen plays it ascending, and you can isolate one position as a practice box — the bridge between a chord and the scale you solo with over it.
+- Capo: a new control in Settings (next to Tuning and Frets). Set a capo and the fretboard dims the frets behind it and marks the capo as a movable nut, so you can see where your shapes sit — the notes themselves don't move.
+- CAGED: in the major scale, the five fretboard positions are now labelled with their C·A·G·E·D chord shapes (E·D·C·A·G up the neck) instead of plain numbers, and the panel names the chord form each scale box is built around — making the link between chord shapes and scale positions explicit.
+
 ## v1.19.0 — 2026-06-16
 
 - Clarity pass: the same tools, less clutter — and the fretboard front and centre.

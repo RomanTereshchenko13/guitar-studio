@@ -38,6 +38,12 @@ let fretRangeIdx = 0;
 function FRET_LO(){ return FRET_RANGES[fretRangeIdx].lo; }
 function FRET_HI(){ return FRET_RANGES[fretRangeIdx].hi; }
 
+/* capo (Phase 2): a movable nut at fret `capo` (0 = none). A capo doesn't move
+   pitches — it moves your hand — so the note at every physical fret is unchanged
+   and the highlighting math stays untouched. The board only dims the frets behind
+   the capo and draws the capo bar, so a shape reads as "playable from here up". */
+let capo = 0;
+
 /* tempo (BPM) drives all playback timing + the metronome. */
 let tempo = 90;
 function beat(){ return 60/tempo; }

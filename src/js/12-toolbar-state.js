@@ -4,6 +4,8 @@ function buildToolbar(){
   tun.innerHTML=TUNINGS.map((tu,i)=>`<option value="${i}"${i===tuningIdx?' selected':''}>${lang==='en'?tu.en:tu.uk}</option>`).join('');
   const fr=document.getElementById('tb-frets');
   fr.innerHTML=FRET_RANGES.map((r,i)=>`<option value="${i}"${i===fretRangeIdx?' selected':''}>${r.key?t(r.key):r.label}</option>`).join('');
+  const cp=document.getElementById('tb-capo');
+  if(cp) cp.innerHTML=Array.from({length:8},(_,i)=>`<option value="${i}"${i===capo?' selected':''}>${i===0?t('capo_off'):i}</option>`).join('');
   const tp=document.getElementById('tb-tempo'); tp.value=tempo;
   document.getElementById('tb-bpm').textContent=tempo+' BPM';
   const lb=document.getElementById('tb-lefty'); lb.classList.toggle('active', lefty); lb.setAttribute('aria-pressed', lefty);
@@ -47,9 +49,9 @@ if(typeof window!=='undefined'){
 const LS_KEY='guitarStudio.v1';
 let currentTab='harmony';
 function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({
-  lang, tab:currentTab, tuningIdx, fretRangeIdx, tempo, lefty, toolbarOpen,
+  lang, tab:currentTab, tuningIdx, fretRangeIdx, tempo, lefty, toolbarOpen, capo,
   gRoot, gRootLbl, gMode, hView, scView,
-  chQual, scIdx, scPos, scOverlay,
+  chQual, arpPos, scIdx, scPos, scOverlay,
   chVoicing,
   trQual, trSet, trInv,
   ntRoot, ntFilter,
@@ -61,12 +63,13 @@ function loadState(){ try{
   if(s.lang==='uk'||s.lang==='en') lang=s.lang;
   if(Number.isInteger(s.tuningIdx)&&TUNINGS[s.tuningIdx]) tuningIdx=s.tuningIdx;
   if(Number.isInteger(s.fretRangeIdx)&&FRET_RANGES[s.fretRangeIdx]) fretRangeIdx=s.fretRangeIdx;
+  if(Number.isInteger(s.capo)&&s.capo>=0&&s.capo<=11) capo=s.capo;
   if(typeof s.tempo==='number'&&s.tempo>=40&&s.tempo<=200) tempo=s.tempo;
   if(typeof s.lefty==='boolean') lefty=s.lefty;
   if(typeof s.toolbarOpen==='boolean') toolbarOpen=s.toolbarOpen;
   if(Number.isInteger(s.gRoot)&&s.gRoot>=0&&s.gRoot<12){ gRoot=s.gRoot; if(typeof s.gRootLbl==='string') gRootLbl=s.gRootLbl; }
   if(s.gMode==='names'||s.gMode==='deg') gMode=s.gMode;
-  if(s.hView==='chords'||s.hView==='triads') hView=s.hView;
+  if(s.hView==='chords'||s.hView==='triads'||s.hView==='arp') hView=s.hView;   // identify stays transient (idSel is scratch)
   if(s.scView==='scale'||s.scView==='notes') scView=s.scView;
   if(typeof s.tab==='string'){
     if(s.tab==='chords'||s.tab==='triads') currentTab='harmony';          // migrate old merged tabs
@@ -75,6 +78,7 @@ function loadState(){ try{
   }
   // ---- working musical state (added in 1.6.1) ----
   if(Number.isInteger(s.chQual)&&QUALITIES[s.chQual]) chQual=s.chQual;
+  if(Number.isInteger(s.arpPos)&&s.arpPos>=0&&s.arpPos<=5) arpPos=s.arpPos;
   if(Number.isInteger(s.chVoicing)&&s.chVoicing>=0&&s.chVoicing<6) chVoicing=s.chVoicing;  // clamped again at render against the actual list length
   if(Number.isInteger(s.scIdx)&&SCALES[s.scIdx]) scIdx=s.scIdx;
   if(Number.isInteger(s.scPos)&&s.scPos>=0&&s.scPos<=5) scPos=s.scPos;

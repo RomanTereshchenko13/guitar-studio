@@ -2,9 +2,9 @@
 /* ---- shared root picker, display mode, sub-view toggle, global play ---- */
 /* Each render fn paints panel content for its mode and the ONE shared board only
    when its mode is active (isBoardMode), so a cross-view pass paints the board once. */
-function renderContextViews(){ renderChords(); renderTriads(); renderIdentify(); renderScales(); renderNotes(); }
+function renderContextViews(){ renderChords(); renderTriads(); renderArp(); renderIdentify(); renderScales(); renderNotes(); }
 function renderActiveContext(){
-  if(currentTab==='harmony'){ (hView==='identify'?renderIdentify:hView==='triads'?renderTriads:renderChords)(); }
+  if(currentTab==='harmony'){ (hView==='identify'?renderIdentify:hView==='triads'?renderTriads:hView==='arp'?renderArp:renderChords)(); }
   else if(currentTab==='scales'){ scView==='notes'?renderNotes():renderScales(); }
 }
 
@@ -21,7 +21,7 @@ function setKey(pc, lbl, mode){
   ntRoot=lbl;                                   // Notes reflects the shared root
   activateRoot(document.getElementById('g-roots'), gRoot);
   document.querySelectorAll('[data-root]').forEach(b=>b.classList.toggle('active', b.dataset.root===ntRoot));
-  buildChQuals(); buildScSelect(); buildScPos();
+  buildChQuals(); buildArpQuals(); buildArpPos(); buildScSelect(); buildScPos();
   renderContextViews(); renderCircle(); renderNotes();
   saveState();
 }
@@ -39,17 +39,19 @@ let hView='chords';
 function setHView(v){ hView=v;
   document.getElementById('sub-chords').hidden = v!=='chords';
   document.getElementById('sub-triads').hidden = v!=='triads';
+  document.getElementById('sub-arp').hidden = v!=='arp';
   document.getElementById('sub-identify').hidden = v!=='identify';
-  ['chords','triads','identify'].forEach(k=>{ const b=document.getElementById('hv-'+k); b.classList.toggle('active', k===v); b.setAttribute('aria-pressed', k===v?'true':'false'); });
-  const head = v==='identify'?'id':(v==='triads'?'tr':'ch');
+  ['chords','triads','arp','identify'].forEach(k=>{ const b=document.getElementById('hv-'+k); if(b){ b.classList.toggle('active', k===v); b.setAttribute('aria-pressed', k===v?'true':'false'); } });
+  const head = v==='identify'?'id':(v==='triads'?'tr':v==='arp'?'arp':'ch');
   document.getElementById('harmony-h').textContent = t(head+'_h');
   document.getElementById('harmony-p').textContent = t(head+'_p');
   applyHarmonyExtras();
-  (v==='identify'?renderIdentify:v==='triads'?renderTriads:renderChords)();
+  (v==='identify'?renderIdentify:v==='triads'?renderTriads:v==='arp'?renderArp:renderChords)();
   updateGlobalPlay(); saveState();
 }
 document.getElementById('hv-chords').onclick=()=>setHView('chords');
 document.getElementById('hv-triads').onclick=()=>setHView('triads');
+document.getElementById('hv-arp').onclick=()=>setHView('arp');
 document.getElementById('hv-identify').onclick=()=>setHView('identify');
 
 /* Scales-tab sub-view (1b): Scale | Notes — mirrors the Harmony Chords/Triads
@@ -80,6 +82,7 @@ function globalPlay(){
   const boardEl=document.getElementById('board');
   if(currentTab==='harmony'){
     if(hView==='triads'){ const v=currentTriadVoicing(); animArpMidi(boardEl, v.midis); }
+    else if(hView==='arp'){ const q=QUALITIES[chQual]; animRun(boardEl, 48+gRoot, q.iv.concat([12])); }   // run the arpeggio melodically up the neck
     else { const v=currentChordVoicing(); animArpMidi(boardEl, v.midis); }
   } else if(currentTab==='scales' && scView==='scale'){ const s=SCALES[scIdx]; animRun(boardEl, 48+gRoot, s.iv.concat([12])); }
   else if(currentTab==='circle'){
@@ -102,7 +105,7 @@ function updateGlobalPlay(){
     // The single loop now applies to both harmony views: it loops the selected
     // chord voicing (chord-tones view) or the shown triad (triads view) as a
     // backing. It persists across tabs; the transport chip is the Stop.
-    lp.hidden = !(currentTab==='harmony' && hView!=='identify');
+    lp.hidden = !(currentTab==='harmony' && (hView==='chords' || hView==='triads'));
     lp.classList.toggle('active', !!loopClock);
     lp.setAttribute('aria-pressed', loopClock?'true':'false');
     lp.innerHTML=(loopClock?'&#9632; ':'&#8635; ')+t('b_loop');
@@ -241,6 +244,7 @@ document.getElementById('lang-switch').addEventListener('click',e=>{
 /* ---- toolbar wiring ---- */
 document.getElementById('tb-tuning').onchange=function(){ tuningIdx=+this.value; applyTuning(); renderAllBoards(); saveState(); };
 document.getElementById('tb-frets').onchange=function(){ fretRangeIdx=+this.value; renderAllBoards(); saveState(); };
+{ const cp=document.getElementById('tb-capo'); if(cp) cp.onchange=function(){ capo=+this.value; renderAllBoards(); saveState(); }; }
 document.getElementById('tb-lefty').onclick=function(){ lefty=!lefty; this.classList.toggle('active',lefty); this.setAttribute('aria-pressed',lefty); renderAllBoards(); renderCircle(); saveState(); };
 /* the metronome / loop / sequencer clocks read beat() live, so the tempo glides
    without restarting — just update the value and the label here. */
@@ -314,7 +318,9 @@ if (typeof window!=='undefined' && window.__GS_ALLOW_TEST__) {
     cellW, boardWidth, leftFixed, FRET_LO, FRET_HI,
     schedAdvance, clocks, beat,
     selectTab, setHView, setScView, isBoardMode, loopToggle, seqPlay, seqAddCurrent, applyPreset, setChord,
+    CAGED_BY_POS, isCAGEDScale,
     setFret:(i)=>{ fretRangeIdx=i; },
+    setCapo:(i)=>{ capo=i; }, getCapo:()=>capo,
     setChQual:(i)=>{ chQual=i; chVoicing=0; }, setChVoicing:(i)=>{ chVoicing=i; },
     setTriad:(q,set,inv)=>{ trQual=q; trSet=set; trInv=inv; },
     initAudio:()=>audio(),

@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <!-- Guitar Studio — generated single-file build (do not edit; edit src/ and run build.js).
-     Version: 1.19.0  (source of truth: APP_VERSION in src/js/01-version.js;
+     Version: 1.20.0  (source of truth: APP_VERSION in src/js/01-version.js;
      build.js fills this in). Release notes live in src/js/02-changelog.js (drives
      the in-app "What's new" modal and CHANGELOG.md). -->
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="1.19.0">
+<meta name="version" content="1.20.0">
 <title>Гітарна студія — гами, моди, акорди</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -152,6 +152,11 @@
   .cell::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; transform: translateY(-50%); background: var(--line-string); z-index: 0; }
   /* position-marker inlay on the neck face, centred on the boundary above the row */
   .cell.inlay::after { content: ''; position: absolute; top: 0; left: 50%; width: 11px; height: 11px; border-radius: 50%; transform: translate(-50%, -50%); background: radial-gradient(circle at 38% 34%, rgba(247,233,202,0.32), rgba(214,194,154,0.13) 72%); z-index: 0; pointer-events: none; }
+  /* capo (Phase 2): frets behind the capo dim (unreachable); the capo fret wears
+     a brass bar on its leading edge — a movable nut. The whole board is mirrored
+     for lefty, so the bar lands on the correct side automatically. */
+  .cell.subcapo, .ocell.subcapo { opacity: 0.24; }
+  .cell.capo-at { box-shadow: inset 4px 0 0 0 #caa14a; }
   .srow:nth-child(1) .cell::before { height: 1px; }
   .srow:nth-child(2) .cell::before { height: 1.2px; }
   .srow:nth-child(3) .cell::before { height: 1.5px; }
@@ -409,6 +414,10 @@
         <span class="tb-label" data-i18n="tb_frets">Лади</span>
         <select id="tb-frets"></select>
       </div>
+      <div class="tb-group">
+        <span class="tb-label" data-i18n="tb_capo">Каподастр</span>
+        <select id="tb-capo"></select>
+      </div>
     </div>
   </div>
 </header>
@@ -427,6 +436,7 @@
       <div class="group">
         <button class="btn active" id="hv-chords" data-i18n="view_chords">Тони акорду</button>
         <button class="btn" id="hv-triads" data-i18n="view_triads">Форми тріад</button>
+        <button class="btn" id="hv-arp" data-i18n="view_arp">Арпеджіо</button>
         <button class="btn" id="hv-identify" data-i18n="view_identify">Розпізнати</button>
       </div>
     </div>
@@ -464,6 +474,12 @@
       <div class="info" id="tr-info"></div>
       <div class="cd-head"><span class="cd-h" data-i18n="tr_shapes">Форми тризвуку</span></div>
       <div class="chorddia" id="tr-diagram"></div>
+    </div>
+
+    <div id="sub-arp" hidden>
+      <div class="row"><span class="ctrl-label" data-i18n="lbl_chord">Акорд</span><div class="group" id="arp-quals"></div></div>
+      <div class="row"><span class="ctrl-label" data-i18n="lbl_pos">Позиція</span><div class="group" id="arp-pos"></div></div>
+      <div class="info" id="arp-info"></div>
     </div>
 
     <div id="sub-identify" hidden>
@@ -595,10 +611,19 @@
 <script>
 /* Single source of truth for the app version. Bump on each release and update
    the changelog comment at the top of the file + the <meta name="version">. */
-const APP_VERSION = '1.19.0';
+const APP_VERSION = '1.20.0';
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.20.0', date:'2026-06-16',
+    en:['Phase 2 — completing the reference: arpeggios, a capo, and the CAGED framework, added without crowding the three-tab layout.',
+        'New "Arpeggio" view under Chords / triads: the same chord, shown as a melodic shape you run up the neck. Listen plays it ascending, and you can isolate one position as a practice box — the bridge between a chord and the scale you solo with over it.',
+        'Capo: a new control in Settings (next to Tuning and Frets). Set a capo and the fretboard dims the frets behind it and marks the capo as a movable nut, so you can see where your shapes sit — the notes themselves don\'t move.',
+        'CAGED: in the major scale, the five fretboard positions are now labelled with their C·A·G·E·D chord shapes (E·D·C·A·G up the neck) instead of plain numbers, and the panel names the chord form each scale box is built around — making the link between chord shapes and scale positions explicit.'],
+    uk:['Фаза 2 — доповнюємо довідник: арпеджіо, каподастр і система CAGED, додані без захаращення тривкладкового макета.',
+        'Новий вид «Арпеджіо» поряд з «Акордами / тріадами»: той самий акорд, показаний як мелодична форма, яку ти ведеш угору по грифу. «Прослухати» грає його висхідно, а одну позицію можна ізолювати як бокс для практики — місток між акордом і гамою, якою ти граєш над ним.',
+        'Каподастр: нове керування в «Налаштуваннях» (поряд зі «Строєм» і «Ладами»). Постав каподастр — і гриф приглушить лади за ним і позначить каподастр як рухомий поріжок, тож видно, де лягають форми; самі ноти не зсуваються.',
+        'CAGED: у мажорній гамі п’ять позицій на грифі тепер підписані формами акордів C·A·G·E·D (E·D·C·A·G угору по грифу) замість простих номерів, а панель називає форму акорду, навколо якої побудований кожен бокс гами, — роблячи зв’язок між формами акордів і позиціями гами явним.'] },
   { v:'1.19.0', date:'2026-06-16',
     en:['Clarity pass: the same tools, less clutter — and the fretboard front and centre.',
         'The neck now sits directly under the controls. The chord-shape cards and the progression sequencer moved below the board, so on a phone you reach the fretboard right after picking a chord instead of scrolling past everything first.',
@@ -790,6 +815,11 @@ const I18N = {
     tr_h:'Тріади на грифі',
     tr_p:'Вибери тоніку й тип тризвуку — на обраному наборі струн підсвітяться компактні форми акорду (аплікатури) у всіх трьох оберненнях по всій довжині грифу.',
     tr_hint:'Тризвук на трьох сусідніх струнах — рухомий блок: кожне обернення повторюється вгору по грифу через 12 ладів. Вивчиш одну форму на одному наборі струн — отримаєш увесь гриф.',
+    view_arp:'Арпеджіо', arp_word:'арпеджіо',
+    arp_h:'Арпеджіо на грифі',
+    arp_p:'Ті самі ноти, що й у «Тонах акорду», але як арпеджіо — грай їх одну за одною вгору по грифу. Обери позицію, щоб ізолювати зручний бокс для практики; «Прослухати» програє арпеджіо висхідно.',
+    arp_hint:'Арпеджіо — це ноти акорду, зіграні почергово. Влучай у ці ноти в соло на зміні акорду — вони звучать найстабільніше.',
+    caged_desc:'бокс мажорної гами навколо цієї рухомої форми акорду',
     sc_h:'Гами і моди',
     sc_p:'Вибери тоніку і гаму. Накладай акорд тональності, щоб бачити цільові ноти всередині гами, та ізолюй позицію для практики.',
     nt_h:'Всі ноти на грифі',
@@ -817,7 +847,7 @@ const I18N = {
     inv_1st_desc:'Перше обернення — у басу терція',
     inv_2nd_desc:'Друге обернення — у басу квінта',
     tb_settings:'Налаштування',
-    tb_tuning:'Стрій', tb_lefty:'Ліворукий', tb_frets:'Лади', tb_tempo:'Темп',
+    tb_tuning:'Стрій', tb_lefty:'Ліворукий', tb_frets:'Лади', tb_tempo:'Темп', tb_capo:'Каподастр', capo_off:'без',
     tb_metro_on:'Метроном', tb_metro_off:'Метроном',
     tb_bass:'Бас', tb_drums:'Ударні', tb_backing:'Супровід',
     qg_basic:'Базові', qg_seventh:'Септакорди', qg_ext:'Розширені',
@@ -852,6 +882,11 @@ const I18N = {
     tr_h:'Triads on the neck',
     tr_p:'Pick a root and a triad type — compact chord shapes (fingerings) light up on the chosen string set, in all three inversions along the entire neck.',
     tr_hint:'A triad on three adjacent strings is a movable block: each inversion repeats up the neck every 12 frets. Learn one shape on one string set and you get the whole neck.',
+    view_arp:'Arpeggio', arp_word:'arpeggio',
+    arp_h:'Arpeggios across the neck',
+    arp_p:'The same notes as Chord tones, but as an arpeggio — play them one at a time up the neck. Pick a position to isolate a practice box; Listen runs the arpeggio ascending.',
+    arp_hint:'An arpeggio is the chord played one note at a time. Target these notes in a solo on each chord change — they sound the most stable.',
+    caged_desc:'the major-scale box around this movable chord form',
     sc_h:'Scales and modes',
     sc_p:'Pick a root and a scale. Overlay a chord from the key to see target tones inside the scale, and isolate a position for practice.',
     nt_h:'All notes on the neck',
@@ -879,7 +914,7 @@ const I18N = {
     inv_1st_desc:'First inversion — third in the bass',
     inv_2nd_desc:'Second inversion — fifth in the bass',
     tb_settings:'Settings',
-    tb_tuning:'Tuning', tb_lefty:'Left-handed', tb_frets:'Frets', tb_tempo:'Tempo',
+    tb_tuning:'Tuning', tb_lefty:'Left-handed', tb_frets:'Frets', tb_tempo:'Tempo', tb_capo:'Capo', capo_off:'off',
     tb_metro_on:'Metronome', tb_metro_off:'Metronome',
     tb_bass:'Bass', tb_drums:'Drums', tb_backing:'Backing',
     qg_basic:'Basic', qg_seventh:'Sevenths', qg_ext:'Extended',
@@ -935,6 +970,12 @@ const FRET_RANGES = [
 let fretRangeIdx = 0;
 function FRET_LO(){ return FRET_RANGES[fretRangeIdx].lo; }
 function FRET_HI(){ return FRET_RANGES[fretRangeIdx].hi; }
+
+/* capo (Phase 2): a movable nut at fret `capo` (0 = none). A capo doesn't move
+   pitches — it moves your hand — so the note at every physical fret is unchanged
+   and the highlighting math stays untouched. The board only dims the frets behind
+   the capo and draws the capo bar, so a shape reads as "playable from here up". */
+let capo = 0;
 
 /* tempo (BPM) drives all playback timing + the metronome. */
 let tempo = 90;
@@ -1555,7 +1596,7 @@ function renderBoard(boardEl, cellFn){
     const row=document.createElement('div'); row.className='srow';
     const lab=document.createElement('div'); lab.className='slabel'; lab.textContent=sn; row.appendChild(lab);
     if(showOpen){
-      const open=document.createElement('div'); open.className='ocell';
+      const open=document.createElement('div'); open.className='ocell'+(capo>0?' subcapo':'');
       const odot=cellFn(OPEN[si]%12, si, 0);
       if(odot){ if(stag) odot.style.animationDelay=delay(0); open.appendChild(odot); }
       row.appendChild(open);
@@ -1564,6 +1605,9 @@ function renderBoard(boardEl, cellFn){
     for(let f=lo; f<=hi; f++){
       const pc=(OPEN[si]+f)%12;
       const cell=document.createElement('div'); cell.className='cell';
+      // capo: dim the frets behind it (unreachable) and mark its fret as the new
+      // nut — pitches are unchanged, so the lit chord/scale tones stay put.
+      if(capo>0){ if(f<capo) cell.classList.add('subcapo'); else if(f===capo) cell.classList.add('capo-at'); }
       // position-marker inlays on the neck face: single dot between the centre
       // strings (G/D, si 3), double dot straddling the centre at fret 12/24
       if(INLAY_DOUBLE.has(f)){ if(si===2||si===4) cell.classList.add('inlay'); }
@@ -1632,6 +1676,7 @@ function wirePlay(boardEl){
 function isBoardMode(mode){
   if(mode==='chords')   return currentTab==='harmony' && hView==='chords';
   if(mode==='triads')   return currentTab==='harmony' && hView==='triads';
+  if(mode==='arp')      return currentTab==='harmony' && hView==='arp';
   if(mode==='identify') return currentTab==='harmony' && hView==='identify';
   if(mode==='scale')    return currentTab==='scales'  && scView==='scale';
   if(mode==='notes')    return currentTab==='scales'  && scView==='notes';
@@ -1740,6 +1785,7 @@ function labClass(lab){
 let gRoot=9, gRootLbl='A', gMode='names';
 let chQual=1;
 let chVoicing=0;   // index of the selected voicing card (open / E-barre / A-barre / computed)
+let arpPos=0;      // Arpeggio view (Phase 2): isolated practice box (0 = whole neck, 1..5)
 let idSel=[];      // Identify sub-view (1c): MIDIs the user has tapped on the board (transient scratch)
 function chDegClass(iv){ if(iv===0)return'd-root'; if(iv===3||iv===4)return'd-third'; if([6,7,8].includes(iv))return'd-fifth'; return'd-sev'; }
 
@@ -1844,6 +1890,51 @@ function renderChords(){
       const m=map[pc]; if(m===undefined) return null;
       return makeDot(labClass(m.lab), gMode==='names'?spellNote(gRootLbl,pc,m.deg):m.lab, OPEN_MIDI[si]+f);
     }, chordLegendHTML(), t('ch_hint'));
+  }
+  renderSuggester();
+}
+
+/* ---- Arpeggios (Phase 2) ----
+   The chord ↔ scale bridge: the same chord tones as the chord-tones view, but
+   framed as an arpeggio you run melodically up the neck (Listen plays it
+   ascending) and can isolate to one practice box. Shares the chord quality
+   (chQual) with the chord-tones view so switching views keeps the chord — that's
+   the bridge. Reuses the chord-tone board paint + the scale-view box window. */
+function buildArpQuals(){
+  const c=document.getElementById('arp-quals'); if(!c) return; c.innerHTML='';
+  QUAL_GROUPS.forEach(g=>{
+    const seg=document.createElement('div'); seg.className='qual-grp';
+    const lab=document.createElement('span'); lab.className='qual-grp-lab'; lab.textContent=t('qg_'+g); seg.appendChild(lab);
+    const wrap=document.createElement('div'); wrap.className='group';
+    QUALITIES.forEach((q,i)=>{ if(q.grp!==g) return;
+      const b=document.createElement('button'); b.className='btn'+(i===chQual?' active':'');
+      b.textContent=q.short||'maj'; b.title=qName(q); b.setAttribute('aria-label', qName(q)); b.setAttribute('aria-pressed', i===chQual);
+      b.onclick=()=>{ chQual=i; chVoicing=0; buildChQuals(); buildArpQuals(); renderArp(); saveState(); };
+      wrap.appendChild(b);
+    });
+    seg.appendChild(wrap); c.appendChild(seg);
+  });
+}
+function buildArpPos(){
+  const c=document.getElementById('arp-pos'); if(!c) return; c.innerHTML='';
+  const labels=[t('pos_all'),'1','2','3','4','5'];
+  labels.forEach((lab,i)=>{ const b=document.createElement('button'); b.className='btn'+(i===arpPos?' active':''); b.textContent=lab; b.setAttribute('aria-pressed', i===arpPos);
+    b.onclick=()=>{ arpPos=i; buildArpPos(); renderArp(); saveState(); }; c.appendChild(b); });
+}
+function renderArp(){
+  const q=QUALITIES[chQual];
+  const notes=q.iv.map((iv,i)=>spellNote(gRootLbl,(gRoot+iv)%12,q.deg[i])).join(' – ');
+  const degs=q.lab.join('  ');
+  const info=document.getElementById('arp-info');
+  if(info) info.innerHTML=`<div class="big">${gRootLbl}${q.short} ${t('arp_word')} · ${qName(q)}: ${notes}</div><div class="sub">${t('intervals_word')}: ${degs}</div>`;
+  if(isBoardMode('arp')){
+    const map={}; q.iv.forEach((iv,i)=>{ map[(gRoot+iv)%12]={lab:q.lab[i], deg:q.deg[i]}; });
+    const win=boxWindow(arpPos);
+    paintBoard((pc,si,f)=>{
+      const m=map[pc]; if(m===undefined) return null;
+      if(win && (f<win[0]||f>win[1])) return null;
+      return makeDot(labClass(m.lab), gMode==='names'?spellNote(gRootLbl,pc,m.deg):m.lab, OPEN_MIDI[si]+f);
+    }, chordLegendHTML(), t('arp_hint'));
   }
   renderSuggester();
 }
@@ -2208,6 +2299,15 @@ function scalesOverChord(rootPc, chordPcs){
 }
 const MODE_OFF={1:2,2:4,3:5,4:7,5:9,6:11};
 const BOX_OFFSETS=[0,3,5,7,10];
+/* CAGED (Phase 2): the app's five scale positions cycle through the five movable
+   chord shapes. With positions anchored at (root−4)+BOX_OFFSETS, position 1..5
+   land on the E·D·C·A·G shapes going up the neck. This mapping is exact only for
+   the MAJOR scale (Ionian), where the scale root IS the parent-major root; for
+   modes the boxes anchor to the mode root, not the parent, so the letters would
+   be wrong — so CAGED labels are shown for Ionian only (isCAGEDScale). */
+const CAGED_BY_POS=['E','D','C','A','G'];
+function isCAGEDScale(){ return scIdx===0; }
+function cagedShapeName(letter){ return lang==='en' ? letter+'-shape' : 'форма '+letter; }
 let scIdx=5, scPos=0, scOverlay=null;
 let scView='scale';   // Scales-tab sub-view: 'scale' | 'notes' (folded-in Notes mode, 1b)
 let diaList=[];
@@ -2237,6 +2337,7 @@ function renderScales(){
   const degs=s.iv.map(iv=>SDEG[iv]).join(' ');
   let html=`<div class="big">${gRootLbl} ${sName(s)}: ${notes}</div><div class="sub">${t('degrees_word')}: ${degs}</div>`;
   if(MODE_OFF[scIdx]!==undefined){ const pr=noteName((gRoot-MODE_OFF[scIdx]+120)%12,flat); html+=`<div class="sub">${t('samenotes')} ${pr} ${t('major_word')} ${t('mode_tail')}</div>`; }
+  if(isCAGEDScale() && scPos>0){ const letter=CAGED_BY_POS[scPos-1]; html+=`<div class="sub">CAGED · ${cagedShapeName(letter)} — ${t('caged_desc')}</div>`; }
   if(scOverlay){ html+=`<div class="sub" style="color:var(--third)">${t('overlay_msg')}</div>`; }
   document.getElementById('sc-info').innerHTML=html;
   renderDiatonic();
@@ -2260,9 +2361,15 @@ function buildScSelect(){
 }
 function buildScPos(){
   const c=document.getElementById('sc-pos'); c.innerHTML='';
+  const caged=isCAGEDScale();
   const labels=[t('pos_all'),'1','2','3','4','5'];
-  labels.forEach((lab,i)=>{ const b=document.createElement('button'); b.className='btn'+(i===scPos?' active':''); b.textContent=lab; b.setAttribute('aria-pressed', i===scPos);
-    b.onclick=()=>{ scPos=i; buildScPos(); renderScales(); saveState(); }; c.appendChild(b); });
+  labels.forEach((lab,i)=>{
+    const b=document.createElement('button'); b.className='btn'+(i===scPos?' active':'');
+    if(caged && i>=1){ const letter=CAGED_BY_POS[i-1]; const title=t('lbl_pos')+' '+i+' · '+cagedShapeName(letter); b.textContent=letter; b.title=title; b.setAttribute('aria-label', title); }
+    else { b.textContent=lab; b.setAttribute('aria-label', lab); }
+    b.setAttribute('aria-pressed', i===scPos);
+    b.onclick=()=>{ scPos=i; buildScPos(); renderScales(); saveState(); }; c.appendChild(b);
+  });
 }
 
 /* ===================== ALL NOTES ===================== */
@@ -2377,11 +2484,11 @@ function applyLang(){
   const setPair=(onId,offId)=>{ const a=document.getElementById(onId),b=document.getElementById(offId); if(a){a.classList.add('active');a.setAttribute('aria-pressed','true');} if(b){b.classList.remove('active');b.setAttribute('aria-pressed','false');} };
   gMode==='names'?setPair('g-names','g-deg'):setPair('g-deg','g-names');
   ntFilter==='all'?setPair('nt-all','nt-nat'):setPair('nt-nat','nt-all');
-  buildChQuals(); buildTrQuals(); buildTrSets(); buildTrInvs(); buildScSelect(); buildScPos();
+  buildChQuals(); buildArpQuals(); buildArpPos(); buildTrQuals(); buildTrSets(); buildTrInvs(); buildScSelect(); buildScPos();
   buildToolbar(); setMetroLabel(); setLoopLabel(); setBandLabels();
   buildSeqPresets(); renderSeq(); setSeqTransport();
   { const o=document.getElementById('cl-overlay'); if(o && !o.hidden) renderChangelog(); }
-  renderChords(); renderTriads(); renderScales(); renderNotes(); renderCircle();
+  renderChords(); renderArp(); renderTriads(); renderScales(); renderNotes(); renderCircle();
   setHView(hView); setScView(scView); updateGlobalPlay();
   if(typeof applyAudioAvailability==='function') applyAudioAvailability();
   activateRoot(document.getElementById('g-roots'), gRoot);
@@ -2396,6 +2503,8 @@ function buildToolbar(){
   tun.innerHTML=TUNINGS.map((tu,i)=>`<option value="${i}"${i===tuningIdx?' selected':''}>${lang==='en'?tu.en:tu.uk}</option>`).join('');
   const fr=document.getElementById('tb-frets');
   fr.innerHTML=FRET_RANGES.map((r,i)=>`<option value="${i}"${i===fretRangeIdx?' selected':''}>${r.key?t(r.key):r.label}</option>`).join('');
+  const cp=document.getElementById('tb-capo');
+  if(cp) cp.innerHTML=Array.from({length:8},(_,i)=>`<option value="${i}"${i===capo?' selected':''}>${i===0?t('capo_off'):i}</option>`).join('');
   const tp=document.getElementById('tb-tempo'); tp.value=tempo;
   document.getElementById('tb-bpm').textContent=tempo+' BPM';
   const lb=document.getElementById('tb-lefty'); lb.classList.toggle('active', lefty); lb.setAttribute('aria-pressed', lefty);
@@ -2439,9 +2548,9 @@ if(typeof window!=='undefined'){
 const LS_KEY='guitarStudio.v1';
 let currentTab='harmony';
 function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({
-  lang, tab:currentTab, tuningIdx, fretRangeIdx, tempo, lefty, toolbarOpen,
+  lang, tab:currentTab, tuningIdx, fretRangeIdx, tempo, lefty, toolbarOpen, capo,
   gRoot, gRootLbl, gMode, hView, scView,
-  chQual, scIdx, scPos, scOverlay,
+  chQual, arpPos, scIdx, scPos, scOverlay,
   chVoicing,
   trQual, trSet, trInv,
   ntRoot, ntFilter,
@@ -2453,12 +2562,13 @@ function loadState(){ try{
   if(s.lang==='uk'||s.lang==='en') lang=s.lang;
   if(Number.isInteger(s.tuningIdx)&&TUNINGS[s.tuningIdx]) tuningIdx=s.tuningIdx;
   if(Number.isInteger(s.fretRangeIdx)&&FRET_RANGES[s.fretRangeIdx]) fretRangeIdx=s.fretRangeIdx;
+  if(Number.isInteger(s.capo)&&s.capo>=0&&s.capo<=11) capo=s.capo;
   if(typeof s.tempo==='number'&&s.tempo>=40&&s.tempo<=200) tempo=s.tempo;
   if(typeof s.lefty==='boolean') lefty=s.lefty;
   if(typeof s.toolbarOpen==='boolean') toolbarOpen=s.toolbarOpen;
   if(Number.isInteger(s.gRoot)&&s.gRoot>=0&&s.gRoot<12){ gRoot=s.gRoot; if(typeof s.gRootLbl==='string') gRootLbl=s.gRootLbl; }
   if(s.gMode==='names'||s.gMode==='deg') gMode=s.gMode;
-  if(s.hView==='chords'||s.hView==='triads') hView=s.hView;
+  if(s.hView==='chords'||s.hView==='triads'||s.hView==='arp') hView=s.hView;   // identify stays transient (idSel is scratch)
   if(s.scView==='scale'||s.scView==='notes') scView=s.scView;
   if(typeof s.tab==='string'){
     if(s.tab==='chords'||s.tab==='triads') currentTab='harmony';          // migrate old merged tabs
@@ -2467,6 +2577,7 @@ function loadState(){ try{
   }
   // ---- working musical state (added in 1.6.1) ----
   if(Number.isInteger(s.chQual)&&QUALITIES[s.chQual]) chQual=s.chQual;
+  if(Number.isInteger(s.arpPos)&&s.arpPos>=0&&s.arpPos<=5) arpPos=s.arpPos;
   if(Number.isInteger(s.chVoicing)&&s.chVoicing>=0&&s.chVoicing<6) chVoicing=s.chVoicing;  // clamped again at render against the actual list length
   if(Number.isInteger(s.scIdx)&&SCALES[s.scIdx]) scIdx=s.scIdx;
   if(Number.isInteger(s.scPos)&&s.scPos>=0&&s.scPos<=5) scPos=s.scPos;
@@ -2494,9 +2605,9 @@ function loadState(){ try{
 /* ---- shared root picker, display mode, sub-view toggle, global play ---- */
 /* Each render fn paints panel content for its mode and the ONE shared board only
    when its mode is active (isBoardMode), so a cross-view pass paints the board once. */
-function renderContextViews(){ renderChords(); renderTriads(); renderIdentify(); renderScales(); renderNotes(); }
+function renderContextViews(){ renderChords(); renderTriads(); renderArp(); renderIdentify(); renderScales(); renderNotes(); }
 function renderActiveContext(){
-  if(currentTab==='harmony'){ (hView==='identify'?renderIdentify:hView==='triads'?renderTriads:renderChords)(); }
+  if(currentTab==='harmony'){ (hView==='identify'?renderIdentify:hView==='triads'?renderTriads:hView==='arp'?renderArp:renderChords)(); }
   else if(currentTab==='scales'){ scView==='notes'?renderNotes():renderScales(); }
 }
 
@@ -2513,7 +2624,7 @@ function setKey(pc, lbl, mode){
   ntRoot=lbl;                                   // Notes reflects the shared root
   activateRoot(document.getElementById('g-roots'), gRoot);
   document.querySelectorAll('[data-root]').forEach(b=>b.classList.toggle('active', b.dataset.root===ntRoot));
-  buildChQuals(); buildScSelect(); buildScPos();
+  buildChQuals(); buildArpQuals(); buildArpPos(); buildScSelect(); buildScPos();
   renderContextViews(); renderCircle(); renderNotes();
   saveState();
 }
@@ -2531,17 +2642,19 @@ let hView='chords';
 function setHView(v){ hView=v;
   document.getElementById('sub-chords').hidden = v!=='chords';
   document.getElementById('sub-triads').hidden = v!=='triads';
+  document.getElementById('sub-arp').hidden = v!=='arp';
   document.getElementById('sub-identify').hidden = v!=='identify';
-  ['chords','triads','identify'].forEach(k=>{ const b=document.getElementById('hv-'+k); b.classList.toggle('active', k===v); b.setAttribute('aria-pressed', k===v?'true':'false'); });
-  const head = v==='identify'?'id':(v==='triads'?'tr':'ch');
+  ['chords','triads','arp','identify'].forEach(k=>{ const b=document.getElementById('hv-'+k); if(b){ b.classList.toggle('active', k===v); b.setAttribute('aria-pressed', k===v?'true':'false'); } });
+  const head = v==='identify'?'id':(v==='triads'?'tr':v==='arp'?'arp':'ch');
   document.getElementById('harmony-h').textContent = t(head+'_h');
   document.getElementById('harmony-p').textContent = t(head+'_p');
   applyHarmonyExtras();
-  (v==='identify'?renderIdentify:v==='triads'?renderTriads:renderChords)();
+  (v==='identify'?renderIdentify:v==='triads'?renderTriads:v==='arp'?renderArp:renderChords)();
   updateGlobalPlay(); saveState();
 }
 document.getElementById('hv-chords').onclick=()=>setHView('chords');
 document.getElementById('hv-triads').onclick=()=>setHView('triads');
+document.getElementById('hv-arp').onclick=()=>setHView('arp');
 document.getElementById('hv-identify').onclick=()=>setHView('identify');
 
 /* Scales-tab sub-view (1b): Scale | Notes — mirrors the Harmony Chords/Triads
@@ -2572,6 +2685,7 @@ function globalPlay(){
   const boardEl=document.getElementById('board');
   if(currentTab==='harmony'){
     if(hView==='triads'){ const v=currentTriadVoicing(); animArpMidi(boardEl, v.midis); }
+    else if(hView==='arp'){ const q=QUALITIES[chQual]; animRun(boardEl, 48+gRoot, q.iv.concat([12])); }   // run the arpeggio melodically up the neck
     else { const v=currentChordVoicing(); animArpMidi(boardEl, v.midis); }
   } else if(currentTab==='scales' && scView==='scale'){ const s=SCALES[scIdx]; animRun(boardEl, 48+gRoot, s.iv.concat([12])); }
   else if(currentTab==='circle'){
@@ -2594,7 +2708,7 @@ function updateGlobalPlay(){
     // The single loop now applies to both harmony views: it loops the selected
     // chord voicing (chord-tones view) or the shown triad (triads view) as a
     // backing. It persists across tabs; the transport chip is the Stop.
-    lp.hidden = !(currentTab==='harmony' && hView!=='identify');
+    lp.hidden = !(currentTab==='harmony' && (hView==='chords' || hView==='triads'));
     lp.classList.toggle('active', !!loopClock);
     lp.setAttribute('aria-pressed', loopClock?'true':'false');
     lp.innerHTML=(loopClock?'&#9632; ':'&#8635; ')+t('b_loop');
@@ -2733,6 +2847,7 @@ document.getElementById('lang-switch').addEventListener('click',e=>{
 /* ---- toolbar wiring ---- */
 document.getElementById('tb-tuning').onchange=function(){ tuningIdx=+this.value; applyTuning(); renderAllBoards(); saveState(); };
 document.getElementById('tb-frets').onchange=function(){ fretRangeIdx=+this.value; renderAllBoards(); saveState(); };
+{ const cp=document.getElementById('tb-capo'); if(cp) cp.onchange=function(){ capo=+this.value; renderAllBoards(); saveState(); }; }
 document.getElementById('tb-lefty').onclick=function(){ lefty=!lefty; this.classList.toggle('active',lefty); this.setAttribute('aria-pressed',lefty); renderAllBoards(); renderCircle(); saveState(); };
 /* the metronome / loop / sequencer clocks read beat() live, so the tempo glides
    without restarting — just update the value and the label here. */
@@ -2806,7 +2921,9 @@ if (typeof window!=='undefined' && window.__GS_ALLOW_TEST__) {
     cellW, boardWidth, leftFixed, FRET_LO, FRET_HI,
     schedAdvance, clocks, beat,
     selectTab, setHView, setScView, isBoardMode, loopToggle, seqPlay, seqAddCurrent, applyPreset, setChord,
+    CAGED_BY_POS, isCAGEDScale,
     setFret:(i)=>{ fretRangeIdx=i; },
+    setCapo:(i)=>{ capo=i; }, getCapo:()=>capo,
     setChQual:(i)=>{ chQual=i; chVoicing=0; }, setChVoicing:(i)=>{ chVoicing=i; },
     setTriad:(q,set,inv)=>{ trQual=q; trSet=set; trInv=inv; },
     initAudio:()=>audio(),

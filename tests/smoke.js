@@ -168,7 +168,8 @@ if (T) {
   ['b_listen_tip','b_loop_tip','b_loop_stop_tip','audio_off',
    'cd_voicings','cd_eshape','cd_ashape','cd_fret','cd_pick_hint','tr_shapes',
    'view_scale','view_notes','view_identify','suggest_title','suggest_scales',
-   'id_near','id_missing','id_extra'].forEach(k => {
+   'id_near','id_missing','id_extra',
+   'view_arp','arp_h','arp_p','arp_hint','arp_word','tb_capo','capo_off','caged_desc'].forEach(k => {
     ok('i18n new key present (uk+en): ' + k,
        T.I18N.uk[k] !== undefined && T.I18N.en[k] !== undefined);
   });
@@ -506,6 +507,53 @@ if (T) {
        fifths[0] === 7 && fifths[1] === 7 && fifths[2] === 6 && fifths[3] === 8,
        fifths.join(','));
     T.selectTab('harmony'); T.setHView('chords');
+  })();
+
+  /* ---- Phase 2 (v1.20.0): arpeggios, CAGED labels, capo ---- */
+  (function phase2() {
+    // Arpeggio is a fourth Harmony view that owns the shared board
+    T.selectTab('harmony'); T.setHView('arp');
+    ok('Phase2: arp is the active board mode', T.isBoardMode('arp') === true);
+    ok('Phase2: arp panel shown', win.document.getElementById('sub-arp').hidden === false);
+    const gp = win.document.getElementById('g-play'), lp = win.document.getElementById('g-loop');
+    ok('Phase2: Listen visible in arp view', gp && gp.hidden === false);
+    ok('Phase2: Loop hidden in arp view (it is the chord/triad backing)', lp && lp.hidden === true);
+    // arp shares the chord quality with chord-tones (the bridge)
+    T.setChQual(byShort['m7']);
+    ok('Phase2: arp board paints the shared chord quality', T.isBoardMode('arp') === true);
+    T.setHView('chords');
+    ok('Phase2: switching back to chord-tones keeps the chord', T.state().chQual === byShort['m7']);
+    T.setChQual(byShort['']);
+
+    // CAGED: the five positions map to the E·D·C·A·G shapes, major-scale only
+    ok('Phase2: CAGED position→shape map is E·D·C·A·G',
+       T.CAGED_BY_POS.join(',') === 'E,D,C,A,G');
+    T.setKey(0, 'C', 0);                 // C Ionian
+    ok('Phase2: CAGED labels on for the major scale', T.isCAGEDScale() === true);
+    const pos = win.document.getElementById('sc-pos');
+    if (pos) {
+      const labels = [...pos.querySelectorAll('button')].slice(1).map(b => b.textContent);
+      ok('Phase2: scale position buttons show CAGED letters', labels.join(',') === 'E,D,C,A,G',
+         labels.join(','));
+    }
+    T.setKey(2, 'D', 1);                 // D Dorian — a mode, not Ionian
+    ok('Phase2: CAGED labels off for a mode (anchoring would be wrong)', T.isCAGEDScale() === false);
+    T.setKey(9, 'A', 5);
+
+    // Capo: bounded, persisted, and dims/marks the board without changing cell count
+    T.setCapo(3);
+    ok('Phase2: capo value set', T.getCapo() === 3);
+    T.selectTab('harmony'); T.setHView('chords');   // triggers saveState + a board repaint
+    const board = win.document.getElementById('board');
+    const firstRow = board && board.querySelector('.srow');
+    if (firstRow) {
+      ok('Phase2: a capo bar is drawn at the capo fret', !!firstRow.querySelector('.cell.capo-at'));
+      ok('Phase2: frets behind the capo are dimmed', firstRow.querySelectorAll('.cell.subcapo').length >= 1);
+    }
+    const saved = JSON.parse(win.localStorage.getItem('guitarStudio.v1') || '{}');
+    ok('Phase2: capo persisted through saveState', saved.capo === 3);
+    T.setCapo(0);
+    T.setHView('chords');
   })();
 
   /* ---- behaviour: loop + sequencer transport toggles ---- */

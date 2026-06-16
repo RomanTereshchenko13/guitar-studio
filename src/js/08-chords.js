@@ -75,6 +75,7 @@ function labClass(lab){
 let gRoot=9, gRootLbl='A', gMode='names';
 let chQual=1;
 let chVoicing=0;   // index of the selected voicing card (open / E-barre / A-barre / computed)
+let arpPos=0;      // Arpeggio view (Phase 2): isolated practice box (0 = whole neck, 1..5)
 let idSel=[];      // Identify sub-view (1c): MIDIs the user has tapped on the board (transient scratch)
 function chDegClass(iv){ if(iv===0)return'd-root'; if(iv===3||iv===4)return'd-third'; if([6,7,8].includes(iv))return'd-fifth'; return'd-sev'; }
 
@@ -179,6 +180,51 @@ function renderChords(){
       const m=map[pc]; if(m===undefined) return null;
       return makeDot(labClass(m.lab), gMode==='names'?spellNote(gRootLbl,pc,m.deg):m.lab, OPEN_MIDI[si]+f);
     }, chordLegendHTML(), t('ch_hint'));
+  }
+  renderSuggester();
+}
+
+/* ---- Arpeggios (Phase 2) ----
+   The chord ↔ scale bridge: the same chord tones as the chord-tones view, but
+   framed as an arpeggio you run melodically up the neck (Listen plays it
+   ascending) and can isolate to one practice box. Shares the chord quality
+   (chQual) with the chord-tones view so switching views keeps the chord — that's
+   the bridge. Reuses the chord-tone board paint + the scale-view box window. */
+function buildArpQuals(){
+  const c=document.getElementById('arp-quals'); if(!c) return; c.innerHTML='';
+  QUAL_GROUPS.forEach(g=>{
+    const seg=document.createElement('div'); seg.className='qual-grp';
+    const lab=document.createElement('span'); lab.className='qual-grp-lab'; lab.textContent=t('qg_'+g); seg.appendChild(lab);
+    const wrap=document.createElement('div'); wrap.className='group';
+    QUALITIES.forEach((q,i)=>{ if(q.grp!==g) return;
+      const b=document.createElement('button'); b.className='btn'+(i===chQual?' active':'');
+      b.textContent=q.short||'maj'; b.title=qName(q); b.setAttribute('aria-label', qName(q)); b.setAttribute('aria-pressed', i===chQual);
+      b.onclick=()=>{ chQual=i; chVoicing=0; buildChQuals(); buildArpQuals(); renderArp(); saveState(); };
+      wrap.appendChild(b);
+    });
+    seg.appendChild(wrap); c.appendChild(seg);
+  });
+}
+function buildArpPos(){
+  const c=document.getElementById('arp-pos'); if(!c) return; c.innerHTML='';
+  const labels=[t('pos_all'),'1','2','3','4','5'];
+  labels.forEach((lab,i)=>{ const b=document.createElement('button'); b.className='btn'+(i===arpPos?' active':''); b.textContent=lab; b.setAttribute('aria-pressed', i===arpPos);
+    b.onclick=()=>{ arpPos=i; buildArpPos(); renderArp(); saveState(); }; c.appendChild(b); });
+}
+function renderArp(){
+  const q=QUALITIES[chQual];
+  const notes=q.iv.map((iv,i)=>spellNote(gRootLbl,(gRoot+iv)%12,q.deg[i])).join(' – ');
+  const degs=q.lab.join('  ');
+  const info=document.getElementById('arp-info');
+  if(info) info.innerHTML=`<div class="big">${gRootLbl}${q.short} ${t('arp_word')} · ${qName(q)}: ${notes}</div><div class="sub">${t('intervals_word')}: ${degs}</div>`;
+  if(isBoardMode('arp')){
+    const map={}; q.iv.forEach((iv,i)=>{ map[(gRoot+iv)%12]={lab:q.lab[i], deg:q.deg[i]}; });
+    const win=boxWindow(arpPos);
+    paintBoard((pc,si,f)=>{
+      const m=map[pc]; if(m===undefined) return null;
+      if(win && (f<win[0]||f>win[1])) return null;
+      return makeDot(labClass(m.lab), gMode==='names'?spellNote(gRootLbl,pc,m.deg):m.lab, OPEN_MIDI[si]+f);
+    }, chordLegendHTML(), t('arp_hint'));
   }
   renderSuggester();
 }

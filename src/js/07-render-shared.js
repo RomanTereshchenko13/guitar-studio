@@ -49,7 +49,7 @@ function renderBoard(boardEl, cellFn){
     const row=document.createElement('div'); row.className='srow';
     const lab=document.createElement('div'); lab.className='slabel'; lab.textContent=sn; row.appendChild(lab);
     if(showOpen){
-      const open=document.createElement('div'); open.className='ocell';
+      const open=document.createElement('div'); open.className='ocell'+(capo>0?' subcapo':'');
       const odot=cellFn(OPEN[si]%12, si, 0);
       if(odot){ if(stag) odot.style.animationDelay=delay(0); open.appendChild(odot); }
       row.appendChild(open);
@@ -58,6 +58,9 @@ function renderBoard(boardEl, cellFn){
     for(let f=lo; f<=hi; f++){
       const pc=(OPEN[si]+f)%12;
       const cell=document.createElement('div'); cell.className='cell';
+      // capo: dim the frets behind it (unreachable) and mark its fret as the new
+      // nut — pitches are unchanged, so the lit chord/scale tones stay put.
+      if(capo>0){ if(f<capo) cell.classList.add('subcapo'); else if(f===capo) cell.classList.add('capo-at'); }
       // position-marker inlays on the neck face: single dot between the centre
       // strings (G/D, si 3), double dot straddling the centre at fret 12/24
       if(INLAY_DOUBLE.has(f)){ if(si===2||si===4) cell.classList.add('inlay'); }
@@ -126,6 +129,7 @@ function wirePlay(boardEl){
 function isBoardMode(mode){
   if(mode==='chords')   return currentTab==='harmony' && hView==='chords';
   if(mode==='triads')   return currentTab==='harmony' && hView==='triads';
+  if(mode==='arp')      return currentTab==='harmony' && hView==='arp';
   if(mode==='identify') return currentTab==='harmony' && hView==='identify';
   if(mode==='scale')    return currentTab==='scales'  && scView==='scale';
   if(mode==='notes')    return currentTab==='scales'  && scView==='notes';
