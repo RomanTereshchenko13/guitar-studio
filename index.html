@@ -1,158 +1,8 @@
 <!DOCTYPE html>
-<!-- ===========================================================
-     Guitar Studio
-     Version: 1.18.0  (2026-06-16)
-     Changelog:
-       1.18.0 — feel pass (Phase 1d). Subtle, reduced-motion-respecting animation
-               that makes sound and rhythm visible: a beat pulse on the transport
-               indicator locked to the scheduler (downbeat stronger) while a loop
-               or the backing band plays; a one-shot pluck ripple expanding from a
-               tapped fretboard dot; a left-to-right fade-in stagger when the key,
-               chord or scale changes so a re-draw reads as a transition; and a
-               connecting subdominant→tonic→dominant arc drawn on the circle of
-               fifths when a key is selected. Transport-bar controls were aligned
-               to a common height so they stay tidy at any browser zoom. All motion
-               is transform/opacity only and is neutralized under
-               prefers-reduced-motion. No new dependencies.
-       1.17.0 — reverse lookup (Phase 1c). New "Identify" view under Harmony:
-               tap the notes you're playing on the neck and the app names the
-               chord (with the genuine alternatives, e.g. C6 / Am7, and slash
-               chords for a non-root bass). The old static chord-reference
-               sidebar became a live "Play over this" panel: for the current
-               chord it shows the arpeggio plus the scales that fit, each a chip
-               that jumps to that scale (the reference→practice seam). No new
-               dependencies.
-       1.16.0 — one shared fretboard + fewer tabs (Phase 1b). The four separate
-               boards (chord tones / triads / scale / notes) collapsed into one
-               board that switches what it highlights. Notes folded from its own
-               tab into a "Notes" view inside Scales (4 tabs → 3), mirroring the
-               Chords/Triads toggle. Control rows were grouped and compacted. No
-               new dependencies.
-       1.15.0 — one musical context + one diatonic source (Phase 1a). The key
-               center and mode are now a single shared context: pick a root or
-               key once and Harmony, Scales, the Circle of Fifths and Notes all
-               follow (the circle is now a live projection of your key, not a
-               separate selection). Internally the duplicated diatonic-chord
-               logic (scales vs circle) collapsed into one helper, removing a
-               correctness-drift risk. No new dependencies.
-       1.14.0 — backing groove + preview tempo fix. The drums gained a snare
-               backbeat on 2 & 4 so the groove actually grooves instead of just
-               ticking, and one-shot Listen previews now play at a fixed,
-               comfortable rate independent of the practice tempo (Loop and
-               progression Play still follow the tempo, since they are backings).
-               No new dependencies.
-       1.13.0 — visual + mobile polish. Phones get finger-sized tap targets
-               (fretboard dots grow rather than shrink, taller buttons) plus
-               touch-action/user-select fixes so rapid note tapping no longer
-               zooms or selects text. The UI accent became a teal, decoupled
-               from the musical "fifth" blue it used to collide with. The neck
-               face now shows position-marker inlays (single 3·5·7·9, double at
-               12), chord + triad diagrams print a heuristic fingering (1–4)
-               inside each dot, the board fades at its right edge when more
-               frets scroll off, and fret wires gained a metallic sheen. No new
-               dependencies.
-       1.12.0 — alternate voicings + playable cards (chord/triad parity).
-               Chord diagrams now show the canonical voicing set per chord —
-               open (where one exists) plus the E-shape (root on string 6) and
-               A-shape (root on string 5) barre forms — deduped so an open
-               shape that equals a barre-at-fret-0 isn't drawn twice. Cards are
-               selectable: tap one and the single context-aware Listen/Loop play
-               THAT voicing in its real register (open C rings low; the A-shape
-               C at fret 3 sits higher), so the ear matches the eye. Card dots
-               are now honest — click one to hear that string — and coloured by
-               chord function. Triads gain the matching anatomy: a shape card per
-               inversion, Listen plays the displayed inversion/string-set voicing
-               (not a fixed root-position block), and Loop is no longer hidden in
-               the triads view — it loops the shown triad as a backing, with the
-               bass following the triad's true fifth (♭5 dim / ♯5 aug). Strums
-               now sweep low→high with slight top-string emphasis instead of
-               stacking. Extended jazz chords keep their single computed voicing
-               (there is no canonical CAGED set for a 13). No new dependencies.
-       1.11.0 — release hardening (Phase C+) + playback-control clarity.
-               Playback UX: the per-chord Listen and Loop now sit together in
-               the timing bar (the transport), so "hear it once" (▶ Listen,
-               green) and "keep it going as a backing" (↻ Loop, blue) are one
-               obvious pair; the progression Play/Cycle stays with its strip.
-               Loop is shown only where it applies (chord-tones view); the
-               transport chip is still the cross-tab Stop. Responsive fretboard:
-               fret-cell width is now derived from the available viewport with a
-               readable floor, so a windowed range fits a phone with no sideways
-               scroll (only the wide "All frets" view keeps the scroller); the
-               board re-fits on rotation. Robustness: previously-silent error
-               swallows now log a dev warning, and a browser without Web Audio
-               degrades gracefully (controls disabled with a hint, not dead
-               buttons). Ships with a committed jsdom test harness (npm test).
-       1.10.0 — backing realism (Phase C). The loop and progression sequencer
-               become a jam-along band: a synthesized bass (root on beat 1, the
-               chord's true fifth on beat 3 — perfect, ♭5 for dim/m7♭5, ♯5 for
-               aug) and an optional filtered-noise groove (kick on 1 & 3, 8th-
-               note hi-hats with a downbeat accent) on their own dry buses that
-               skip the guitar body + room. The guitar comp is humanized
-               (per-note velocity variation + micro-timing jitter) with a softer
-               push on beat 3 whenever the band is on. Two timing-bar toggles —
-               Bass and Drums — both persisted. All scheduled per-bar from inside
-               the existing strum, so it stays sample-accurate on Phase B's clock.
-               No new dependencies.
-       1.9.0 — audio engine foundation (Phase B). The metronome, single-chord
-               loop and progression sequencer were moved off setInterval onto a
-               lookahead scheduler ("two clocks"): a 25 ms timer queues audio
-               events ~100 ms ahead on the sample-accurate audio clock, so the
-               rhythmic grid no longer drifts (worst on mobile / background tabs)
-               and the tempo slider now glides instead of restarting. Dot-lighting
-               for the loop and sequencer rides the same scheduled times via a
-               requestAnimationFrame queue, so the lit notes stay locked to the
-               sound. The audio path was split into named buses — backing (guitar
-               voice), leadTarget (reserved for practice target tones) and cue (UI
-               clicks; the metronome now runs here) — and short synthesized
-               correct / wrong / count-in cues were added on the cue bus as
-               foundation for the upcoming practice modes. No new dependencies.
-               (One-shot Play animations stay on their existing timers — being
-               brief and non-repeating, they don't accumulate drift.)
-       1.8.0 — tone realism (Phase A). Karplus-Strong voice reworked to sound
-               more like a guitar: a body-resonance peaking EQ (air ~100 Hz,
-               top ~200 Hz, mid ~430 Hz) colours every note like a real box;
-               a pick-position comb shapes the excitation; a fractional-delay
-               allpass in the string loop fixes upper-register tuning (integer
-               delay alone ran ~10-20 cents flat); plucks now respond to
-               velocity (louder + brighter when harder, with slight
-               humanization); and low/wound vs high/plain strings get distinct
-               brightness and sustain by register. No new dependencies.
-       1.7.0 — chord vocabulary expanded from 7 to 21 qualities (sus2/sus4,
-               6/m6, m7♭5, dim7, add9, 9/maj9/m9, 11, 13, 7♭9, 7♯9). New
-               per-quality label/degree arrays fix the interval-ambiguity
-               problem; colour is now label-derived (labClass) with a new
-               violet --ext for extensions. Chord diagrams gain a generalized
-               interval-based voicing generator so every quality gets a shape
-               (no more "no simple shape"). Fretboard dots are now keyboard-
-               focusable and play on Enter/Space. Phones get narrower frets
-               and default to a 5-fret window. Full state persistence: chord
-               quality, scale + position, triad set/inversion, circle
-               selection, highlighted note, and the built progression now
-               survive a reload.
-       1.6.0 — header decluttered: subtitle tagline removed. UI/UX polish:
-               keyboard focus rings on all controls, reduced-motion support,
-               tab hover affordance, and tabs now scroll horizontally on
-               phones instead of wrapping to a second row.
-       1.5.0 — UI refactor: Chord tones and Triads merged into one
-               "Chords / triads" tab with a view toggle (5 tabs → 4).
-               Root and Notes/Intervals are now a single shared context
-               bar across Harmony & Scales (no more per-tab duplicates).
-               One context-aware Play in the timing bar replaces the
-               four per-panel Listen/Cadence buttons.
-       1.4.0 — playback persists across tabs: the single-chord loop and
-               the progression sequencer no longer stop when you switch
-               tabs (backing-track behaviour). A global transport chip in
-               the timing bar shows what's playing and offers Stop from
-               any tab. Added an in-app changelog (tap the version badge).
-       1.3.0 — tempo relocated: tempo + metronome now live in an
-               always-visible timing bar; Settings toolbar is now
-               instrument-only (tuning, handedness, fret range)
-       1.2.0 — chord progression sequencer (presets, per-chord bars,
-               board follows the active chord, cycle/once playback)
-       1.1.0 — single-chord background loop
-       1.0.0 — base: chord tones, triads, scales/modes, circle, notes
-     Single source of truth for the version is APP_VERSION in the script.
-     ============================================================ -->
+<!-- Guitar Studio — generated single-file build (do not edit; edit src/ and run build.js).
+     Version: 1.18.0  (source of truth: APP_VERSION in src/js/01-version.js;
+     build.js fills this in). Release notes live in src/js/02-changelog.js (drives
+     the in-app "What's new" modal and CHANGELOG.md). -->
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
@@ -317,18 +167,6 @@
   .aside-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .aside-head span { font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
   .aside-toggle { background: transparent; border: none; color: var(--text-dim); font-size: 18px; cursor: pointer; line-height: 1; padding: 0 4px; }
-  .mini-title { font-size: 10px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin: 10px 0 5px; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .mini td { padding: 3px 2px; border-bottom: 1px solid var(--border); }
-  .mini tr:last-child td { border-bottom: none; }
-  .mini .chord { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; width: 30px; }
-  .mini .pill { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 21px; border-radius: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 11px; }
-  .p-root { background: var(--root); color: #0e1408; }
-  .p-third { background: var(--third); color: #1f1405; }
-  .p-fifth { background: var(--fifth); color: #07203a; }
-  .p-mthird { background: var(--seventh); color: #2a0a16; }
-  .aside-leg { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
-  .aside-leg .leg { font-size: 11px; }
   /* "Play over this" suggester (1c) */
   .sug-chord { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; margin-bottom: 8px; }
   .sug-row { font-size: 13px; color: var(--text); margin-bottom: 8px; line-height: 1.5; }
@@ -368,7 +206,6 @@
   .tb-toggle.open .chev { transform: rotate(180deg); }
   .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); }
   .toolbar.collapsed { display: none; }
-  .toolbar .tb-seg { font-size: 10px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.07em; }
   .toolbar .tb-group, .tb-bar .tb-group { display: flex; align-items: center; gap: 7px; }
   .toolbar .tb-label, .tb-bar .tb-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
   .toolbar select { font-size: 12px; padding: 5px 9px; }
@@ -423,7 +260,7 @@
   .cd-nut { stroke: #d8cba8; stroke-width: 4; }
   .cd-dot { fill: var(--fifth); cursor: pointer; }
   .cd-dot:hover { stroke: #fff; stroke-width: 1.5; }
-  .cd-dot.root, .cd-dot.d-root { fill: var(--root); }
+  .cd-dot.d-root { fill: var(--root); }
   .cd-dot.d-third { fill: var(--third); }
   .cd-dot.d-fifth { fill: var(--fifth); }
   .cd-dot.d-sev { fill: var(--seventh); }
@@ -852,7 +689,7 @@ const CHANGELOG = [
 const I18N = {
   uk: {
     brand:'Гітарна студія',
-    tab_chords:'Тони акорду', tab_triads:'Тріади', tab_scales:'Гами / моди', tab_circle:'Коло квінт', tab_notes:'Ноти на грифі',
+    tab_scales:'Гами / моди', tab_circle:'Коло квінт',
     tab_harmony:'Акорди / тріади', lbl_view:'Вид', view_chords:'Тони акорду', view_triads:'Форми тріад',
     view_scale:'Гама', view_notes:'Ноти', view_identify:'Розпізнати',
     id_h:'Розпізнавання акорду', id_p:'Натисни на грифі ноти, які береш, — і дізнайся, що це за акорд.',
@@ -888,10 +725,8 @@ const I18N = {
     leg_root:'Тоніка (1)', leg_third:'Терція (3 / ♭3)', leg_fifth:'Квінта (5)', leg_seventh:'Септима (7 / ♭7)', leg_ext:'Розширення (6 · 9 · 11 · 13)',
     leg_nat:'Натуральна нота', leg_sharpflat:'Дієз / бемоль', leg_highlight:'Виділена нота',
     leg_sc_other:'Інші ноти гами',
-    side_title:'Довідник акордів', side_major:'Мажорні (1 · 3 · 5)', side_minor:'Мінорні (1 · ♭3 · 5)',
-    side_root:'Тоніка', side_third:'Терція', side_fifth:'Квінта',
     footer:'Гітарна студія · стандартний стрій (E A D G B e) · працює офлайн',
-    notes_word:'ноти', intervals_word:'Інтервали', degrees_word:'Ступені',
+    intervals_word:'Інтервали', degrees_word:'Ступені',
     samenotes:'Ті самі ноти, що й', major_word:'мажор', mode_tail:'— змінюється лише тоніка',
     overlay_msg:'Накладено акорд: цільові ноти підсвічені, решта гами приглушена',
     dia_na:'недоступно для пентатоніки / блюзу',
@@ -900,13 +735,13 @@ const I18N = {
     inv_root_desc:'Основне положення — у басу тоніка',
     inv_1st_desc:'Перше обернення — у басу терція',
     inv_2nd_desc:'Друге обернення — у басу квінта',
-    tb_settings:'Налаштування', tb_setup:'Інструмент', tb_playback:'Відтворення',
+    tb_settings:'Налаштування',
     tb_tuning:'Стрій', tb_lefty:'Ліворукий', tb_frets:'Лади', tb_tempo:'Темп',
     tb_metro_on:'Метроном', tb_metro_off:'Метроном',
     tb_bass:'Бас', tb_drums:'Ударні',
     tb_now_loop:'Луп', tb_now_seq:'Прогресія', tb_stop:'Стоп',
     cl_title:'Що нового', cl_current:'зараз',
-    frets_all:'Усі', cd_title:'Як зіграти', cd_open:'відкритий акорд',
+    frets_all:'Усі', cd_open:'відкритий акорд',
     cd_barre:'барре, лад', cd_std:'аплікатура для стандартного строю',
     cd_na:'немає простої форми', cd_calc:'обчислена аплікатура',
     cd_voicings:'Форми акорду', cd_eshape:'барре у формі E', cd_ashape:'барре у формі A',
@@ -915,7 +750,7 @@ const I18N = {
   },
   en: {
     brand:'Guitar Studio',
-    tab_chords:'Chord tones', tab_triads:'Triads', tab_scales:'Scales / modes', tab_circle:'Circle of fifths', tab_notes:'Notes on the neck',
+    tab_scales:'Scales / modes', tab_circle:'Circle of fifths',
     tab_harmony:'Chords / triads', lbl_view:'View', view_chords:'Chord tones', view_triads:'Triad shapes',
     view_scale:'Scale', view_notes:'Notes', view_identify:'Identify',
     id_h:'Chord identifier', id_p:'Tap the notes you are playing on the neck to name the chord.',
@@ -951,10 +786,8 @@ const I18N = {
     leg_root:'Root (1)', leg_third:'Third (3 / ♭3)', leg_fifth:'Fifth (5)', leg_seventh:'Seventh (7 / ♭7)', leg_ext:'Extensions (6 · 9 · 11 · 13)',
     leg_nat:'Natural note', leg_sharpflat:'Sharp / flat', leg_highlight:'Selected note',
     leg_sc_other:'Other scale tones',
-    side_title:'Chord reference', side_major:'Major (1 · 3 · 5)', side_minor:'Minor (1 · ♭3 · 5)',
-    side_root:'Root', side_third:'Third', side_fifth:'Fifth',
     footer:'Guitar Studio · standard tuning (E A D G B e) · works offline',
-    notes_word:'notes', intervals_word:'Intervals', degrees_word:'Scale degrees',
+    intervals_word:'Intervals', degrees_word:'Scale degrees',
     samenotes:'Same notes as', major_word:'major', mode_tail:'— only the tonic changes',
     overlay_msg:'Chord overlaid: target tones highlighted, the rest of the scale dimmed',
     dia_na:'not available for pentatonic / blues',
@@ -963,13 +796,13 @@ const I18N = {
     inv_root_desc:'Root position — root in the bass',
     inv_1st_desc:'First inversion — third in the bass',
     inv_2nd_desc:'Second inversion — fifth in the bass',
-    tb_settings:'Settings', tb_setup:'Instrument', tb_playback:'Playback',
+    tb_settings:'Settings',
     tb_tuning:'Tuning', tb_lefty:'Left-handed', tb_frets:'Frets', tb_tempo:'Tempo',
     tb_metro_on:'Metronome', tb_metro_off:'Metronome',
     tb_bass:'Bass', tb_drums:'Drums',
     tb_now_loop:'Loop', tb_now_seq:'Progression', tb_stop:'Stop',
     cl_title:'What\'s new', cl_current:'current',
-    frets_all:'All', cd_title:'How to play', cd_open:'open chord',
+    frets_all:'All', cd_open:'open chord',
     cd_barre:'barre, fret', cd_std:'fingering for standard tuning',
     cd_na:'no simple shape', cd_calc:'computed voicing',
     cd_voicings:'Chord shapes', cd_eshape:'E-shape barre', cd_ashape:'A-shape barre',
@@ -1432,7 +1265,6 @@ function setBandLabels(){
 }
 function bassToggle(){ audio(); bassOn=!bassOn; setBandLabels(); saveState(); }
 function drumsToggle(){ audio(); grooveOn=!grooveOn; setBandLabels(); saveState(); }
-function retempo(){}  /* no-op: the metro clock reads beat() live, so tempo glides without a restart */
 
 /* ---- single-chord / single-triad loop: re-strums the current voicing at the top
    of every bar. loopMode is captured at start (chord vs triad) but the voicing is
@@ -1472,7 +1304,6 @@ function loopToggle(){
 }
 function stopLoop(){ if(!loopClock) return; removeClock(loopClock); loopClock=null; clearVisualQ(); stopLoopVisual();
   const b=document.getElementById('g-loop'); if(b){ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); } setLoopLabel(); }
-function reloopTempo(){}  /* no-op: the loop clock reads beat() live, so tempo glides */
 function setLoopLabel(){ const b=document.getElementById('g-loop'); if(!b) return; b.innerHTML=(loopClock?'&#9632; ':'&#8635; ')+t('b_loop'); b.setAttribute('aria-label', t(loopClock?'b_loop_stop_tip':'b_loop_tip')); b.title=t(loopClock?'b_loop_stop_tip':'b_loop_tip'); updateGlobalTransport(); }
 
 /* ---- global transport chip (timing bar) ----
@@ -1575,7 +1406,6 @@ function seqStop(){
   renderSeq(); setSeqTransport();
 }
 function seqRebuild(){ if(seqClock){ seqBuildMap(); if(seqBar>=seqBarMap.length) seqBar=0; } }  // clock keeps ticking; just refresh the map
-function reseqTempo(){}  /* no-op: the seq clock reads beat() live, so tempo glides */
 function seqLoopToggle(){ seqLoopOn=!seqLoopOn; setSeqTransport(); saveState(); }
 function seqClear(){ seq=[]; if(seqClock) seqStop(); seqStepIdx=-1; renderSeq(); saveState(); }
 function setSeqTransport(){
@@ -2773,7 +2603,9 @@ document.getElementById('lang-switch').addEventListener('click',e=>{
 document.getElementById('tb-tuning').onchange=function(){ tuningIdx=+this.value; applyTuning(); renderAllBoards(); saveState(); };
 document.getElementById('tb-frets').onchange=function(){ fretRangeIdx=+this.value; renderAllBoards(); saveState(); };
 document.getElementById('tb-lefty').onclick=function(){ lefty=!lefty; this.classList.toggle('active',lefty); this.setAttribute('aria-pressed',lefty); renderAllBoards(); renderCircle(); saveState(); };
-document.getElementById('tb-tempo').oninput=function(){ tempo=+this.value; document.getElementById('tb-bpm').textContent=tempo+' BPM'; retempo(); reloopTempo(); reseqTempo(); };
+/* the metronome / loop / sequencer clocks read beat() live, so the tempo glides
+   without restarting — just update the value and the label here. */
+document.getElementById('tb-tempo').oninput=function(){ tempo=+this.value; document.getElementById('tb-bpm').textContent=tempo+' BPM'; };
 document.getElementById('tb-tempo').onchange=function(){ saveState(); };
 document.getElementById('tb-metro').onclick=metroToggle;
 document.getElementById('tb-bass').onclick=bassToggle;

@@ -141,7 +141,6 @@ function setBandLabels(){
 }
 function bassToggle(){ audio(); bassOn=!bassOn; setBandLabels(); saveState(); }
 function drumsToggle(){ audio(); grooveOn=!grooveOn; setBandLabels(); saveState(); }
-function retempo(){}  /* no-op: the metro clock reads beat() live, so tempo glides without a restart */
 
 /* ---- single-chord / single-triad loop: re-strums the current voicing at the top
    of every bar. loopMode is captured at start (chord vs triad) but the voicing is
@@ -181,7 +180,6 @@ function loopToggle(){
 }
 function stopLoop(){ if(!loopClock) return; removeClock(loopClock); loopClock=null; clearVisualQ(); stopLoopVisual();
   const b=document.getElementById('g-loop'); if(b){ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); } setLoopLabel(); }
-function reloopTempo(){}  /* no-op: the loop clock reads beat() live, so tempo glides */
 function setLoopLabel(){ const b=document.getElementById('g-loop'); if(!b) return; b.innerHTML=(loopClock?'&#9632; ':'&#8635; ')+t('b_loop'); b.setAttribute('aria-label', t(loopClock?'b_loop_stop_tip':'b_loop_tip')); b.title=t(loopClock?'b_loop_stop_tip':'b_loop_tip'); updateGlobalTransport(); }
 
 /* ---- global transport chip (timing bar) ----
@@ -284,7 +282,6 @@ function seqStop(){
   renderSeq(); setSeqTransport();
 }
 function seqRebuild(){ if(seqClock){ seqBuildMap(); if(seqBar>=seqBarMap.length) seqBar=0; } }  // clock keeps ticking; just refresh the map
-function reseqTempo(){}  /* no-op: the seq clock reads beat() live, so tempo glides */
 function seqLoopToggle(){ seqLoopOn=!seqLoopOn; setSeqTransport(); saveState(); }
 function seqClear(){ seq=[]; if(seqClock) seqStop(); seqStepIdx=-1; renderSeq(); saveState(); }
 function setSeqTransport(){

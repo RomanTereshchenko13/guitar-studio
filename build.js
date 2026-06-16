@@ -17,20 +17,23 @@ const jsDir = path.join(root, 'src', 'js');
 const jsFiles = fs.readdirSync(jsDir).filter(f => f.endsWith('.js')).sort();
 const js = jsFiles.map(f => fs.readFileSync(path.join(jsDir, f), 'utf8')).join('');
 
+// APP_VERSION is the single source of truth: read it once and inject it into the
+// header comment (@@VERSION@@) and the dist filename, so neither drifts from it.
+const verMatch = js.match(/APP_VERSION\s*=\s*'([\d.]+)'/);
+if (!verMatch) throw new Error('APP_VERSION not found in sources — cannot name versioned build');
+const version = verMatch[1];
+
 // Function replacers: CSS/JS contain `$` (e.g. `${...}`), which a string
 // replacement would mis-interpret as $-patterns. A function value is inserted verbatim.
 const out = tpl
+  .replace(/@@VERSION@@/g, () => version)
   .replace('@@STYLES@@', () => css)
   .replace('@@SCRIPT@@', () => js);
 
 // index.html: the stable entry point (GitHub Pages URL + what the test suite reads).
 fs.writeFileSync(path.join(root, 'index.html'), out);
 
-// Versioned copy (identical bytes) for file-based sharing / archival. The version
-// is read from APP_VERSION so the name follows releases with no manual rename.
-const verMatch = js.match(/APP_VERSION\s*=\s*'([\d.]+)'/);
-if (!verMatch) throw new Error('APP_VERSION not found in sources — cannot name versioned build');
-const version = verMatch[1];
+// Versioned copy (identical bytes) for file-based sharing / archival.
 const distDir = path.join(root, 'dist');
 fs.mkdirSync(distDir, { recursive: true });
 const versioned = 'guitar-studio-v' + version + '.html';

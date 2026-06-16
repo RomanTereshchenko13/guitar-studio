@@ -231,7 +231,9 @@ document.getElementById('lang-switch').addEventListener('click',e=>{
 document.getElementById('tb-tuning').onchange=function(){ tuningIdx=+this.value; applyTuning(); renderAllBoards(); saveState(); };
 document.getElementById('tb-frets').onchange=function(){ fretRangeIdx=+this.value; renderAllBoards(); saveState(); };
 document.getElementById('tb-lefty').onclick=function(){ lefty=!lefty; this.classList.toggle('active',lefty); this.setAttribute('aria-pressed',lefty); renderAllBoards(); renderCircle(); saveState(); };
-document.getElementById('tb-tempo').oninput=function(){ tempo=+this.value; document.getElementById('tb-bpm').textContent=tempo+' BPM'; retempo(); reloopTempo(); reseqTempo(); };
+/* the metronome / loop / sequencer clocks read beat() live, so the tempo glides
+   without restarting — just update the value and the label here. */
+document.getElementById('tb-tempo').oninput=function(){ tempo=+this.value; document.getElementById('tb-bpm').textContent=tempo+' BPM'; };
 document.getElementById('tb-tempo').onchange=function(){ saveState(); };
 document.getElementById('tb-metro').onclick=metroToggle;
 document.getElementById('tb-bass').onclick=bassToggle;

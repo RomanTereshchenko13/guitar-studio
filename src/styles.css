@@ -153,18 +153,6 @@
   .aside-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .aside-head span { font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
   .aside-toggle { background: transparent; border: none; color: var(--text-dim); font-size: 18px; cursor: pointer; line-height: 1; padding: 0 4px; }
-  .mini-title { font-size: 10px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin: 10px 0 5px; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .mini td { padding: 3px 2px; border-bottom: 1px solid var(--border); }
-  .mini tr:last-child td { border-bottom: none; }
-  .mini .chord { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; width: 30px; }
-  .mini .pill { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 21px; border-radius: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 11px; }
-  .p-root { background: var(--root); color: #0e1408; }
-  .p-third { background: var(--third); color: #1f1405; }
-  .p-fifth { background: var(--fifth); color: #07203a; }
-  .p-mthird { background: var(--seventh); color: #2a0a16; }
-  .aside-leg { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
-  .aside-leg .leg { font-size: 11px; }
   /* "Play over this" suggester (1c) */
   .sug-chord { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; margin-bottom: 8px; }
   .sug-row { font-size: 13px; color: var(--text); margin-bottom: 8px; line-height: 1.5; }
@@ -204,7 +192,6 @@
   .tb-toggle.open .chev { transform: rotate(180deg); }
   .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); }
   .toolbar.collapsed { display: none; }
-  .toolbar .tb-seg { font-size: 10px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.07em; }
   .toolbar .tb-group, .tb-bar .tb-group { display: flex; align-items: center; gap: 7px; }
   .toolbar .tb-label, .tb-bar .tb-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
   .toolbar select { font-size: 12px; padding: 5px 9px; }
@@ -259,7 +246,7 @@
   .cd-nut { stroke: #d8cba8; stroke-width: 4; }
   .cd-dot { fill: var(--fifth); cursor: pointer; }
   .cd-dot:hover { stroke: #fff; stroke-width: 1.5; }
-  .cd-dot.root, .cd-dot.d-root { fill: var(--root); }
+  .cd-dot.d-root { fill: var(--root); }
   .cd-dot.d-third { fill: var(--third); }
   .cd-dot.d-fifth { fill: var(--fifth); }
   .cd-dot.d-sev { fill: var(--seventh); }
