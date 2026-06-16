@@ -1,4 +1,15 @@
 /* ===================== SHARED ===================== */
+/* Feel pass (1d): JS-driven motion must check reduced-motion explicitly (the
+   global CSS reset only neutralizes CSS-declared animation). Returns false where
+   matchMedia is unavailable (e.g. the jsdom harness), so motion is skipped there. */
+function motionOK(){
+  if(typeof window==='undefined' || typeof window.matchMedia!=='function') return false;
+  try{ return !window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ return true; }
+}
+/* Whether the next board paint should play the change-stagger. Default on; the
+   Identify tap handler turns it off around its re-render so picking a note
+   doesn't fade the whole neck on every tap. */
+let _boardStagger=true;
 function renderNums(el){
   const lo=FRET_LO(), hi=FRET_HI(), showOpen=lo<=1;
   let html='';
@@ -32,14 +43,15 @@ function boardWidth(){ return leftFixed() + (FRET_HI()-FRET_LO()+1)*cellW(); }
 function renderBoard(boardEl, cellFn){
   clearPlayHighlights();
   boardEl.innerHTML='';
-  const lo=FRET_LO(), hi=FRET_HI(), showOpen=lo<=1;
+  const lo=FRET_LO(), hi=FRET_HI(), showOpen=lo<=1, stag=_boardStagger;
+  const delay=col=>Math.min(col*12,150)+'ms';        // 1d: left-to-right change-stagger
   SNAMES.forEach((sn,si)=>{
     const row=document.createElement('div'); row.className='srow';
     const lab=document.createElement('div'); lab.className='slabel'; lab.textContent=sn; row.appendChild(lab);
     if(showOpen){
       const open=document.createElement('div'); open.className='ocell';
       const odot=cellFn(OPEN[si]%12, si, 0);
-      if(odot) open.appendChild(odot);
+      if(odot){ if(stag) odot.style.animationDelay=delay(0); open.appendChild(odot); }
       row.appendChild(open);
       const nut=document.createElement('div'); nut.className='nut'; row.appendChild(nut);
     }
@@ -51,12 +63,12 @@ function renderBoard(boardEl, cellFn){
       if(INLAY_DOUBLE.has(f)){ if(si===2||si===4) cell.classList.add('inlay'); }
       else if(INLAY_SINGLE.has(f)){ if(si===3) cell.classList.add('inlay'); }
       const dot=cellFn(pc,si,f);
-      if(dot) cell.appendChild(dot);
+      if(dot){ if(stag) dot.style.animationDelay=delay(showOpen?f-lo+1:f-lo); cell.appendChild(dot); }
       row.appendChild(cell);
     }
     boardEl.appendChild(row);
   });
-  const panel=boardEl.closest('.board'); if(panel){ panel.style.minWidth=boardWidth()+'px'; panel.classList.toggle('lefty', lefty); }
+  const panel=boardEl.closest('.board'); if(panel){ panel.style.minWidth=boardWidth()+'px'; panel.classList.toggle('lefty', lefty); panel.classList.toggle('anim', stag); }
   // hint that the neck scrolls (only the wide "All frets" view overflows)
   const sc=boardEl.closest('.scroll'); if(sc){ sc.classList.toggle('scrollable', sc.scrollWidth > sc.clientWidth + 1); }
 }
@@ -92,8 +104,16 @@ function makeDot(cls,text,midi){
   d.setAttribute('aria-label',text);
   return d;
 }
+/* pluck ripple (1d): a one-shot expanding halo from a tapped dot. Gated on
+   motionOK so it is skipped under reduced motion (and in the jsdom harness). */
+function rippleDot(d){
+  if(!d || !motionOK()) return;
+  const r=document.createElement('span'); r.className='ripple';
+  d.appendChild(r);
+  setTimeout(()=>{ if(r.parentNode) r.parentNode.removeChild(r); }, 640);
+}
 function wirePlay(boardEl){
-  const trigger=d=>{ if(d==null||d.dataset.midi==null) return; pluck(parseInt(d.dataset.midi)); d.classList.add('playing'); setTimeout(()=>d.classList.remove('playing'), 420); };
+  const trigger=d=>{ if(d==null||d.dataset.midi==null) return; pluck(parseInt(d.dataset.midi)); d.classList.add('playing'); rippleDot(d); setTimeout(()=>d.classList.remove('playing'), 420); };
   boardEl.addEventListener('click',e=>{ trigger(e.target.closest('.dot')); });
   boardEl.addEventListener('keydown',e=>{ if(e.key!=='Enter'&&e.key!==' ') return; const d=e.target.closest('.dot'); if(d&&d.dataset.midi!=null){ e.preventDefault(); trigger(d); } });
 }

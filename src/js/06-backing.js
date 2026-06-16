@@ -163,6 +163,7 @@ function loopStrum(when){
   strumMidi(midis, when, 0.9, 0.026, +1);                 // humanized downstrum
   if(bandActive()) strumMidi(midis, when+2*beat(), 0.55, 0.02, +1);   // softer push on beat 3
   scheduleBand(pc, qi, when);                             // bass + groove bed (no-op if both off)
+  enqueueBeats(when);                                     // 1d: transport beat pulse
   enqueueVisual(when, ()=>{ const b=document.getElementById(boardId); if(b) pcs.forEach(p=>setDotPlaying(b, p, true)); updateGlobalTransport(); });
   enqueueVisual(when+barSec*0.85, ()=>{ const b=document.getElementById(boardId); if(b) pcs.forEach(p=>setDotPlaying(b, p, false)); });
 }
@@ -187,6 +188,16 @@ function setLoopLabel(){ const b=document.getElementById('g-loop'); if(!b) retur
    Mirrors whatever is currently sounding (single-chord/triad loop or progression)
    so it can be read and stopped from any tab. The Listen/Loop controls now
    live together in the timing bar; the progression Play stays with its strip. */
+/* beat pulse (1d): pump the transport dot on each scheduled beat (downbeat
+   stronger), driven from the same per-bar enqueue as the dot-lighting, so the
+   tempo is *seen*, locked to the scheduler. CSS-only motion → neutralized under
+   prefers-reduced-motion by the global reset. */
+function pulseTransport(strong){
+  const d=document.querySelector('.tb-transport-dot'); if(!d) return;
+  d.classList.remove('bp','bp-strong'); void d.offsetWidth;     // restart the animation
+  d.classList.add(strong?'bp-strong':'bp');
+}
+function enqueueBeats(when){ const b=beat(); for(let k=0;k<4;k++) enqueueVisual(when+k*b, ()=>pulseTransport(k===0)); }
 function loopChordLabel(){ return loopMode==='triad' ? gRootLbl+TRIADS[trQual].short : gRootLbl+QUALITIES[chQual].short; }
 function updateGlobalTransport(){
   const wrap=document.getElementById('tb-transport'); if(!wrap) return;
@@ -238,6 +249,7 @@ function seqStrumStep(i, when){
   compStrum(base, ivs, when, 0.9, 0.028);                 // humanized downbeat strum
   if(bandActive()) compStrum(base, ivs, when+2*beat(), 0.55, 0.022);   // softer push on beat 3
   scheduleBand(st.pc, st.qi, when);                       // bass + groove follow the step's chord
+  enqueueBeats(when);                                     // 1d: transport beat pulse
   const pcs=ivs.map(iv=>mod(base+iv,12));
   enqueueVisual(when, ()=>{
     if(i!==seqStepIdx){ seqStepIdx=i; setChord(st.pc, st.lbl, st.qi); renderSeq(); updateGlobalTransport(); }  // chord changed → follow on board + chip

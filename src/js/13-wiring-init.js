@@ -128,8 +128,8 @@ document.getElementById('board').addEventListener('click', e=>{
   const d=e.target.closest('.dot'); if(!d || d.dataset.midi==null) return;
   e.stopPropagation();
   const midi=parseInt(d.dataset.midi), i=idSel.indexOf(midi);
-  if(i>=0) idSel.splice(i,1); else { idSel.push(midi); pluck(midi); }
-  renderIdentify();
+  if(i>=0) idSel.splice(i,1); else { idSel.push(midi); pluck(midi); rippleDot(d); }
+  _boardStagger=false; renderIdentify(); _boardStagger=true;   // a pick isn't a board-change
 }, true);
 document.getElementById('id-clear').onclick=()=>{ idSel=[]; renderIdentify(); };
 /* the suggester's scale chips are the reference → practice seam (spine #2):

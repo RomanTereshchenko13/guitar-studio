@@ -1,8 +1,19 @@
 <!DOCTYPE html>
 <!-- ===========================================================
      Guitar Studio
-     Version: 1.17.0  (2026-06-16)
+     Version: 1.18.0  (2026-06-16)
      Changelog:
+       1.18.0 — feel pass (Phase 1d). Subtle, reduced-motion-respecting animation
+               that makes sound and rhythm visible: a beat pulse on the transport
+               indicator locked to the scheduler (downbeat stronger) while a loop
+               or the backing band plays; a one-shot pluck ripple expanding from a
+               tapped fretboard dot; a left-to-right fade-in stagger when the key,
+               chord or scale changes so a re-draw reads as a transition; and a
+               connecting subdominant→tonic→dominant arc drawn on the circle of
+               fifths when a key is selected. Transport-bar controls were aligned
+               to a common height so they stay tidy at any browser zoom. All motion
+               is transform/opacity only and is neutralized under
+               prefers-reduced-motion. No new dependencies.
        1.17.0 — reverse lookup (Phase 1c). New "Identify" view under Harmony:
                tap the notes you're playing on the neck and the app names the
                chord (with the genuine alternatives, e.g. C6 / Am7, and slash
@@ -146,7 +157,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="1.17.0">
+<meta name="version" content="1.18.0">
 <title>Гітарна студія — гами, моди, акорди</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

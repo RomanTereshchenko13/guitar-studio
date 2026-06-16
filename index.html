@@ -1,8 +1,19 @@
 <!DOCTYPE html>
 <!-- ===========================================================
      Guitar Studio
-     Version: 1.17.0  (2026-06-16)
+     Version: 1.18.0  (2026-06-16)
      Changelog:
+       1.18.0 — feel pass (Phase 1d). Subtle, reduced-motion-respecting animation
+               that makes sound and rhythm visible: a beat pulse on the transport
+               indicator locked to the scheduler (downbeat stronger) while a loop
+               or the backing band plays; a one-shot pluck ripple expanding from a
+               tapped fretboard dot; a left-to-right fade-in stagger when the key,
+               chord or scale changes so a re-draw reads as a transition; and a
+               connecting subdominant→tonic→dominant arc drawn on the circle of
+               fifths when a key is selected. Transport-bar controls were aligned
+               to a common height so they stay tidy at any browser zoom. All motion
+               is transform/opacity only and is neutralized under
+               prefers-reduced-motion. No new dependencies.
        1.17.0 — reverse lookup (Phase 1c). New "Identify" view under Harmony:
                tap the notes you're playing on the neck and the app names the
                chord (with the genuine alternatives, e.g. C6 / Am7, and slash
@@ -146,7 +157,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="1.17.0">
+<meta name="version" content="1.18.0">
 <title>Гітарна студія — гами, моди, акорди</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -283,6 +294,17 @@
   .d-natural { background: var(--natural); color: #07203a; }
   .d-sharp { background: var(--sharp); color: #1f1405; }
   .d-dim { background: rgba(220,200,160,0.22); color: rgba(240,235,224,0.6); box-shadow: none; }
+  /* board-change stagger (1d): on a context/chord/scale re-render the dots fade
+     in with a small left-to-right delay so the swap reads as a transition, not a
+     hard cut. Opacity only — never transform — so the lefty mirror and the
+     .playing scale are untouched. The `.anim` class is applied only on a genuine
+     re-render (not on Identify taps); per-dot delay is set in renderBoard. */
+  .board.anim .dot { animation: dot-in 0.2s ease both; }
+  @keyframes dot-in { from { opacity: 0; } to { opacity: 1; } }
+  /* pluck ripple (1d): a one-shot halo expanding from a tapped dot, so a pluck
+     reads as sound emanating. Added in JS on real plucks (gated on motionOK). */
+  .dot .ripple { position: absolute; left: 50%; top: 50%; width: 100%; height: 100%; border-radius: 50%; transform: translate(-50%,-50%); border: 2px solid #fff; opacity: 0.6; pointer-events: none; z-index: 5; animation: dot-ripple 0.6s ease-out forwards; }
+  @keyframes dot-ripple { to { transform: translate(-50%,-50%) scale(2.7); opacity: 0; } }
   .fretnums { display: flex; margin-left: 67px; padding-left: 7px; }
   .fretnum { flex: 1; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); padding-top: 7px; }
   .fretnum.mark { color: var(--text-dim); font-weight: 700; }
@@ -321,12 +343,24 @@
   .cof-node circle { transition: fill 0.15s, stroke 0.15s; }
   .cof-node:hover circle { stroke: var(--text); }
   .cof-node text { font-family: 'JetBrains Mono', monospace; font-weight: 700; pointer-events: none; }
+  /* circle relationship motion (1d): the subdominant→tonic→dominant arc draws in
+     on key selection, turning a static recolor into a visible harmonic relation.
+     Neutralized (drawn instantly) under prefers-reduced-motion by the global reset. */
+  .cof-arc { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.55; stroke-dasharray: 320; stroke-dashoffset: 320; animation: cof-draw 0.55s ease forwards; pointer-events: none; }
+  @keyframes cof-draw { to { stroke-dashoffset: 0; } }
   #cof-info .sub b { font-weight: 700; }
 
   /* ---- timing bar (always visible: tempo + metronome) + collapsible instrument toolbar ---- */
   .tb-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 16px; }
   .tb-bar .tb-group { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 9px; padding: 6px 11px; }
-  .tb-bar .tb-toggle { margin-left: auto; }
+  /* uniform control height so the timing-bar controls — which carry slightly
+     different paddings — line up cleanly in each (possibly wrapped) row at any
+     browser-zoom level; everything centres to the same 34px line. */
+  .tb-bar > .btn, .tb-bar > .tb-toggle, .tb-bar > .tb-group, .tb-bar > .tb-transport { min-height: 34px; }
+  .tb-bar > .btn, .tb-bar > .tb-toggle { display: inline-flex; align-items: center; justify-content: center; }
+  /* Settings flows inline after the playback controls. It used to be pushed to
+     the far right (margin-left:auto), but when the bar wrapped that stranded it
+     alone on a second line — so it now wraps tidily next to the others instead. */
   .tb-toggle { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg-panel); color: var(--text-dim); cursor: pointer; transition: all 0.12s; }
   .tb-toggle:hover { color: var(--text); border-color: var(--text-faint); }
   .tb-toggle.open { background: var(--bg-panel-2); color: var(--text); }
@@ -351,8 +385,15 @@
   .tb-transport { display: inline-flex; align-items: center; gap: 8px; padding: 5px 8px 5px 11px; border: 1px solid var(--accent); border-radius: 9px; background: var(--bg-panel); }
   .tb-transport[hidden] { display: none; }
   .tb-transport-label { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; }
-  .tb-transport-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 var(--accent); animation: tb-pulse 1.1s ease-out infinite; }
-  @keyframes tb-pulse { 0% { box-shadow: 0 0 0 0 rgba(45,182,166,0.55); } 70% { box-shadow: 0 0 0 6px rgba(45,182,166,0); } 100% { box-shadow: 0 0 0 0 rgba(45,182,166,0); } }
+  .tb-transport-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 var(--accent); }
+  /* beat pulse (1d): the transport dot pumps on each scheduled beat — downbeat
+     stronger — driven by the scheduler's visual queue, so tempo is *seen*, locked
+     to the sound. Replaces the old free-running ripple. Neutralized under
+     prefers-reduced-motion by the global reset. */
+  .tb-transport-dot.bp { animation: tb-beat 0.32s ease-out; }
+  .tb-transport-dot.bp-strong { animation: tb-beat-strong 0.36s ease-out; }
+  @keyframes tb-beat { 0% { transform: scale(1.7); } 100% { transform: scale(1); } }
+  @keyframes tb-beat-strong { 0% { transform: scale(2.3); box-shadow: 0 0 0 0 rgba(45,182,166,0.55); } 70% { box-shadow: 0 0 0 7px rgba(45,182,166,0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(45,182,166,0); } }
   #tb-stop { padding: 4px 9px; }
   /* shared musical-context bar (root + display mode), contextual per tab */
   .context-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 18px; padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); }
@@ -653,10 +694,23 @@
 <script>
 /* Single source of truth for the app version. Bump on each release and update
    the changelog comment at the top of the file + the <meta name="version">. */
-const APP_VERSION = '1.17.0';
+const APP_VERSION = '1.18.0';
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.18.0', date:'2026-06-16',
+    en:['Feel pass (Phase 1d): subtle, motion-respecting animation that makes sound and rhythm visible.',
+        'Beat pulse — while a loop or the backing band plays, the transport indicator now pumps on every beat (a stronger pulse on the downbeat), locked to the same precise clock as the sound, so you can see the tempo.',
+        'Pluck ripple — tapping a note on the fretboard sends a one-shot halo out from the dot, so a pluck reads as sound emanating.',
+        'Smoother board changes — when you change key, chord or scale the fretboard dots now fade in with a quick left-to-right sweep instead of snapping, so a re-draw reads as a transition.',
+        'Circle of fifths — picking a key now draws a connecting arc through the subdominant, tonic and dominant, turning the recolour into a visible harmonic relationship.',
+        'All of the above is disabled automatically if your system prefers reduced motion, and the timing-bar controls were aligned to a common height so they stay tidy at any browser zoom.'],
+    uk:['Прохід «відчуття» (Фаза 1d): делікатна анімація, що поважає налаштування руху й робить звук і ритм видимими.',
+        'Пульс долі — поки грає луп чи супровідний гурт, індикатор транспорту тепер пульсує на кожній долі (сильніше на сильній долі), синхронно з тим самим точним годинником, що й звук, — тож темп можна побачити.',
+        'Брижі від щипка — дотик до ноти на грифі пускає від крапки одноразове кільце, тож щипок читається як звук, що розходиться.',
+        'Плавніші зміни на грифі — коли ти змінюєш тональність, акорд чи гаму, крапки тепер плавно з’являються хвилею зліва направо замість різкого стрибка.',
+        'Квінтове коло — вибір тональності тепер малює дугу через субдомінанту, тоніку й домінанту, перетворюючи перефарбування на видимий гармонічний зв’язок.',
+        'Усе це автоматично вимикається, якщо у системі ввімкнено зменшений рух, а елементи панелі темпу вирівняно за спільною висотою, щоб вони лишалися охайними за будь-якого масштабу браузера.'] },
   { v:'1.17.0', date:'2026-06-16',
     en:['New "Identify" view under Chords / Triads: tap the notes you are playing on the neck and the app names the chord — including the real alternatives (e.g. C6 and Am7 are the same notes) and slash chords when the bass note is not the root.',
         'When the notes don\'t fit any chord exactly, Identify now shows the closest matches instead of just "unknown" — naming the chord you are one or two notes away from and telling you which tone is missing or extra.',
@@ -1400,6 +1454,7 @@ function loopStrum(when){
   strumMidi(midis, when, 0.9, 0.026, +1);                 // humanized downstrum
   if(bandActive()) strumMidi(midis, when+2*beat(), 0.55, 0.02, +1);   // softer push on beat 3
   scheduleBand(pc, qi, when);                             // bass + groove bed (no-op if both off)
+  enqueueBeats(when);                                     // 1d: transport beat pulse
   enqueueVisual(when, ()=>{ const b=document.getElementById(boardId); if(b) pcs.forEach(p=>setDotPlaying(b, p, true)); updateGlobalTransport(); });
   enqueueVisual(when+barSec*0.85, ()=>{ const b=document.getElementById(boardId); if(b) pcs.forEach(p=>setDotPlaying(b, p, false)); });
 }
@@ -1424,6 +1479,16 @@ function setLoopLabel(){ const b=document.getElementById('g-loop'); if(!b) retur
    Mirrors whatever is currently sounding (single-chord/triad loop or progression)
    so it can be read and stopped from any tab. The Listen/Loop controls now
    live together in the timing bar; the progression Play stays with its strip. */
+/* beat pulse (1d): pump the transport dot on each scheduled beat (downbeat
+   stronger), driven from the same per-bar enqueue as the dot-lighting, so the
+   tempo is *seen*, locked to the scheduler. CSS-only motion → neutralized under
+   prefers-reduced-motion by the global reset. */
+function pulseTransport(strong){
+  const d=document.querySelector('.tb-transport-dot'); if(!d) return;
+  d.classList.remove('bp','bp-strong'); void d.offsetWidth;     // restart the animation
+  d.classList.add(strong?'bp-strong':'bp');
+}
+function enqueueBeats(when){ const b=beat(); for(let k=0;k<4;k++) enqueueVisual(when+k*b, ()=>pulseTransport(k===0)); }
 function loopChordLabel(){ return loopMode==='triad' ? gRootLbl+TRIADS[trQual].short : gRootLbl+QUALITIES[chQual].short; }
 function updateGlobalTransport(){
   const wrap=document.getElementById('tb-transport'); if(!wrap) return;
@@ -1475,6 +1540,7 @@ function seqStrumStep(i, when){
   compStrum(base, ivs, when, 0.9, 0.028);                 // humanized downbeat strum
   if(bandActive()) compStrum(base, ivs, when+2*beat(), 0.55, 0.022);   // softer push on beat 3
   scheduleBand(st.pc, st.qi, when);                       // bass + groove follow the step's chord
+  enqueueBeats(when);                                     // 1d: transport beat pulse
   const pcs=ivs.map(iv=>mod(base+iv,12));
   enqueueVisual(when, ()=>{
     if(i!==seqStepIdx){ seqStepIdx=i; setChord(st.pc, st.lbl, st.qi); renderSeq(); updateGlobalTransport(); }  // chord changed → follow on board + chip
@@ -1519,6 +1585,17 @@ function setSeqTransport(){
 }
 
 /* ===================== SHARED ===================== */
+/* Feel pass (1d): JS-driven motion must check reduced-motion explicitly (the
+   global CSS reset only neutralizes CSS-declared animation). Returns false where
+   matchMedia is unavailable (e.g. the jsdom harness), so motion is skipped there. */
+function motionOK(){
+  if(typeof window==='undefined' || typeof window.matchMedia!=='function') return false;
+  try{ return !window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ return true; }
+}
+/* Whether the next board paint should play the change-stagger. Default on; the
+   Identify tap handler turns it off around its re-render so picking a note
+   doesn't fade the whole neck on every tap. */
+let _boardStagger=true;
 function renderNums(el){
   const lo=FRET_LO(), hi=FRET_HI(), showOpen=lo<=1;
   let html='';
@@ -1552,14 +1629,15 @@ function boardWidth(){ return leftFixed() + (FRET_HI()-FRET_LO()+1)*cellW(); }
 function renderBoard(boardEl, cellFn){
   clearPlayHighlights();
   boardEl.innerHTML='';
-  const lo=FRET_LO(), hi=FRET_HI(), showOpen=lo<=1;
+  const lo=FRET_LO(), hi=FRET_HI(), showOpen=lo<=1, stag=_boardStagger;
+  const delay=col=>Math.min(col*12,150)+'ms';        // 1d: left-to-right change-stagger
   SNAMES.forEach((sn,si)=>{
     const row=document.createElement('div'); row.className='srow';
     const lab=document.createElement('div'); lab.className='slabel'; lab.textContent=sn; row.appendChild(lab);
     if(showOpen){
       const open=document.createElement('div'); open.className='ocell';
       const odot=cellFn(OPEN[si]%12, si, 0);
-      if(odot) open.appendChild(odot);
+      if(odot){ if(stag) odot.style.animationDelay=delay(0); open.appendChild(odot); }
       row.appendChild(open);
       const nut=document.createElement('div'); nut.className='nut'; row.appendChild(nut);
     }
@@ -1571,12 +1649,12 @@ function renderBoard(boardEl, cellFn){
       if(INLAY_DOUBLE.has(f)){ if(si===2||si===4) cell.classList.add('inlay'); }
       else if(INLAY_SINGLE.has(f)){ if(si===3) cell.classList.add('inlay'); }
       const dot=cellFn(pc,si,f);
-      if(dot) cell.appendChild(dot);
+      if(dot){ if(stag) dot.style.animationDelay=delay(showOpen?f-lo+1:f-lo); cell.appendChild(dot); }
       row.appendChild(cell);
     }
     boardEl.appendChild(row);
   });
-  const panel=boardEl.closest('.board'); if(panel){ panel.style.minWidth=boardWidth()+'px'; panel.classList.toggle('lefty', lefty); }
+  const panel=boardEl.closest('.board'); if(panel){ panel.style.minWidth=boardWidth()+'px'; panel.classList.toggle('lefty', lefty); panel.classList.toggle('anim', stag); }
   // hint that the neck scrolls (only the wide "All frets" view overflows)
   const sc=boardEl.closest('.scroll'); if(sc){ sc.classList.toggle('scrollable', sc.scrollWidth > sc.clientWidth + 1); }
 }
@@ -1612,8 +1690,16 @@ function makeDot(cls,text,midi){
   d.setAttribute('aria-label',text);
   return d;
 }
+/* pluck ripple (1d): a one-shot expanding halo from a tapped dot. Gated on
+   motionOK so it is skipped under reduced motion (and in the jsdom harness). */
+function rippleDot(d){
+  if(!d || !motionOK()) return;
+  const r=document.createElement('span'); r.className='ripple';
+  d.appendChild(r);
+  setTimeout(()=>{ if(r.parentNode) r.parentNode.removeChild(r); }, 640);
+}
 function wirePlay(boardEl){
-  const trigger=d=>{ if(d==null||d.dataset.midi==null) return; pluck(parseInt(d.dataset.midi)); d.classList.add('playing'); setTimeout(()=>d.classList.remove('playing'), 420); };
+  const trigger=d=>{ if(d==null||d.dataset.midi==null) return; pluck(parseInt(d.dataset.midi)); d.classList.add('playing'); rippleDot(d); setTimeout(()=>d.classList.remove('playing'), 420); };
   boardEl.addEventListener('click',e=>{ trigger(e.target.closest('.dot')); });
   boardEl.addEventListener('keydown',e=>{ if(e.key!=='Enter'&&e.key!==' ') return; const d=e.target.closest('.dot'); if(d&&d.dataset.midi!=null){ e.preventDefault(); trigger(d); } });
 }
@@ -2300,6 +2386,11 @@ function renderCircle(){
   const cofSel=ctxCofSel(), cofMinor=ctxCofMinor();
   const RO=132, RI=85, rMaj=27, rMin=21, dom=(cofSel+1)%12, sub=(cofSel+11)%12;
   let s=`<circle cx="180" cy="180" r="${RO}" fill="none" stroke="var(--border)" stroke-width="1"/><circle cx="180" cy="180" r="${RI}" fill="none" stroke="var(--border)" stroke-width="1"/>`;
+  // 1d: a connecting arc through subdominant → tonic → dominant (drawn behind the
+  // nodes), animated on each render so a key change reads as a visible relation.
+  const arcR=cofMinor?RI:RO;
+  const [asx,asy]=cofXY(sub,arcR), [atx,aty]=cofXY(cofSel,arcR), [adx,ady]=cofXY(dom,arcR);
+  s+=`<path class="cof-arc" d="M ${asx.toFixed(1)} ${asy.toFixed(1)} L ${atx.toFixed(1)} ${aty.toFixed(1)} L ${adx.toFixed(1)} ${ady.toFixed(1)}"/>`;
   COF.forEach(c=>{
     const i=c.i;
     let mfill='var(--bg-panel-2)', mtext='var(--text)', nfill='var(--bg-panel)', ntext='var(--text-dim)';
@@ -2579,8 +2670,8 @@ document.getElementById('board').addEventListener('click', e=>{
   const d=e.target.closest('.dot'); if(!d || d.dataset.midi==null) return;
   e.stopPropagation();
   const midi=parseInt(d.dataset.midi), i=idSel.indexOf(midi);
-  if(i>=0) idSel.splice(i,1); else { idSel.push(midi); pluck(midi); }
-  renderIdentify();
+  if(i>=0) idSel.splice(i,1); else { idSel.push(midi); pluck(midi); rippleDot(d); }
+  _boardStagger=false; renderIdentify(); _boardStagger=true;   // a pick isn't a board-change
 }, true);
 document.getElementById('id-clear').onclick=()=>{ idSel=[]; renderIdentify(); };
 /* the suggester's scale chips are the reference → practice seam (spine #2):

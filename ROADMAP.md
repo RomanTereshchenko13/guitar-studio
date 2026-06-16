@@ -10,7 +10,7 @@ Code is authored as small `src/js/NN-*.js` modules and concatenated by a pure-st
 `build.js` (no bundler, no transpile). Every item below is reachable with the Web Audio API
 and vanilla JS. New phases add new `src/` modules; they never add a dependency.
 
-_Last updated: 2026-06-16 · shipping: v1.17.0_
+_Last updated: 2026-06-16 · shipping: v1.18.0_
 
 ---
 
@@ -180,21 +180,25 @@ with, previously impossible — the biggest usefulness gain per unit of new code
 > **IA note (decided during 1c):** Circle of Fifths stays its own tab. The Chord-reference sidebar
 > was replaced by the contextual suggester rather than removed.
 
-**1d — Feel pass (the polish bar, scoped).** Hold the "every phase ships feel" bar here rather
-than deferring all of it to Phase 9 — and ride 1b's board rebuild while the board is already
-open. Pure CSS / Web Animations, transform/opacity only, gated on `prefers-reduced-motion` (the
-global reset already neutralizes CSS animation; any JS-driven motion checks it explicitly), and
-the dot/cell-count harness assertions stay green throughout. The app already lights played notes
-off the scheduler's RAF visual queue and fades panels on tab-switch; this adds the cheap wins
-that build on that, since an audio/timing app's animation should make *sound and rhythm visible*:
-- **Beat pulse** — a subtle downbeat pulse while the loop/backing band plays, reusing the
-  existing scheduler + visual queue, so rhythm is *seen*, not just heard (pitch already is).
-- **Pluck ripple** — a one-shot expanding halo from a dot on pluck; slots into the existing
-  `.playing` toggle, reads as sound emanating, satisfying on touch.
-- **Board-change stagger** — a brief (~150 ms) staggered fade/scale-in when the context, chord,
-  or scale changes, so a re-render reads as a transition instead of a hard cut.
-- **Circle relationship motion** — animate the tonic→subdominant→dominant sweep / connecting arc
-  on key selection, turning a static recolor into a visible harmonic relationship.
+**1d — Feel pass (the polish bar, scoped). ✅ Shipped v1.18.0.** Held the "every phase ships
+feel" bar here rather than deferring all of it to Phase 9 — riding 1b's board rebuild while the
+board was already open. Pure CSS, transform/opacity only, gated on `prefers-reduced-motion` (the
+global reset neutralizes CSS animation; the one JS-driven path — the pluck ripple — checks
+`motionOK()` explicitly), and the dot/cell-count harness assertions stayed green throughout. Built
+on the scheduler's rAF visual queue + the panel fade already in place, since an audio/timing app's
+animation should make *sound and rhythm visible*:
+- **Beat pulse** ✅ — the transport indicator pumps on every scheduled beat (stronger on the
+  downbeat) while the loop/backing band plays, enqueued from the same per-bar visual path as the
+  dot-lighting, so rhythm is *seen*, locked to the clock — not a free-running CSS loop.
+- **Pluck ripple** ✅ — a one-shot expanding halo (`rippleDot`) from a fretboard dot on a real
+  pluck (tap / Enter / Space), reading as sound emanating; skipped under reduced motion.
+- **Board-change stagger** ✅ — dots fade in with a small left-to-right delay (~150 ms total,
+  opacity only so the lefty mirror + `.playing` scale are untouched) on a genuine context/chord/
+  scale re-render; suppressed on Identify taps so picking a note doesn't fade the whole neck.
+- **Circle relationship motion** ✅ — a connecting subdominant→tonic→dominant arc is drawn behind
+  the wheel nodes on key selection, turning the static recolor into a visible harmonic relation.
+- _(Bonus, on the way past:)_ the timing-bar controls were aligned to a common 34 px height so
+  they stay tidy across browser-zoom levels.
 
 Broader feel — onboarding, empty/error states, drill responsiveness — stays Phase 9's; 1d is
 just the reference-level polish that belongs with the views being built here.

@@ -1,6 +1,19 @@
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.18.0', date:'2026-06-16',
+    en:['Feel pass (Phase 1d): subtle, motion-respecting animation that makes sound and rhythm visible.',
+        'Beat pulse — while a loop or the backing band plays, the transport indicator now pumps on every beat (a stronger pulse on the downbeat), locked to the same precise clock as the sound, so you can see the tempo.',
+        'Pluck ripple — tapping a note on the fretboard sends a one-shot halo out from the dot, so a pluck reads as sound emanating.',
+        'Smoother board changes — when you change key, chord or scale the fretboard dots now fade in with a quick left-to-right sweep instead of snapping, so a re-draw reads as a transition.',
+        'Circle of fifths — picking a key now draws a connecting arc through the subdominant, tonic and dominant, turning the recolour into a visible harmonic relationship.',
+        'All of the above is disabled automatically if your system prefers reduced motion, and the timing-bar controls were aligned to a common height so they stay tidy at any browser zoom.'],
+    uk:['Прохід «відчуття» (Фаза 1d): делікатна анімація, що поважає налаштування руху й робить звук і ритм видимими.',
+        'Пульс долі — поки грає луп чи супровідний гурт, індикатор транспорту тепер пульсує на кожній долі (сильніше на сильній долі), синхронно з тим самим точним годинником, що й звук, — тож темп можна побачити.',
+        'Брижі від щипка — дотик до ноти на грифі пускає від крапки одноразове кільце, тож щипок читається як звук, що розходиться.',
+        'Плавніші зміни на грифі — коли ти змінюєш тональність, акорд чи гаму, крапки тепер плавно з’являються хвилею зліва направо замість різкого стрибка.',
+        'Квінтове коло — вибір тональності тепер малює дугу через субдомінанту, тоніку й домінанту, перетворюючи перефарбування на видимий гармонічний зв’язок.',
+        'Усе це автоматично вимикається, якщо у системі ввімкнено зменшений рух, а елементи панелі темпу вирівняно за спільною висотою, щоб вони лишалися охайними за будь-якого масштабу браузера.'] },
   { v:'1.17.0', date:'2026-06-16',
     en:['New "Identify" view under Chords / Triads: tap the notes you are playing on the neck and the app names the chord — including the real alternatives (e.g. C6 and Am7 are the same notes) and slash chords when the bass note is not the root.',
         'When the notes don\'t fit any chord exactly, Identify now shows the closest matches instead of just "unknown" — naming the chord you are one or two notes away from and telling you which tone is missing or extra.',
