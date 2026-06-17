@@ -1,6 +1,15 @@
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.24.0', date:'2026-06-17',
+    en:['Mobile shell pass — less scrolling, the neck always in reach. On phones the fretboard now stays pinned in view while you scroll the chords, cards and progression below it, and gently snaps back into place — so you can pick a chord or chip and see it on the neck without scrolling back up.',
+        'Shorter control stack: each view\'s description now tucks behind an ⓘ on the heading, and the chord/quality rows swipe sideways instead of stacking into tall blocks — so the board sits higher on a phone.',
+        'The header now slims as you scroll, keeping the tabs and playback controls within reach at the top instead of scrolling away.',
+        'Your phone no longer sleeps while a loop, metronome or progression is playing, and an accidental over-scroll can no longer reload the app mid-jam.'],
+    uk:['Шліфування для телефонів — менше гортання, гриф завжди під рукою. На телефонах гриф тепер лишається закріпленим у полі зору, поки ти гортаєш акорди, картки та прогресію під ним, і мʼяко повертається на місце — тож можна обрати акорд чи фішку й одразу побачити їх на грифі, не гортаючи назад угору.',
+        'Коротший стос керування: опис кожного виду тепер ховається за позначкою ⓘ біля заголовка, а ряди акордів/типів гортаються вбік замість того, щоб складатися у високі блоки — тож гриф на телефоні сидить вище.',
+        'Шапка тепер стискається під час гортання, тримаючи вкладки та керування відтворенням під рукою вгорі, а не зникаючи з екрана.',
+        'Телефон більше не засинає, поки грає луп, метроном чи прогресія, а випадкове перегортання вже не може перезавантажити застосунок посеред гри.'] },
   { v:'1.23.0', date:'2026-06-17',
     en:['Install Euterpe straight from the app: where your browser supports it, an "Install" button now appears in the header, so you can add Euterpe to your device without digging through browser menus. (On iPhone, keep using Share → Add to Home Screen.)',
         'Update notifications: when a new version is ready, a small prompt now offers to reload into it — so an already-open tab no longer keeps running the old version until you happen to refresh.',

@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <!-- Euterpe (Guitar Studio) — generated single-file build (do not edit; edit src/ and run build.js).
-     Version: 1.23.0  (source of truth: APP_VERSION in src/js/01-version.js;
+     Version: 1.24.0  (source of truth: APP_VERSION in src/js/01-version.js;
      build.js fills this in). Release notes live in src/js/02-changelog.js (drives
      the in-app "What's new" modal and CHANGELOG.md). -->
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="1.23.0">
+<meta name="version" content="1.24.0">
 <meta name="description" content="Euterpe — a guitar studio for music theory and practice: scales, modes, chords, the fretboard, the circle of fifths, and a jam-along backing band. Works offline.">
 <meta name="theme-color" content="#16140f">
 <!-- Installed-app (standalone) hints. The manifest covers Android/desktop; these
@@ -43,7 +43,9 @@
     --natural: #4A9EE8; --sharp: #C98426; --radius: 10px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Hanken Grotesk', system-ui, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; padding: 0 0 4rem; }
+  /* overscroll-behavior (mobile shell): kill accidental pull-to-refresh / scroll
+     chaining so an over-pull during a jam or (later) a timed drill can't reload the app. */
+  body { background: var(--bg); color: var(--text); font-family: 'Hanken Grotesk', system-ui, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; padding: 0 0 4rem; overscroll-behavior-y: contain; }
 
   /* keyboard accessibility: visible focus on every interactive control */
   .btn:focus-visible, .tab:focus-visible, .langbtn:focus-visible, .ver:focus-visible,
@@ -112,16 +114,17 @@
   .layout {
     display: grid;
     grid-template-columns: minmax(0,1fr) 234px;
-    grid-template-areas: "main aside" "board aside" "extras aside";
+    grid-template-areas: "main aside" "board aside" "boardmeta aside" "extras aside";
     column-gap: 30px;
     align-items: start;
     padding-top: 30px;
   }
   /* the suggester only shows on Harmony; on Scales / Circle drop the empty column
      so the board + controls use the full width (toggled in applyAsideState) */
-  .layout.no-aside { grid-template-columns: minmax(0,1fr); grid-template-areas: "main" "board" "extras"; }
+  .layout.no-aside { grid-template-columns: minmax(0,1fr); grid-template-areas: "main" "board" "boardmeta" "extras"; }
   .main { grid-area: main; min-width: 0; }
   #board-region { grid-area: board; }
+  .board-meta { grid-area: boardmeta; }
   #harmony-extras { grid-area: extras; }
   .aside { grid-area: aside; position: sticky; top: 20px; align-self: start; }
   /* Stacked single column on a phone; the suggester slots between the board and
@@ -129,7 +132,7 @@
   @media (max-width: 940px) {
     .layout, .layout.no-aside {
       grid-template-columns: minmax(0,1fr);
-      grid-template-areas: "main" "board" "aside" "extras";
+      grid-template-areas: "main" "board" "boardmeta" "aside" "extras";
     }
     .aside { position: static; }
   }
@@ -140,6 +143,11 @@
   .panel-head { margin-bottom: 20px; }
   .panel-head h2 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 22px; letter-spacing: -0.01em; margin-bottom: 4px; }
   .panel-head p { font-size: 14px; color: var(--text-dim); max-width: 680px; }
+  .ph-top { display: flex; align-items: center; gap: 9px; }
+  /* per-panel help toggle: a ⓘ/? button next to the heading. Hidden on desktop
+     (the description always shows inline); on a phone the description collapses
+     behind it to shorten the control stack above the board (pre-Phase-3 shell). */
+  .ph-help { display: none; }
 
   .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 13px; align-items: center; }
   .ctrl-label { font-size: 12px; color: var(--text-dim); margin-right: 4px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -322,6 +330,29 @@
      controls, shown for Harmony + Scales, hidden on the Circle tab. */
   .board-region { margin-top: 4px; }
   .board-region[hidden] { display: none; }
+  /* sticky neck (3rd mobile-shell step): in the single-column layout the board is a
+     direct child of the .layout grid, so it can stay pinned at the top while the
+     suggester + sequencer below scroll — tap a chord card / suggester chip and see
+     the neck update without scrolling back up. Desktop (two-column) is untouched. */
+  @media (max-width: 940px) {
+    #board-region { position: sticky; top: var(--hdr-h, 0px); z-index: 5; background: var(--bg); padding-top: 6px; box-shadow: 0 8px 14px -10px rgba(0,0,0,0.7); }
+  }
+  /* condensing sticky header (mobile shell): on the single-column layouts the header
+     pins and slims once you scroll past the brand — tabs + play/transport stay reachable,
+     the tempo/backing groups fold away (scroll up for them). The sticky board offsets
+     directly below it via --hdr-h, kept in sync with the live header height in JS. */
+  @media (max-width: 940px) {
+    header { position: sticky; top: 0; z-index: 20; }
+    header.scrolled { padding-top: 8px; }
+    header.scrolled .brand-desc, header.scrolled .brand .ver { display: none; }
+    header.scrolled .brand h1 { font-size: 19px; }
+    header.scrolled .tabs { margin-top: 10px; }
+    header.scrolled .tb-bar { margin-top: 8px; }
+    header.scrolled .tb-bar .tb-group { display: none; }
+  }
+  @supports (top: max(0px, env(safe-area-inset-top))) {
+    @media (max-width: 940px) { header.scrolled { padding-top: max(8px, env(safe-area-inset-top)); } }
+  }
   /* chord-tones reference (voicing cards + sequencer) sits below the board */
   #harmony-extras { margin-top: 26px; }
   #harmony-extras[hidden] { display: none; }
@@ -373,6 +404,22 @@
   @media (max-width: 600px) {
     .wrap { padding: 0 14px; }
     .brand h1 { font-size: 25px; }
+    /* collapse the per-panel description behind the heading's ⓘ/? toggle, so the
+       board sits higher on a phone; tap the toggle to reveal it (1st mobile-shell step) */
+    .panel-head p { display: none; }
+    .panel-head.help-open p { display: block; margin-top: 6px; }
+    .ph-help { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; padding: 0; line-height: 1; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--bg-panel); color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .panel-head.help-open .ph-help { background: var(--accent); color: #07203a; border-color: var(--accent); }
+    /* control strips swipe instead of wrapping into tall blocks (2nd mobile-shell
+       step). Scoped to panel-row groups — the shared context-bar root picker keeps
+       wrapping so all 12 roots stay visible. */
+    .row > .group { flex-wrap: nowrap; overflow-x: auto; min-width: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+    .row > .group::-webkit-scrollbar { display: none; }
+    /* the tiered chord/arp quality pickers: stack the basic/seventh/extended tiers
+       vertically, each tier's buttons swiping horizontally, instead of one tall wrap */
+    #ch-quals, #arp-quals { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 10px; overflow: visible; }
+    #ch-quals .group, #arp-quals .group { flex-wrap: nowrap; overflow-x: auto; min-width: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+    #ch-quals .group::-webkit-scrollbar, #arp-quals .group::-webkit-scrollbar { display: none; }
     .toolbar { gap: 8px 10px; }
     input[type="range"] { width: 92px; }
     /* finger-sized touch targets: dots are the app's primary verb (tap to hear),
@@ -508,7 +555,7 @@
 
   <section class="panel active" id="panel-harmony">
     <div class="panel-head">
-      <h2 id="harmony-h">Тони акорду на грифі</h2>
+      <div class="ph-top"><h2 id="harmony-h">Тони акорду на грифі</h2><button class="ph-help" type="button" aria-expanded="false" aria-controls="harmony-p">?</button></div>
       <p id="harmony-p">Вибери тоніку і тип акорду — підсвітяться тоніка, терція, квінта (і септима для септакордів) по всьому грифу.</p>
     </div>
 
@@ -547,7 +594,7 @@
 
   <section class="panel" id="panel-scales">
     <div class="panel-head">
-      <h2 id="scales-h" data-i18n="sc_h">Гами і моди</h2>
+      <div class="ph-top"><h2 id="scales-h" data-i18n="sc_h">Гами і моди</h2><button class="ph-help" type="button" aria-expanded="false" aria-controls="scales-p">?</button></div>
       <p id="scales-p" data-i18n="sc_p">Вибери тоніку і гаму. Накладай акорд тональності, щоб бачити цільові ноти всередині гами, та ізолюй позицію для практики.</p>
     </div>
 
@@ -581,8 +628,8 @@
 
   <section class="panel" id="panel-circle">
     <div class="panel-head">
-      <h2 data-i18n="cof_h">Коло квінт</h2>
-      <p data-i18n="cof_p">Тональності розташовані по квінтах. Сусіди — найближчі споріднені тональності: ліворуч субдомінанта (IV), праворуч домінанта (V). Натисни тональність, щоб побачити ключові знаки, паралель і акорди тональності.</p>
+      <div class="ph-top"><h2 data-i18n="cof_h">Коло квінт</h2><button class="ph-help" type="button" aria-expanded="false" aria-controls="cof-p">?</button></div>
+      <p id="cof-p" data-i18n="cof_p">Тональності розташовані по квінтах. Сусіди — найближчі споріднені тональності: ліворуч субдомінанта (IV), праворуч домінанта (V). Натисни тональність, щоб побачити ключові знаки, паралель і акорди тональності.</p>
     </div>
     <div class="cof-layout">
       <div class="cof-wrap"><svg id="cof-svg" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg"></svg></div>
@@ -610,6 +657,11 @@
      on a phone (1e). -->
 <div class="board-region" id="board-region">
   <div class="scroll"><div class="board"><div class="fretboard" id="board"></div></div><div class="fretnums" id="nums"></div></div>
+</div>
+<!-- Board legend + hint sit in their own row below the neck, OUTSIDE #board-region,
+     so the sticky-on-mobile board pins the neck only (these scroll away). Toggled
+     with the board by applyBoardRegion(). -->
+<div class="board-meta" id="board-meta">
   <div class="legend" id="legend"></div>
   <div class="hint" id="hint"></div>
 </div>
@@ -668,10 +720,19 @@
 <script>
 /* Single source of truth for the app version. Bump on each release and update
    the changelog comment at the top of the file + the <meta name="version">. */
-const APP_VERSION = '1.23.0';
+const APP_VERSION = '1.24.0';
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.24.0', date:'2026-06-17',
+    en:['Mobile shell pass — less scrolling, the neck always in reach. On phones the fretboard now stays pinned in view while you scroll the chords, cards and progression below it, and gently snaps back into place — so you can pick a chord or chip and see it on the neck without scrolling back up.',
+        'Shorter control stack: each view\'s description now tucks behind an ⓘ on the heading, and the chord/quality rows swipe sideways instead of stacking into tall blocks — so the board sits higher on a phone.',
+        'The header now slims as you scroll, keeping the tabs and playback controls within reach at the top instead of scrolling away.',
+        'Your phone no longer sleeps while a loop, metronome or progression is playing, and an accidental over-scroll can no longer reload the app mid-jam.'],
+    uk:['Шліфування для телефонів — менше гортання, гриф завжди під рукою. На телефонах гриф тепер лишається закріпленим у полі зору, поки ти гортаєш акорди, картки та прогресію під ним, і мʼяко повертається на місце — тож можна обрати акорд чи фішку й одразу побачити їх на грифі, не гортаючи назад угору.',
+        'Коротший стос керування: опис кожного виду тепер ховається за позначкою ⓘ біля заголовка, а ряди акордів/типів гортаються вбік замість того, щоб складатися у високі блоки — тож гриф на телефоні сидить вище.',
+        'Шапка тепер стискається під час гортання, тримаючи вкладки та керування відтворенням під рукою вгорі, а не зникаючи з екрана.',
+        'Телефон більше не засинає, поки грає луп, метроном чи прогресія, а випадкове перегортання вже не може перезавантажити застосунок посеред гри.'] },
   { v:'1.23.0', date:'2026-06-17',
     en:['Install Euterpe straight from the app: where your browser supports it, an "Install" button now appears in the header, so you can add Euterpe to your device without digging through browser menus. (On iPhone, keep using Share → Add to Home Screen.)',
         'Update notifications: when a new version is ready, a small prompt now offers to reload into it — so an already-open tab no longer keeps running the old version until you happen to refresh.',
@@ -946,7 +1007,8 @@ const I18N = {
     cd_fret:'лад', cd_pick_hint:'Натисни картку, щоб обрати форму для «Прослухати» / «Лупа»',
     tr_shapes:'Форми тризвуку',
     pwa_install:'Встановити', pwa_install_tip:'Встановити Euterpe як застосунок',
-    pwa_update:'Доступна нова версія Euterpe.', pwa_update_btn:'Оновити', pwa_dismiss:'Сховати'
+    pwa_update:'Доступна нова версія Euterpe.', pwa_update_btn:'Оновити', pwa_dismiss:'Сховати',
+    ph_help:'Опис'
   },
   en: {
     brand:'Euterpe', brand_desc:'guitar studio',
@@ -1015,7 +1077,8 @@ const I18N = {
     cd_fret:'fret', cd_pick_hint:'Tap a card to choose the shape for Listen / Loop',
     tr_shapes:'Triad shapes',
     pwa_install:'Install', pwa_install_tip:'Install Euterpe as an app',
-    pwa_update:'A new version of Euterpe is available.', pwa_update_btn:'Reload', pwa_dismiss:'Dismiss'
+    pwa_update:'A new version of Euterpe is available.', pwa_update_btn:'Reload', pwa_dismiss:'Dismiss',
+    ph_help:'Description'
   }
 };
 let lang = 'uk';
@@ -1463,11 +1526,11 @@ function metroClick(when, accent){
 }
 function metroToggle(){
   const btn=document.getElementById('tb-metro');
-  if(metroClock){ removeClock(metroClock); metroClock=null; btn.classList.remove('active'); btn.setAttribute('aria-pressed','false'); setMetroLabel(); return; }
+  if(metroClock){ removeClock(metroClock); metroClock=null; btn.classList.remove('active'); btn.setAttribute('aria-pressed','false'); setMetroLabel(); syncWakeLock(); return; }
   audio();
   metroClock={ interval:()=>beat(), tick:(time,count)=>metroClick(time, count%4===0) };
   addClock(metroClock);
-  btn.classList.add('active'); btn.setAttribute('aria-pressed','true'); setMetroLabel();
+  btn.classList.add('active'); btn.setAttribute('aria-pressed','true'); setMetroLabel(); syncWakeLock();
 }
 function setMetroLabel(){ const b=document.getElementById('tb-metro'); b.innerHTML=(metroClock?'&#9632; ':'&#9654; ')+t(metroClock?'tb_metro_on':'tb_metro_off'); b.setAttribute('aria-label', t('tb_metro_off')); }
 /* ---- backing band toggles (bass + groove) ----
@@ -1550,6 +1613,33 @@ function updateGlobalTransport(){
   if(seqClock){ label.textContent=t('tb_now_seq')+' · '+gRootLbl+QUALITIES[chQual].short; wrap.hidden=false; }
   else if(loopClock){ label.textContent=t('tb_now_loop')+' · '+loopChordLabel(); wrap.hidden=false; }
   else { wrap.hidden=true; }
+  syncWakeLock();
+}
+
+/* ---- screen wake lock (mobile shell) ----
+   Hold the screen awake while anything is sounding (metronome, single-chord loop, or
+   progression) so a phone doesn't sleep mid-jam. Synced from updateGlobalTransport
+   (loop/seq) and metroToggle (metronome); re-acquired on return to visibility, since
+   the browser drops the lock when the page is hidden. Silently degrades where the API
+   is missing (iOS < 16.4, insecure context, jsdom). */
+let _wakeLock=null, _wakeReq=false;
+function transportActive(){ return !!(metroClock || loopClock || seqClock); }
+function syncWakeLock(){
+  if(typeof navigator==='undefined' || !navigator.wakeLock) return;
+  const want=transportActive();
+  if(want && !_wakeLock && !_wakeReq){
+    _wakeReq=true;
+    navigator.wakeLock.request('screen').then(wl=>{
+      _wakeReq=false;
+      if(!transportActive()){ wl.release().catch(()=>{}); return; }   // stopped while the request was in flight
+      _wakeLock=wl; wl.addEventListener('release', ()=>{ _wakeLock=null; });
+    }).catch(()=>{ _wakeReq=false; });                                 // permission / gesture / unsupported — ignore
+  } else if(!want && _wakeLock){
+    const wl=_wakeLock; _wakeLock=null; wl.release().catch(()=>{});
+  }
+}
+if(typeof document!=='undefined'){
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') syncWakeLock(); });
 }
 
 /* ---- chord progression sequencer ----
@@ -2603,6 +2693,7 @@ function applyLang(){
   activateRoot(document.getElementById('g-roots'), gRoot);
   document.querySelectorAll('[data-root]').forEach(b=>b.classList.toggle('active', !!ntRoot && b.dataset.root===ntRoot));
   document.querySelectorAll('.langbtn').forEach(b=>b.classList.toggle('active', b.dataset.lang===lang));
+  document.querySelectorAll('.ph-help').forEach(b=>b.setAttribute('aria-label', t('ph_help')));
   if(typeof syncTabsScroll==='function') syncTabsScroll();
 }
 
@@ -2658,6 +2749,47 @@ if(typeof window!=='undefined'){
     _rzW=window.innerWidth;
     clearTimeout(_rzT); _rzT=setTimeout(()=>{ renderAllBoards(); renderCircle&&renderCircle(); }, 150);
   });
+}
+
+/* magnetic neck (mobile shell): the board is sticky in the single-column layout.
+   When a scroll comes to rest with the neck just *barely* unpinned — its top only a
+   few px below the pin line — gently settle it back into the pinned position, so a
+   small scroll doesn't drop it (it "unpins too easily" otherwise). Acts only within a
+   narrow band, so a deliberate scroll up to the controls is never trapped. */
+if(typeof window!=='undefined'){
+  let _magT=null;
+  const magnetNeck=()=>{
+    if(window.innerWidth>940) return;                          // single-column only
+    const br=document.getElementById('board-region');
+    if(!br || br.hidden) return;
+    const pin=parseFloat(getComputedStyle(br).top)||0;         // sticky offset (0, or the safe-area inset in a PWA)
+    const d=br.getBoundingClientRect().top - pin;              // how far the neck top sits below the pin line
+    if(d>1 && d<=64) window.scrollBy({top:d, left:0, behavior:'smooth'});
+  };
+  window.addEventListener('scroll', ()=>{ clearTimeout(_magT); _magT=setTimeout(magnetNeck, 110); }, {passive:true});
+}
+
+/* condensing sticky header (mobile shell): once you scroll past the brand the header
+   slims (CSS .scrolled, ≤940 only) so tabs + transport stay reachable. The sticky board
+   pins directly below it, so we keep --hdr-h in sync with the live header height (which
+   changes when it condenses, the toolbar opens, or on resize/lang). */
+if(typeof window!=='undefined'){
+  const hdr=document.querySelector('header');
+  const setHdrH=()=>{ if(hdr) document.documentElement.style.setProperty('--hdr-h', hdr.offsetHeight+'px'); };
+  let _cond=false;
+  const onHdrScroll=()=>{
+    if(!hdr) return;
+    const y=window.scrollY;
+    // hysteresis: condense past 48px, expand back under 24px, so a slow scroll across the
+    // boundary doesn't flip-flop (which clipped the pinned board as the offset lagged)
+    let cond=_cond;
+    if(!cond && y>48) cond=true; else if(cond && y<24) cond=false;
+    if(cond!==_cond){ _cond=cond; hdr.classList.toggle('scrolled', cond); setHdrH(); }  // sync: board offset tracks the new height at once
+  };
+  window.addEventListener('scroll', onHdrScroll, {passive:true});
+  window.addEventListener('resize', setHdrH);
+  if(typeof ResizeObserver!=='undefined' && hdr) new ResizeObserver(setHdrH).observe(hdr);
+  setHdrH(); onHdrScroll();
 }
 
 const LS_KEY='guitarStudio.v1';
@@ -2792,7 +2924,11 @@ function applyContextBar(){
   const vh=document.getElementById('ctx-view-harmony'); if(vh) vh.hidden = currentTab!=='harmony';
   const vs=document.getElementById('ctx-view-scales');  if(vs) vs.hidden = currentTab!=='scales';
 }
-function applyBoardRegion(){ document.getElementById('board-region').hidden = !(currentTab==='harmony' || currentTab==='scales'); }
+function applyBoardRegion(){
+  const show = (currentTab==='harmony' || currentTab==='scales');
+  document.getElementById('board-region').hidden = !show;
+  const bm=document.getElementById('board-meta'); if(bm) bm.hidden = !show;   // legend+hint follow the board
+}
 /* voicing cards + sequencer (now below the board) belong only to Harmony's
    chord-tones view; hide them everywhere else so the board stays the last thing. */
 function applyHarmonyExtras(){ const el=document.getElementById('harmony-extras'); if(el) el.hidden = !(currentTab==='harmony' && hView==='chords'); }
@@ -2923,6 +3059,16 @@ document.getElementById('sub-notes').addEventListener('click',e=>{
 });
 
 document.getElementById('aside-toggle').onclick=function(){ const b=document.getElementById('aside-body'); const hidden=b.style.display==='none'; b.style.display=hidden?'block':'none'; this.textContent=hidden?'−':'+'; this.setAttribute('aria-expanded', hidden); };
+
+/* per-panel help toggle (mobile shell pass): the ⓘ/? button in each panel heading
+   reveals/collapses that panel's description on a phone. Inert on desktop, where the
+   description always shows and the button is display:none. */
+document.querySelectorAll('.ph-help').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const ph=btn.closest('.panel-head'); if(!ph) return;
+    btn.setAttribute('aria-expanded', ph.classList.toggle('help-open') ? 'true' : 'false');
+  });
+});
 
 function selectTab(name){
   // Playback (loop / progression) deliberately persists across tabs — it acts

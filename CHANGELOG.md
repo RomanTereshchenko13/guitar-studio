@@ -2,6 +2,13 @@
 
 _Generated from `src/js/02-changelog.js` by `build.js` — do not edit by hand._
 
+## v1.24.0 — 2026-06-17
+
+- Mobile shell pass — less scrolling, the neck always in reach. On phones the fretboard now stays pinned in view while you scroll the chords, cards and progression below it, and gently snaps back into place — so you can pick a chord or chip and see it on the neck without scrolling back up.
+- Shorter control stack: each view's description now tucks behind an ⓘ on the heading, and the chord/quality rows swipe sideways instead of stacking into tall blocks — so the board sits higher on a phone.
+- The header now slims as you scroll, keeping the tabs and playback controls within reach at the top instead of scrolling away.
+- Your phone no longer sleeps while a loop, metronome or progression is playing, and an accidental over-scroll can no longer reload the app mid-jam.
+
 ## v1.23.0 — 2026-06-17
 
 - Install Euterpe straight from the app: where your browser supports it, an "Install" button now appears in the header, so you can add Euterpe to your device without digging through browser menus. (On iPhone, keep using Share → Add to Home Screen.)

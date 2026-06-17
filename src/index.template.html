@@ -128,7 +128,7 @@
 
   <section class="panel active" id="panel-harmony">
     <div class="panel-head">
-      <h2 id="harmony-h">Тони акорду на грифі</h2>
+      <div class="ph-top"><h2 id="harmony-h">Тони акорду на грифі</h2><button class="ph-help" type="button" aria-expanded="false" aria-controls="harmony-p">?</button></div>
       <p id="harmony-p">Вибери тоніку і тип акорду — підсвітяться тоніка, терція, квінта (і септима для септакордів) по всьому грифу.</p>
     </div>
 
@@ -167,7 +167,7 @@
 
   <section class="panel" id="panel-scales">
     <div class="panel-head">
-      <h2 id="scales-h" data-i18n="sc_h">Гами і моди</h2>
+      <div class="ph-top"><h2 id="scales-h" data-i18n="sc_h">Гами і моди</h2><button class="ph-help" type="button" aria-expanded="false" aria-controls="scales-p">?</button></div>
       <p id="scales-p" data-i18n="sc_p">Вибери тоніку і гаму. Накладай акорд тональності, щоб бачити цільові ноти всередині гами, та ізолюй позицію для практики.</p>
     </div>
 
@@ -201,8 +201,8 @@
 
   <section class="panel" id="panel-circle">
     <div class="panel-head">
-      <h2 data-i18n="cof_h">Коло квінт</h2>
-      <p data-i18n="cof_p">Тональності розташовані по квінтах. Сусіди — найближчі споріднені тональності: ліворуч субдомінанта (IV), праворуч домінанта (V). Натисни тональність, щоб побачити ключові знаки, паралель і акорди тональності.</p>
+      <div class="ph-top"><h2 data-i18n="cof_h">Коло квінт</h2><button class="ph-help" type="button" aria-expanded="false" aria-controls="cof-p">?</button></div>
+      <p id="cof-p" data-i18n="cof_p">Тональності розташовані по квінтах. Сусіди — найближчі споріднені тональності: ліворуч субдомінанта (IV), праворуч домінанта (V). Натисни тональність, щоб побачити ключові знаки, паралель і акорди тональності.</p>
     </div>
     <div class="cof-layout">
       <div class="cof-wrap"><svg id="cof-svg" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg"></svg></div>
@@ -230,6 +230,11 @@
      on a phone (1e). -->
 <div class="board-region" id="board-region">
   <div class="scroll"><div class="board"><div class="fretboard" id="board"></div></div><div class="fretnums" id="nums"></div></div>
+</div>
+<!-- Board legend + hint sit in their own row below the neck, OUTSIDE #board-region,
+     so the sticky-on-mobile board pins the neck only (these scroll away). Toggled
+     with the board by applyBoardRegion(). -->
+<div class="board-meta" id="board-meta">
   <div class="legend" id="legend"></div>
   <div class="hint" id="hint"></div>
 </div>

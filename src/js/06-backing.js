@@ -125,11 +125,11 @@ function metroClick(when, accent){
 }
 function metroToggle(){
   const btn=document.getElementById('tb-metro');
-  if(metroClock){ removeClock(metroClock); metroClock=null; btn.classList.remove('active'); btn.setAttribute('aria-pressed','false'); setMetroLabel(); return; }
+  if(metroClock){ removeClock(metroClock); metroClock=null; btn.classList.remove('active'); btn.setAttribute('aria-pressed','false'); setMetroLabel(); syncWakeLock(); return; }
   audio();
   metroClock={ interval:()=>beat(), tick:(time,count)=>metroClick(time, count%4===0) };
   addClock(metroClock);
-  btn.classList.add('active'); btn.setAttribute('aria-pressed','true'); setMetroLabel();
+  btn.classList.add('active'); btn.setAttribute('aria-pressed','true'); setMetroLabel(); syncWakeLock();
 }
 function setMetroLabel(){ const b=document.getElementById('tb-metro'); b.innerHTML=(metroClock?'&#9632; ':'&#9654; ')+t(metroClock?'tb_metro_on':'tb_metro_off'); b.setAttribute('aria-label', t('tb_metro_off')); }
 /* ---- backing band toggles (bass + groove) ----
@@ -212,6 +212,33 @@ function updateGlobalTransport(){
   if(seqClock){ label.textContent=t('tb_now_seq')+' · '+gRootLbl+QUALITIES[chQual].short; wrap.hidden=false; }
   else if(loopClock){ label.textContent=t('tb_now_loop')+' · '+loopChordLabel(); wrap.hidden=false; }
   else { wrap.hidden=true; }
+  syncWakeLock();
+}
+
+/* ---- screen wake lock (mobile shell) ----
+   Hold the screen awake while anything is sounding (metronome, single-chord loop, or
+   progression) so a phone doesn't sleep mid-jam. Synced from updateGlobalTransport
+   (loop/seq) and metroToggle (metronome); re-acquired on return to visibility, since
+   the browser drops the lock when the page is hidden. Silently degrades where the API
+   is missing (iOS < 16.4, insecure context, jsdom). */
+let _wakeLock=null, _wakeReq=false;
+function transportActive(){ return !!(metroClock || loopClock || seqClock); }
+function syncWakeLock(){
+  if(typeof navigator==='undefined' || !navigator.wakeLock) return;
+  const want=transportActive();
+  if(want && !_wakeLock && !_wakeReq){
+    _wakeReq=true;
+    navigator.wakeLock.request('screen').then(wl=>{
+      _wakeReq=false;
+      if(!transportActive()){ wl.release().catch(()=>{}); return; }   // stopped while the request was in flight
+      _wakeLock=wl; wl.addEventListener('release', ()=>{ _wakeLock=null; });
+    }).catch(()=>{ _wakeReq=false; });                                 // permission / gesture / unsupported — ignore
+  } else if(!want && _wakeLock){
+    const wl=_wakeLock; _wakeLock=null; wl.release().catch(()=>{});
+  }
+}
+if(typeof document!=='undefined'){
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') syncWakeLock(); });
 }
 
 /* ---- chord progression sequencer ----

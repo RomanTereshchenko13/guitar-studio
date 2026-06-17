@@ -74,7 +74,11 @@ function applyContextBar(){
   const vh=document.getElementById('ctx-view-harmony'); if(vh) vh.hidden = currentTab!=='harmony';
   const vs=document.getElementById('ctx-view-scales');  if(vs) vs.hidden = currentTab!=='scales';
 }
-function applyBoardRegion(){ document.getElementById('board-region').hidden = !(currentTab==='harmony' || currentTab==='scales'); }
+function applyBoardRegion(){
+  const show = (currentTab==='harmony' || currentTab==='scales');
+  document.getElementById('board-region').hidden = !show;
+  const bm=document.getElementById('board-meta'); if(bm) bm.hidden = !show;   // legend+hint follow the board
+}
 /* voicing cards + sequencer (now below the board) belong only to Harmony's
    chord-tones view; hide them everywhere else so the board stays the last thing. */
 function applyHarmonyExtras(){ const el=document.getElementById('harmony-extras'); if(el) el.hidden = !(currentTab==='harmony' && hView==='chords'); }
@@ -205,6 +209,16 @@ document.getElementById('sub-notes').addEventListener('click',e=>{
 });
 
 document.getElementById('aside-toggle').onclick=function(){ const b=document.getElementById('aside-body'); const hidden=b.style.display==='none'; b.style.display=hidden?'block':'none'; this.textContent=hidden?'−':'+'; this.setAttribute('aria-expanded', hidden); };
+
+/* per-panel help toggle (mobile shell pass): the ⓘ/? button in each panel heading
+   reveals/collapses that panel's description on a phone. Inert on desktop, where the
+   description always shows and the button is display:none. */
+document.querySelectorAll('.ph-help').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const ph=btn.closest('.panel-head'); if(!ph) return;
+    btn.setAttribute('aria-expanded', ph.classList.toggle('help-open') ? 'true' : 'false');
+  });
+});
 
 function selectTab(name){
   // Playback (loop / progression) deliberately persists across tabs — it acts

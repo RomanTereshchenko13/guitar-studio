@@ -67,7 +67,8 @@ const I18N = {
     cd_fret:'лад', cd_pick_hint:'Натисни картку, щоб обрати форму для «Прослухати» / «Лупа»',
     tr_shapes:'Форми тризвуку',
     pwa_install:'Встановити', pwa_install_tip:'Встановити Euterpe як застосунок',
-    pwa_update:'Доступна нова версія Euterpe.', pwa_update_btn:'Оновити', pwa_dismiss:'Сховати'
+    pwa_update:'Доступна нова версія Euterpe.', pwa_update_btn:'Оновити', pwa_dismiss:'Сховати',
+    ph_help:'Опис'
   },
   en: {
     brand:'Euterpe', brand_desc:'guitar studio',
@@ -136,7 +137,8 @@ const I18N = {
     cd_fret:'fret', cd_pick_hint:'Tap a card to choose the shape for Listen / Loop',
     tr_shapes:'Triad shapes',
     pwa_install:'Install', pwa_install_tip:'Install Euterpe as an app',
-    pwa_update:'A new version of Euterpe is available.', pwa_update_btn:'Reload', pwa_dismiss:'Dismiss'
+    pwa_update:'A new version of Euterpe is available.', pwa_update_btn:'Reload', pwa_dismiss:'Dismiss',
+    ph_help:'Description'
   }
 };
 let lang = 'uk';

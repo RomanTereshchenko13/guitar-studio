@@ -10,7 +10,7 @@ Code is authored as small `src/js/NN-*.js` modules and concatenated by a pure-st
 `build.js` (no bundler, no transpile). Every item below is reachable with the Web Audio API
 and vanilla JS. New phases add new `src/` modules; they never add a dependency.
 
-_Last updated: 2026-06-17 · shipping: v1.23.0_
+_Last updated: 2026-06-17 · shipping: v1.24.0_
 
 ---
 
@@ -265,6 +265,42 @@ a flat list of twelve scales.
 
 ---
 
+## Before Phase 3 — Mobile shell pass  (scroll & reachability · ships first)
+
+**Size:** S–M · **Risk:** low–med · **✅ Shipped v1.24.0.**
+
+A scroll-reduction and live-session pass on the *existing* reference shell, landed **before** the
+practice phases stack drill UI on top — Phase 3+ inherits this layout, so fixing it once here beats
+retrofitting every drill. Pure shell work on what already ships: no new musical surface, no
+learner-model dependency, so it was independent of everything below. Shipped, low-risk → high:
+
+- **Cut the control stack above the board.** ✅ The per-panel help paragraph (`#harmony-p` · `#scales-p`
+  · `#cof-p`) now collapses behind an accessible `?` toggle in the heading on mobile (`.ph-help`), and
+  the wrapping control rows (`.row > .group`) + the three-tier `#ch-quals` / `#arp-quals` quality
+  pickers swipe sideways instead of stacking into tall blocks. The shared root picker deliberately
+  keeps wrapping so all 12 roots stay visible.
+- **Sticky fretboard.** ✅ `#board-region` is `position: sticky` in the single-column layout so the neck
+  stays in view while you work the pickers above and the voicing cards / sequencer below. Refined to
+  **neck-only**: the legend + hint moved into a sibling `#board-meta` row so only the neck pins. A small
+  **magnetic settle** (`magnetNeck`) snaps it back when a scroll leaves it barely unpinned. (Sticky
+  string-name labels were tried and dropped — not needed.)
+- **Harden the live jam session.** ✅ `overscroll-behavior-y: contain` on `body` kills accidental
+  pull-to-refresh, and a **Screen Wake Lock** (`syncWakeLock`, synced from the transport) holds the
+  screen awake while the loop / metronome / progression sounds.
+- **Condensing header on scroll.** ✅ The header pins and slims past a scroll threshold (`.scrolled`,
+  with hysteresis), folding the tempo/backing groups away while keeping tabs + play/transport reachable.
+  The sticky board offsets directly below it via a live `--hdr-h`.
+
+_Next mobile work (the shared selection surface — folds into the Phase 3 drill shell): unify the
+chord/triad + root selection across the Chords and Scales panels — consistent control surface, a
+chord-over-scale overlay in Scales, a compact piano-style root picker, less vertical height._
+
+**Validation:** `npm test` stayed green throughout (271 checks) — CSS/structure changes don't touch the
+fret-cell width math the overflow assertion measures (`boardWidth()`), and sticky/header are inert in
+jsdom; the sticky board + condensing header got a real-device pass on iOS Safari.
+
+---
+
 ## Phase 3 — Practice core  (where the spine pays off)
 
 **Size:** L · **Risk:** med — the learner model is net-new; pin its schema first (below).
@@ -467,8 +503,23 @@ Phase 9  Product layer                          (curriculum / distribution / pol
 
 ## Cross-cutting concerns
 
-- **Mobile:** audio unlock on user gesture (already required); account for `outputLatency` in
-  any scoring window; keep all new UI within the reflowed responsive layout.
+- **Mobile (first-class, not a reflow afterthought).** Most practice happens on a phone, one-handed.
+  The shell-level fixes ship first (see "Before Phase 3 — Mobile shell pass"); the notes here bind the
+  *drill* phases built on top of it — 3–7 and the mic flow in 8 inherit them:
+  - **Audio & timing.** Unlock on a user gesture (already required); account for `outputLatency` in
+    any scoring window; never ship a *scored* tier on tap input — touch latency corrupts timing, so
+    tap drills stay "timed, not scored" (the coach-tier rule from Guiding principles).
+  - **Thumb-zone answers.** Drill answers / "next" live in the bottom third where the thumb reaches —
+    one bottom action shell, reused by every drill, not re-placed per drill.
+  - **Navigation that scales.** The top tab strip already horizontal-scrolls; as Practice / Ear tabs
+    land (Phases 3–4) it overflows, so move to a bottom-anchored nav (which doubles as the thumb-zone
+    home) — decide the pattern *before* the tab count grows, not after.
+  - **Full-height drill panels.** Dynamic viewport units (`dvh`/`svh`) so the URL-bar resize doesn't
+    reflow a live drill or the mic-permission sheet; scoring badges in reserved space (no layout shift
+    when a streak counter appears).
+  - **Glanceable.** Big central prompt, minimal chrome; keep all new UI within the reflowed responsive
+    layout and reuse the shell vocabulary (sticky board, scroll strips, collapsible help) from the
+    pre-Phase-3 pass.
 - **i18n:** every label, drill name, and cue caption needs symmetric EN + UK entries (enforced
   by the harness).
 - **Persistence:** the musical context, drill settings, and learner-model state all ride the

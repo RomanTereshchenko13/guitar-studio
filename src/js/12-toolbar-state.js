@@ -52,6 +52,47 @@ if(typeof window!=='undefined'){
   });
 }
 
+/* magnetic neck (mobile shell): the board is sticky in the single-column layout.
+   When a scroll comes to rest with the neck just *barely* unpinned — its top only a
+   few px below the pin line — gently settle it back into the pinned position, so a
+   small scroll doesn't drop it (it "unpins too easily" otherwise). Acts only within a
+   narrow band, so a deliberate scroll up to the controls is never trapped. */
+if(typeof window!=='undefined'){
+  let _magT=null;
+  const magnetNeck=()=>{
+    if(window.innerWidth>940) return;                          // single-column only
+    const br=document.getElementById('board-region');
+    if(!br || br.hidden) return;
+    const pin=parseFloat(getComputedStyle(br).top)||0;         // sticky offset (0, or the safe-area inset in a PWA)
+    const d=br.getBoundingClientRect().top - pin;              // how far the neck top sits below the pin line
+    if(d>1 && d<=64) window.scrollBy({top:d, left:0, behavior:'smooth'});
+  };
+  window.addEventListener('scroll', ()=>{ clearTimeout(_magT); _magT=setTimeout(magnetNeck, 110); }, {passive:true});
+}
+
+/* condensing sticky header (mobile shell): once you scroll past the brand the header
+   slims (CSS .scrolled, ≤940 only) so tabs + transport stay reachable. The sticky board
+   pins directly below it, so we keep --hdr-h in sync with the live header height (which
+   changes when it condenses, the toolbar opens, or on resize/lang). */
+if(typeof window!=='undefined'){
+  const hdr=document.querySelector('header');
+  const setHdrH=()=>{ if(hdr) document.documentElement.style.setProperty('--hdr-h', hdr.offsetHeight+'px'); };
+  let _cond=false;
+  const onHdrScroll=()=>{
+    if(!hdr) return;
+    const y=window.scrollY;
+    // hysteresis: condense past 48px, expand back under 24px, so a slow scroll across the
+    // boundary doesn't flip-flop (which clipped the pinned board as the offset lagged)
+    let cond=_cond;
+    if(!cond && y>48) cond=true; else if(cond && y<24) cond=false;
+    if(cond!==_cond){ _cond=cond; hdr.classList.toggle('scrolled', cond); setHdrH(); }  // sync: board offset tracks the new height at once
+  };
+  window.addEventListener('scroll', onHdrScroll, {passive:true});
+  window.addEventListener('resize', setHdrH);
+  if(typeof ResizeObserver!=='undefined' && hdr) new ResizeObserver(setHdrH).observe(hdr);
+  setHdrH(); onHdrScroll();
+}
+
 const LS_KEY='guitarStudio.v1';
 let currentTab='harmony';
 function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({
