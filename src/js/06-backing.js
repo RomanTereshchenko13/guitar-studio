@@ -257,7 +257,10 @@ function seqStrumStep(i, when){
   enqueueBeats(when);                                     // 1d: transport beat pulse
   const pcs=ivs.map(iv=>mod(base+iv,12));
   enqueueVisual(when, ()=>{
-    if(i!==seqStepIdx){ seqStepIdx=i; setChord(st.pc, st.lbl, st.qi); renderSeq(); updateGlobalTransport(); }  // chord changed → follow on board + chip
+    // chord changed → follow on board + chip. Suppress the board-change stagger
+    // (1d): this is playback-driven, not a user edit, so the neck shouldn't
+    // re-fade its dots every bar — same precedent as the Identify tap handler.
+    if(i!==seqStepIdx){ seqStepIdx=i; _boardStagger=false; setChord(st.pc, st.lbl, st.qi); _boardStagger=true; renderSeq(); updateGlobalTransport(); }
     const b=document.getElementById('board'); pcs.forEach(pc=>setDotPlaying(b, pc, true));
   });
   enqueueVisual(when+barSec*0.85, ()=>{ const b=document.getElementById('board'); pcs.forEach(pc=>setDotPlaying(b, pc, false)); });

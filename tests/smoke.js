@@ -169,7 +169,8 @@ if (T) {
    'cd_voicings','cd_eshape','cd_ashape','cd_fret','cd_pick_hint','tr_shapes',
    'view_scale','view_notes','view_identify','suggest_title','suggest_scales',
    'id_near','id_missing','id_extra',
-   'view_arp','arp_h','arp_p','arp_hint','arp_word','tb_capo','capo_off','caged_desc'].forEach(k => {
+   'view_arp','arp_h','arp_p','arp_hint','arp_word','tb_capo','capo_off','caged_desc',
+   'pwa_install','pwa_install_tip','pwa_update','pwa_update_btn','pwa_dismiss'].forEach(k => {
     ok('i18n new key present (uk+en): ' + k,
        T.I18N.uk[k] !== undefined && T.I18N.en[k] !== undefined);
   });

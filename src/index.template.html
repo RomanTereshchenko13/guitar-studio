@@ -44,6 +44,11 @@
         <button class="langbtn active" data-lang="uk">UK</button>
         <button class="langbtn" data-lang="en">EN</button>
       </div>
+      <!-- PWA install affordance: hidden until the browser fires
+           beforeinstallprompt (14-pwa.js unhides + wires it). Stays hidden on
+           browsers without install support (e.g. iOS Safari, which installs via
+           Share → Add to Home Screen instead). -->
+      <button class="install-btn" id="pwa-install" data-i18n="pwa_install" hidden>Встановити</button>
     </div>
     <nav class="tabs" id="tabs">
       <button class="tab active" data-panel="harmony" data-i18n="tab_harmony">Акорди / тріади</button>
@@ -274,6 +279,11 @@
     <div class="cl-body" id="cl-body"></div>
   </div>
 </div>
+
+<!-- Update-available toast: hidden until the service worker reports a new
+     waiting version (14-pwa.js fills in the localized message + buttons and
+     unhides it). role=status so it's announced politely. -->
+<div class="toast" id="pwa-toast" role="status" aria-live="polite" hidden></div>
 
 <script>@@SCRIPT@@</script>
 </body>

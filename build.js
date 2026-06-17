@@ -1,6 +1,6 @@
 /* Build: assemble the shipped single-file app from editable sources.
    Concatenates src/js/*.js (alphabetical == intended order, files are
-   zero-padded 01..12) into one <script>, inlines src/styles.css into <style>,
+   zero-padded 01..14) into one <script>, inlines src/styles.css into <style>,
    and writes index.html. No bundler, no transpile — pure string assembly, so
    the output stays a zero-runtime-dependency single file.
 

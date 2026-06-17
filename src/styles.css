@@ -23,6 +23,7 @@
      rapid note tapping feels instant on phones */
   .btn, .tab, .langbtn, .ver, .tb-toggle, .aside-toggle, .cl-close,
   .chordbox, .cd-dot, .cof-node, .seq-chip .nm, .seq-chip .bars, .seq-chip .x,
+  .install-btn, .toast-act, .toast-x,
   select { touch-action: manipulation; }
   .cof-node:focus { outline: none; }
   .cof-node:focus-visible circle { stroke: #fff; stroke-width: 2.6; }
@@ -50,6 +51,19 @@
   .brand .ver { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; color: var(--text-faint); border: 1px solid rgba(45, 182, 166, 0.4); border-radius: 6px; padding: 2px 7px; align-self: center; cursor: pointer; background: transparent; transition: all 0.12s; }
   .brand .ver:hover { color: var(--accent); border-color: var(--accent); }
   .lang { margin-left: auto; display: flex; gap: 2px; align-self: center; background: var(--bg-panel); border: 1px solid var(--border-strong); border-radius: 8px; padding: 2px; }
+  /* PWA install CTA (header) + update toast (bottom). Hidden until the browser /
+     service worker signal them (14-pwa.js). */
+  .install-btn { align-self: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: #07203a; background: var(--accent); border: none; border-radius: 7px; padding: 5px 11px; cursor: pointer; transition: opacity 0.12s; }
+  .install-btn:hover { opacity: 0.88; }
+  .toast { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 200; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 24px); background: var(--bg-panel-2); border: 1px solid var(--border-strong); border-radius: 12px; padding: 10px 12px 10px 16px; box-shadow: 0 12px 36px rgba(0,0,0,0.5); animation: toast-in 0.22s ease; }
+  .toast[hidden] { display: none; }
+  .toast .toast-msg { font-size: 13px; color: var(--text); }
+  .toast .toast-act { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: #07203a; background: var(--accent); border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer; }
+  .toast .toast-x { font-size: 13px; line-height: 1; color: var(--text-dim); background: transparent; border: 1px solid var(--border-strong); border-radius: 6px; padding: 5px 8px; cursor: pointer; }
+  @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @supports (padding: max(0px, env(safe-area-inset-bottom))) {
+    .toast { bottom: max(16px, env(safe-area-inset-bottom)); }
+  }
   .langbtn { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; padding: 5px 11px; border: none; background: transparent; color: var(--text-dim); border-radius: 6px; cursor: pointer; transition: all 0.12s; }
   .langbtn:hover:not(.active) { color: var(--text); }
   .langbtn.active { background: var(--accent); color: #07203a; }

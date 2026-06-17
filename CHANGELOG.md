@@ -2,6 +2,12 @@
 
 _Generated from `src/js/02-changelog.js` by `build.js` — do not edit by hand._
 
+## v1.23.0 — 2026-06-17
+
+- Install Euterpe straight from the app: where your browser supports it, an "Install" button now appears in the header, so you can add Euterpe to your device without digging through browser menus. (On iPhone, keep using Share → Add to Home Screen.)
+- Update notifications: when a new version is ready, a small prompt now offers to reload into it — so an already-open tab no longer keeps running the old version until you happen to refresh.
+- Smoother progression playback: the fretboard no longer re-fades all its dots on every chord change while a progression is playing.
+
 ## v1.22.1 — 2026-06-17
 
 - Installed-app polish for iPhone: adding Euterpe to your home screen now opens it in its own dark, full-screen window with the proper app name and a matching status bar, instead of a generic browser-style shell.

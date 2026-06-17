@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <!-- Euterpe (Guitar Studio) — generated single-file build (do not edit; edit src/ and run build.js).
-     Version: 1.22.1  (source of truth: APP_VERSION in src/js/01-version.js;
+     Version: 1.23.0  (source of truth: APP_VERSION in src/js/01-version.js;
      build.js fills this in). Release notes live in src/js/02-changelog.js (drives
      the in-app "What's new" modal and CHANGELOG.md). -->
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="1.22.1">
+<meta name="version" content="1.23.0">
 <meta name="description" content="Euterpe — a guitar studio for music theory and practice: scales, modes, chords, the fretboard, the circle of fifths, and a jam-along backing band. Works offline.">
 <meta name="theme-color" content="#16140f">
 <!-- Installed-app (standalone) hints. The manifest covers Android/desktop; these
@@ -54,6 +54,7 @@
      rapid note tapping feels instant on phones */
   .btn, .tab, .langbtn, .ver, .tb-toggle, .aside-toggle, .cl-close,
   .chordbox, .cd-dot, .cof-node, .seq-chip .nm, .seq-chip .bars, .seq-chip .x,
+  .install-btn, .toast-act, .toast-x,
   select { touch-action: manipulation; }
   .cof-node:focus { outline: none; }
   .cof-node:focus-visible circle { stroke: #fff; stroke-width: 2.6; }
@@ -81,6 +82,19 @@
   .brand .ver { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; color: var(--text-faint); border: 1px solid rgba(45, 182, 166, 0.4); border-radius: 6px; padding: 2px 7px; align-self: center; cursor: pointer; background: transparent; transition: all 0.12s; }
   .brand .ver:hover { color: var(--accent); border-color: var(--accent); }
   .lang { margin-left: auto; display: flex; gap: 2px; align-self: center; background: var(--bg-panel); border: 1px solid var(--border-strong); border-radius: 8px; padding: 2px; }
+  /* PWA install CTA (header) + update toast (bottom). Hidden until the browser /
+     service worker signal them (14-pwa.js). */
+  .install-btn { align-self: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: #07203a; background: var(--accent); border: none; border-radius: 7px; padding: 5px 11px; cursor: pointer; transition: opacity 0.12s; }
+  .install-btn:hover { opacity: 0.88; }
+  .toast { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 200; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 24px); background: var(--bg-panel-2); border: 1px solid var(--border-strong); border-radius: 12px; padding: 10px 12px 10px 16px; box-shadow: 0 12px 36px rgba(0,0,0,0.5); animation: toast-in 0.22s ease; }
+  .toast[hidden] { display: none; }
+  .toast .toast-msg { font-size: 13px; color: var(--text); }
+  .toast .toast-act { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: #07203a; background: var(--accent); border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer; }
+  .toast .toast-x { font-size: 13px; line-height: 1; color: var(--text-dim); background: transparent; border: 1px solid var(--border-strong); border-radius: 6px; padding: 5px 8px; cursor: pointer; }
+  @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @supports (padding: max(0px, env(safe-area-inset-bottom))) {
+    .toast { bottom: max(16px, env(safe-area-inset-bottom)); }
+  }
   .langbtn { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; padding: 5px 11px; border: none; background: transparent; color: var(--text-dim); border-radius: 6px; cursor: pointer; transition: all 0.12s; }
   .langbtn:hover:not(.active) { color: var(--text); }
   .langbtn.active { background: var(--accent); color: #07203a; }
@@ -410,6 +424,11 @@
         <button class="langbtn active" data-lang="uk">UK</button>
         <button class="langbtn" data-lang="en">EN</button>
       </div>
+      <!-- PWA install affordance: hidden until the browser fires
+           beforeinstallprompt (14-pwa.js unhides + wires it). Stays hidden on
+           browsers without install support (e.g. iOS Safari, which installs via
+           Share → Add to Home Screen instead). -->
+      <button class="install-btn" id="pwa-install" data-i18n="pwa_install" hidden>Встановити</button>
     </div>
     <nav class="tabs" id="tabs">
       <button class="tab active" data-panel="harmony" data-i18n="tab_harmony">Акорди / тріади</button>
@@ -641,13 +660,25 @@
   </div>
 </div>
 
+<!-- Update-available toast: hidden until the service worker reports a new
+     waiting version (14-pwa.js fills in the localized message + buttons and
+     unhides it). role=status so it's announced politely. -->
+<div class="toast" id="pwa-toast" role="status" aria-live="polite" hidden></div>
+
 <script>
 /* Single source of truth for the app version. Bump on each release and update
    the changelog comment at the top of the file + the <meta name="version">. */
-const APP_VERSION = '1.22.1';
+const APP_VERSION = '1.23.0';
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.23.0', date:'2026-06-17',
+    en:['Install Euterpe straight from the app: where your browser supports it, an "Install" button now appears in the header, so you can add Euterpe to your device without digging through browser menus. (On iPhone, keep using Share → Add to Home Screen.)',
+        'Update notifications: when a new version is ready, a small prompt now offers to reload into it — so an already-open tab no longer keeps running the old version until you happen to refresh.',
+        'Smoother progression playback: the fretboard no longer re-fades all its dots on every chord change while a progression is playing.'],
+    uk:['Встановлення прямо із застосунку: якщо твій браузер це підтримує, у шапці зʼявляється кнопка «Встановити», тож Euterpe можна додати на пристрій, не порпаючись у меню браузера. (На iPhone — як і раніше, через «Поділитися» → «На початковий екран».)',
+        'Сповіщення про оновлення: коли готова нова версія, невелика підказка пропонує перезавантажитись у неї — тож відкрита вкладка більше не працює на старій версії, доки ти випадково не оновиш сторінку.',
+        'Плавніше відтворення прогресії: точки на грифі більше не згасають наново на кожній зміні акорду, поки грає прогресія.'] },
   { v:'1.22.1', date:'2026-06-17',
     en:['Installed-app polish for iPhone: adding Euterpe to your home screen now opens it in its own dark, full-screen window with the proper app name and a matching status bar, instead of a generic browser-style shell.',
         'On phones with a camera notch or a home-indicator bar, the layout now keeps clear of them, so nothing hides behind the cut-out edges when the app runs full-screen.'],
@@ -913,7 +944,9 @@ const I18N = {
     cd_na:'немає простої форми', cd_calc:'обчислена аплікатура',
     cd_voicings:'Форми акорду', cd_eshape:'барре у формі E', cd_ashape:'барре у формі A',
     cd_fret:'лад', cd_pick_hint:'Натисни картку, щоб обрати форму для «Прослухати» / «Лупа»',
-    tr_shapes:'Форми тризвуку'
+    tr_shapes:'Форми тризвуку',
+    pwa_install:'Встановити', pwa_install_tip:'Встановити Euterpe як застосунок',
+    pwa_update:'Доступна нова версія Euterpe.', pwa_update_btn:'Оновити', pwa_dismiss:'Сховати'
   },
   en: {
     brand:'Euterpe', brand_desc:'guitar studio',
@@ -980,7 +1013,9 @@ const I18N = {
     cd_na:'no simple shape', cd_calc:'computed voicing',
     cd_voicings:'Chord shapes', cd_eshape:'E-shape barre', cd_ashape:'A-shape barre',
     cd_fret:'fret', cd_pick_hint:'Tap a card to choose the shape for Listen / Loop',
-    tr_shapes:'Triad shapes'
+    tr_shapes:'Triad shapes',
+    pwa_install:'Install', pwa_install_tip:'Install Euterpe as an app',
+    pwa_update:'A new version of Euterpe is available.', pwa_update_btn:'Reload', pwa_dismiss:'Dismiss'
   }
 };
 let lang = 'uk';
@@ -1560,7 +1595,10 @@ function seqStrumStep(i, when){
   enqueueBeats(when);                                     // 1d: transport beat pulse
   const pcs=ivs.map(iv=>mod(base+iv,12));
   enqueueVisual(when, ()=>{
-    if(i!==seqStepIdx){ seqStepIdx=i; setChord(st.pc, st.lbl, st.qi); renderSeq(); updateGlobalTransport(); }  // chord changed → follow on board + chip
+    // chord changed → follow on board + chip. Suppress the board-change stagger
+    // (1d): this is playback-driven, not a user edit, so the neck shouldn't
+    // re-fade its dots every bar — same precedent as the Identify tap handler.
+    if(i!==seqStepIdx){ seqStepIdx=i; _boardStagger=false; setChord(st.pc, st.lbl, st.qi); _boardStagger=true; renderSeq(); updateGlobalTransport(); }
     const b=document.getElementById('board'); pcs.forEach(pc=>setDotPlaying(b, pc, true));
   });
   enqueueVisual(when+barSec*0.85, ()=>{ const b=document.getElementById('board'); pcs.forEach(pc=>setDotPlaying(b, pc, false)); });
@@ -3018,16 +3056,72 @@ if (typeof window!=='undefined' && window.__GS_ALLOW_TEST__) {
   };
 }
 
-/* PWA: register the service worker so the app installs and runs offline.
-   Best-effort and guarded — service workers need an http(s) origin, so this is
-   a silent no-op for the file:// (double-clicked dist) build and in jsdom tests
-   (no navigator.serviceWorker). Relative 'sw.js' keeps it working on a GitHub
-   Pages subpath. */
+/* PWA: register the service worker (install + offline), surface an update toast
+   when a new version is waiting, and offer a native install via beforeinstallprompt.
+   Best-effort and guarded — service workers need an http(s) origin, so the SW half
+   is a silent no-op on file:// (the double-clicked dist build) and in jsdom (no
+   navigator.serviceWorker). The install half listens on window events that simply
+   never fire in those environments, so it stays dormant there too. Relative 'sw.js'
+   keeps it working on a GitHub Pages subpath. */
 (function () {
-  if (!('serviceWorker' in navigator)) return;
-  if (location.protocol !== 'https:' && location.protocol !== 'http:') return;
-  addEventListener('load', function () {
-    navigator.serviceWorker.register('sw.js').catch(function () { /* offline support is optional */ });
+  /* ---- update toast: shown when a new SW is installed and waiting ---- */
+  function showUpdateToast(worker) {
+    var toast = document.getElementById('pwa-toast');
+    if (!toast || !worker) return;
+    toast.innerHTML =
+      '<span class="toast-msg">' + t('pwa_update') + '</span>' +
+      '<button class="toast-act" id="pwa-update-btn">' + t('pwa_update_btn') + '</button>' +
+      '<button class="toast-x" id="pwa-toast-x" aria-label="' + t('pwa_dismiss') + '">✕</button>';
+    toast.hidden = false;
+    document.getElementById('pwa-update-btn').onclick = function () {
+      toast.hidden = true;
+      worker.postMessage({ type: 'SKIP_WAITING' });   // → activates → controllerchange → reload
+    };
+    document.getElementById('pwa-toast-x').onclick = function () { toast.hidden = true; };
+  }
+
+  if (('serviceWorker' in navigator) &&
+      (location.protocol === 'https:' || location.protocol === 'http:')) {
+    // When the waiting worker takes control, reload once so the new version runs.
+    // Guard with hadController: the first-install clients.claim() ALSO fires
+    // controllerchange, and must not reload the very first visit (only a genuine
+    // update — where a controller already existed at load — should).
+    var hadController = !!navigator.serviceWorker.controller;
+    var reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (reloading || !hadController) return; reloading = true; location.reload();
+    });
+    addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        // A version may already be waiting from a previous visit.
+        if (reg.waiting && navigator.serviceWorker.controller) showUpdateToast(reg.waiting);
+        reg.addEventListener('updatefound', function () {
+          var w = reg.installing; if (!w) return;
+          w.addEventListener('statechange', function () {
+            // 'installed' + an existing controller == an update (not first install).
+            if (w.state === 'installed' && navigator.serviceWorker.controller) showUpdateToast(w);
+          });
+        });
+      }).catch(function () { /* offline support is optional */ });
+    });
+  }
+
+  /* ---- native install prompt: capture the event, offer our own button ---- */
+  var deferredPrompt = null;
+  var installBtn = document.getElementById('pwa-install');
+  addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();                 // suppress the browser's mini-infobar; use our button
+    deferredPrompt = e;
+    if (installBtn) { installBtn.title = t('pwa_install_tip'); installBtn.setAttribute('aria-label', t('pwa_install_tip')); installBtn.hidden = false; }
+  });
+  if (installBtn) installBtn.onclick = function () {
+    if (!deferredPrompt) return;
+    var p = deferredPrompt; deferredPrompt = null; installBtn.hidden = true;
+    p.prompt();
+  };
+  addEventListener('appinstalled', function () {
+    deferredPrompt = null;
+    if (installBtn) installBtn.hidden = true;
   });
 })();
 </script>

@@ -91,7 +91,7 @@ The release gate is a headless [jsdom](https://github.com/jsdom/jsdom) suite.
 ```bash
 cd tests
 npm install      # installs jsdom (dev only)
-npm test         # boots index.html headless, runs 260+ checks
+npm test         # boots index.html headless, runs 270+ checks
 ```
 
 Or from the repo root, `npm test` rebuilds `index.html` from `src/` first, then

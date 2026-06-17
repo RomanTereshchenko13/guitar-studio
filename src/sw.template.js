@@ -17,7 +17,17 @@ const CORE = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
+  // Precache the shell, then WAIT (no auto-skipWaiting): on an update an existing
+  // tab keeps the old worker in control while the new one parks in 'waiting', so
+  // the page can offer a reload (14-pwa.js) instead of swapping out mid-session.
+  // On a first install there's no controller to wait behind, so it activates at once.
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)));
+});
+
+// The page posts this when the user accepts the update toast — take over now,
+// which fires 'controllerchange' in the page and triggers a single reload.
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {

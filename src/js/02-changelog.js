@@ -1,6 +1,13 @@
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.23.0', date:'2026-06-17',
+    en:['Install Euterpe straight from the app: where your browser supports it, an "Install" button now appears in the header, so you can add Euterpe to your device without digging through browser menus. (On iPhone, keep using Share → Add to Home Screen.)',
+        'Update notifications: when a new version is ready, a small prompt now offers to reload into it — so an already-open tab no longer keeps running the old version until you happen to refresh.',
+        'Smoother progression playback: the fretboard no longer re-fades all its dots on every chord change while a progression is playing.'],
+    uk:['Встановлення прямо із застосунку: якщо твій браузер це підтримує, у шапці зʼявляється кнопка «Встановити», тож Euterpe можна додати на пристрій, не порпаючись у меню браузера. (На iPhone — як і раніше, через «Поділитися» → «На початковий екран».)',
+        'Сповіщення про оновлення: коли готова нова версія, невелика підказка пропонує перезавантажитись у неї — тож відкрита вкладка більше не працює на старій версії, доки ти випадково не оновиш сторінку.',
+        'Плавніше відтворення прогресії: точки на грифі більше не згасають наново на кожній зміні акорду, поки грає прогресія.'] },
   { v:'1.22.1', date:'2026-06-17',
     en:['Installed-app polish for iPhone: adding Euterpe to your home screen now opens it in its own dark, full-screen window with the proper app name and a matching status bar, instead of a generic browser-style shell.',
         'On phones with a camera notch or a home-indicator bar, the layout now keeps clear of them, so nothing hides behind the cut-out edges when the app runs full-screen.'],
