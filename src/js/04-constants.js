@@ -48,8 +48,9 @@ let capo = 0;
 let tempo = 90;
 function beat(){ return 60/tempo; }
 
-/* collapsible toolbar; default open on wide screens, collapsed on phones */
-let toolbarOpen = (typeof window!=='undefined' && window.innerWidth>700);
+/* collapsible toolbar; default open on wide screens, collapsed on phones — and also
+   collapsed on a short (landscape-phone) viewport, where every row above the neck counts */
+let toolbarOpen = (typeof window!=='undefined' && window.innerWidth>700 && window.innerHeight>500);
 /* the chord-reference sidebar is only shown on chord-oriented tabs */
 const ASIDE_TABS = ['harmony'];
 

@@ -2,10 +2,11 @@
 /* ---- shared root picker, display mode, sub-view toggle, global play ---- */
 /* Each render fn paints panel content for its mode and the ONE shared board only
    when its mode is active (isBoardMode), so a cross-view pass paints the board once. */
-function renderContextViews(){ renderChords(); renderTriads(); renderArp(); renderIdentify(); renderScales(); renderNotes(); }
+function renderContextViews(){ renderChords(); renderTriads(); renderArp(); renderIdentify(); renderScales(); renderNotes(); markScrollables(); }
 function renderActiveContext(){
   if(currentTab==='harmony'){ (hView==='identify'?renderIdentify:hView==='triads'?renderTriads:hView==='arp'?renderArp:renderChords)(); }
   else if(currentTab==='scales'){ scView==='notes'?renderNotes():renderScales(); }
+  markScrollables();
 }
 
 /* ---- one musical context (spine #1, 1a) ----
@@ -47,7 +48,7 @@ function setHView(v){ hView=v;
   document.getElementById('harmony-p').textContent = t(head+'_p');
   applyHarmonyExtras();
   (v==='identify'?renderIdentify:v==='triads'?renderTriads:v==='arp'?renderArp:renderChords)();
-  updateGlobalPlay(); saveState();
+  markScrollables(); updateGlobalPlay(); saveState();
 }
 document.getElementById('hv-chords').onclick=()=>setHView('chords');
 document.getElementById('hv-triads').onclick=()=>setHView('triads');
@@ -63,7 +64,7 @@ function setScView(v){ scView=v;
   document.getElementById('scales-h').textContent = t(v==='notes'?'nt_h':'sc_h');
   document.getElementById('scales-p').textContent = t(v==='notes'?'nt_p':'sc_p');
   v==='notes'?renderNotes():renderScales();
-  updateGlobalPlay(); saveState();
+  markScrollables(); updateGlobalPlay(); saveState();
 }
 document.getElementById('sv-scale').onclick=()=>setScView('scale');
 document.getElementById('sv-notes').onclick=()=>setScView('notes');
@@ -210,15 +211,17 @@ document.getElementById('sub-notes').addEventListener('click',e=>{
 
 document.getElementById('aside-toggle').onclick=function(){ const b=document.getElementById('aside-body'); const hidden=b.style.display==='none'; b.style.display=hidden?'block':'none'; this.textContent=hidden?'−':'+'; this.setAttribute('aria-expanded', hidden); };
 
-/* per-panel help toggle (mobile shell pass): the ⓘ/? button in each panel heading
-   reveals/collapses that panel's description on a phone. Inert on desktop, where the
-   description always shows and the button is display:none. */
-document.querySelectorAll('.ph-help').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    const ph=btn.closest('.panel-head'); if(!ph) return;
-    btn.setAttribute('aria-expanded', ph.classList.toggle('help-open') ? 'true' : 'false');
-  });
-});
+/* help toggle: one ? collapses/reveals BOTH the active view's description and the
+   board's playing-hint, on every viewport now (was phone-only, description-only), so
+   the default screen reads clean. A body-level class drives it because those two texts
+   live in different subtrees (.main vs .board-meta); every ? button reflects the state. */
+let helpOpen = false;
+function applyHelpState(){
+  document.body.classList.toggle('help-open', helpOpen);
+  document.querySelectorAll('.ph-help').forEach(b=>{ b.classList.toggle('on', helpOpen); b.setAttribute('aria-expanded', helpOpen?'true':'false'); });
+}
+document.querySelectorAll('.ph-help').forEach(btn=>{ btn.addEventListener('click',()=>{ helpOpen=!helpOpen; applyHelpState(); }); });
+applyHelpState();
 
 function selectTab(name){
   // Playback (loop / progression) deliberately persists across tabs — it acts
@@ -287,7 +290,47 @@ function closeChangelog(){ const o=document.getElementById('cl-overlay'); o.clas
 document.getElementById('app-ver').onclick=openChangelog;
 document.getElementById('cl-close').onclick=closeChangelog;
 document.getElementById('cl-overlay').addEventListener('click',e=>{ if(e.target.id==='cl-overlay') closeChangelog(); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeChangelog(); });
+
+/* ---- keyboard-shortcuts cheat-sheet ---- */
+function openKbd(){ const o=document.getElementById('kbd-overlay'); if(!o) return; o.hidden=false; o.classList.add('open'); }
+function closeKbd(){ const o=document.getElementById('kbd-overlay'); if(!o) return; o.classList.remove('open'); o.hidden=true; }
+{ const c=document.getElementById('kbd-close'); if(c) c.onclick=closeKbd;
+  const ov=document.getElementById('kbd-overlay'); if(ov) ov.addEventListener('click',e=>{ if(e.target.id==='kbd-overlay') closeKbd(); });
+  const ob=document.getElementById('kbd-open'); if(ob) ob.onclick=openKbd; }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeChangelog(); closeKbd(); } });
+
+/* ---- global keyboard shortcuts (desktop power-use; also seeds Phase-3 drills) ----
+   Space=Listen/Stop · L=Loop · M=Metronome · 1/2/3=tabs · A–G=key · [ ]=transpose · ?=help.
+   Guards: ignored while typing in a field, while a modal is open, or with a Ctrl/Meta/Alt
+   chord (so browser shortcuts survive). Space is only hijacked when focus is NOT on an
+   interactive control, so a focused fretboard dot / button keeps its native Space. */
+const NOTE_KEY = { a:9, b:11, c:0, d:2, e:4, f:5, g:7 };
+function transposeKey(delta){ const pc=mod(gRoot+delta,12); setKey(pc, ROOTS[pc]); }
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  const tg=e.target;
+  if(tg && (tg.tagName==='INPUT'||tg.tagName==='SELECT'||tg.tagName==='TEXTAREA'||tg.isContentEditable)) return;
+  if(!document.getElementById('cl-overlay').hidden || !document.getElementById('kbd-overlay').hidden) return;  // modal open
+  const k=e.key;
+  if(k===' '||k==='Spacebar'){
+    if(tg && tg.closest && tg.closest('button,a,[role="button"],[tabindex]')) return;   // let the focused control keep Space
+    e.preventDefault();
+    if(typeof seqClock!=='undefined' && seqClock) seqStop();
+    else if(typeof loopClock!=='undefined' && loopClock) stopLoop();
+    else globalPlay();
+    return;
+  }
+  if(k==='?'){ e.preventDefault(); openKbd(); return; }
+  if(k==='1'){ selectTab('harmony'); return; }
+  if(k==='2'){ selectTab('scales'); return; }
+  if(k==='3'){ selectTab('circle'); return; }
+  if(k==='['){ transposeKey(-1); return; }
+  if(k===']'){ transposeKey(1); return; }
+  const lk = k.length===1 ? k.toLowerCase() : '';
+  if(lk==='l'){ const lp=document.getElementById('g-loop'); if(lp && !lp.hidden && !lp.disabled) loopToggle(); return; }
+  if(lk==='m'){ const mb=document.getElementById('tb-metro'); if(mb && !mb.disabled) metroToggle(); return; }
+  if(lk && NOTE_KEY[lk]!==undefined){ const pc=NOTE_KEY[lk]; setKey(pc, ROOTS[pc]); return; }
+});
 
 /* ---- graceful degradation when the browser has no Web Audio (Phase C+) ----
    Disable the transport controls with a hint instead of leaving dead buttons. */
@@ -320,6 +363,12 @@ applyTuning();
 applyLang();
 selectTab(currentTab);
 syncTabsScroll();
+markScrollables();
+// re-measure swipe-group overflow when the viewport changes (rotate / resize), and once
+// the webfont has loaded — button widths shift on the font swap, so a measure taken with
+// the fallback font would mis-detect overflow and show / hide the fade incorrectly.
+window.addEventListener('resize', markScrollables);
+try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(markScrollables); }catch(_){}
 applyAudioAvailability();
 document.getElementById('app-ver').textContent = 'v' + APP_VERSION;
 

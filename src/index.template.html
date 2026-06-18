@@ -57,15 +57,19 @@
     </nav>
     <div class="tb-bar">
       <div class="tb-group">
-        <span class="tb-label" data-i18n="tb_tempo">Темп</span>
-        <input type="range" id="tb-tempo" min="40" max="200" step="2" value="90" aria-label="Tempo">
-        <span class="bpm-val" id="tb-bpm">90 BPM</span>
+        <div class="tbg-inner">
+          <span class="tb-label" data-i18n="tb_tempo">Темп</span>
+          <input type="range" id="tb-tempo" min="40" max="200" step="2" value="90" aria-label="Tempo">
+          <span class="bpm-val" id="tb-bpm">90 BPM</span>
+        </div>
       </div>
       <div class="tb-group tb-backing">
-        <span class="tb-label" data-i18n="tb_backing">Супровід</span>
-        <button class="btn metro" id="tb-metro" aria-pressed="false"></button>
-        <button class="btn band" id="tb-bass" aria-pressed="false"></button>
-        <button class="btn band" id="tb-drums" aria-pressed="false"></button>
+        <div class="tbg-inner">
+          <span class="tb-label" data-i18n="tb_backing">Супровід</span>
+          <button class="btn metro" id="tb-metro" aria-pressed="false"></button>
+          <button class="btn band" id="tb-bass" aria-pressed="false"></button>
+          <button class="btn band" id="tb-drums" aria-pressed="false"></button>
+        </div>
       </div>
       <button class="btn play" id="g-play"></button>
       <button class="btn play loop" id="g-loop"></button>
@@ -273,6 +277,12 @@
 </div>
 
   <footer data-i18n="footer">Гітарна студія · стандартний стрій (E A D G B e) · працює офлайн</footer>
+  <!-- Desktop-only keyboard-shortcuts affordance: shortcuts no one can discover are
+       useless, so this opens the cheat-sheet (also bound to "?"). Hidden on phones,
+       which have no physical keyboard (CSS gates it to wide viewports). -->
+  <div class="kbd-hint-bar">
+    <button class="kbd-open-btn" id="kbd-open"><span data-i18n="kbd_hint">Гарячі клавіші</span> <kbd>?</kbd></button>
+  </div>
 </main>
 
 <div class="cl-overlay" id="cl-overlay" role="dialog" aria-modal="true" aria-labelledby="cl-title" hidden>
@@ -282,6 +292,25 @@
       <button class="cl-close" id="cl-close" aria-label="close">✕</button>
     </div>
     <div class="cl-body" id="cl-body"></div>
+  </div>
+</div>
+
+<!-- Keyboard-shortcuts cheat-sheet (desktop power-use). Toggled by "?" or the
+     footer affordance; key caps are language-neutral, the descriptions localize. -->
+<div class="kbd-overlay" id="kbd-overlay" role="dialog" aria-modal="true" aria-labelledby="kbd-title" hidden>
+  <div class="kbd-modal">
+    <div class="cl-head">
+      <h2 id="kbd-title" data-i18n="kbd_title">Гарячі клавіші</h2>
+      <button class="cl-close" id="kbd-close" aria-label="close">✕</button>
+    </div>
+    <div class="kbd-body">
+      <div class="kbd-row"><span class="kbd-keys"><kbd>Space</kbd></span><span data-i18n="kbd_play">Прослухати / Стоп</span></div>
+      <div class="kbd-row"><span class="kbd-keys"><kbd>L</kbd></span><span data-i18n="kbd_loop">Луп — увімк/вимк</span></div>
+      <div class="kbd-row"><span class="kbd-keys"><kbd>M</kbd></span><span data-i18n="kbd_metro">Метроном — увімк/вимк</span></div>
+      <div class="kbd-row"><span class="kbd-keys"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span><span data-i18n="kbd_tabs">Перемкнути вкладки</span></div>
+      <div class="kbd-row"><span class="kbd-keys"><kbd>A</kbd>–<kbd>G</kbd></span><span data-i18n="kbd_root">Задати тоніку</span></div>
+      <div class="kbd-row"><span class="kbd-keys"><kbd>[</kbd><kbd>]</kbd></span><span data-i18n="kbd_transpose">Транспонувати на півтон</span></div>
+    </div>
   </div>
 </div>
 

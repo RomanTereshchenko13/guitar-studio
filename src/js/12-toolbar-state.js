@@ -52,6 +52,11 @@ if(typeof window!=='undefined'){
   });
 }
 
+/* Timestamp of the last header condense/expand. The magnetic neck (below) reads it so it
+   doesn't fire its own scroll nudge while the header is still animating between sizes —
+   otherwise that nudge lands ~110ms after a condense as a second, separate little jump. */
+let _hdrToggleAt=0;
+
 /* magnetic neck (mobile shell): the board is sticky in the single-column layout.
    When a scroll comes to rest with the neck just *barely* unpinned — its top only a
    few px below the pin line — gently settle it back into the pinned position, so a
@@ -60,7 +65,8 @@ if(typeof window!=='undefined'){
 if(typeof window!=='undefined'){
   let _magT=null;
   const magnetNeck=()=>{
-    if(window.innerWidth>940) return;                          // single-column only
+    if(window.innerWidth>940 || window.innerHeight<=500) return;   // portrait single-column only (landscape un-pins the neck, see CSS)
+    if(Date.now()-_hdrToggleAt < 400) return;                  // don't nudge over a header condense/expand transition
     const br=document.getElementById('board-region');
     if(!br || br.hidden) return;
     const pin=parseFloat(getComputedStyle(br).top)||0;         // sticky offset (0, or the safe-area inset in a PWA)
@@ -72,25 +78,65 @@ if(typeof window!=='undefined'){
 
 /* condensing sticky header (mobile shell): once you scroll past the brand the header
    slims (CSS .scrolled, ≤940 only) so tabs + transport stay reachable. The sticky board
-   pins directly below it, so we keep --hdr-h in sync with the live header height (which
-   changes when it condenses, the toolbar opens, or on resize/lang). */
+   pins directly below it, so we keep --hdr-h in sync with the live header height — and as
+   the header *animates* between sizes the ResizeObserver fires every frame, so the pinned
+   board tracks it smoothly instead of snapping. */
 if(typeof window!=='undefined'){
   const hdr=document.querySelector('header');
-  const setHdrH=()=>{ if(hdr) document.documentElement.style.setProperty('--hdr-h', hdr.offsetHeight+'px'); };
-  let _cond=false;
-  const onHdrScroll=()=>{
+  // A bottom spacer holds the *total document height constant* as the header condenses. This
+  // is what finally kills the "loops between two states in one spot" jitter: the header is
+  // position:sticky, so shrinking it shortens the page, and near the page bottom that clamps
+  // the scroll position — and because the header now animates, the clamp drags scrollY back
+  // across the trigger every frame, sustaining a condense/expand loop a dead-band can't outrun
+  // (the height delta is far larger than any sane band). Backfilling exactly the height the
+  // header gives up means the scroll range never moves, so a toggle can't reposition the scroll
+  // under itself, and the trigger only ever fires from a real, deliberate scroll.
+  let spacer=null, baseH=0;
+  if(hdr){
+    spacer=document.createElement('div');
+    spacer.setAttribute('aria-hidden','true');
+    spacer.style.cssText='width:100%;height:0;pointer-events:none;';
+    document.body.appendChild(spacer);
+  }
+  const setHdrH=(h)=>{
     if(!hdr) return;
-    const y=window.scrollY;
-    // hysteresis: condense past 48px, expand back under 24px, so a slow scroll across the
-    // boundary doesn't flip-flop (which clipped the pinned board as the offset lagged)
-    let cond=_cond;
-    if(!cond && y>48) cond=true; else if(cond && y<24) cond=false;
-    if(cond!==_cond){ _cond=cond; hdr.classList.toggle('scrolled', cond); setHdrH(); }  // sync: board offset tracks the new height at once
+    if(h==null) h=hdr.offsetHeight;                                  // explicit calls (init/resize); the per-frame path passes the size in
+    document.documentElement.style.setProperty('--hdr-h', h+'px');   // sticky board offsets below the live header height
+    if(spacer) spacer.style.height=Math.max(0, baseH-h)+'px';        // backfill the condensed delta → constant page height
   };
-  window.addEventListener('scroll', onHdrScroll, {passive:true});
-  window.addEventListener('resize', setHdrH);
-  if(typeof ResizeObserver!=='undefined' && hdr) new ResizeObserver(setHdrH).observe(hdr);
-  setHdrH(); onHdrScroll();
+  // Two sentinels at fixed document offsets give a hysteresis dead-band (condense past ~64px,
+  // expand only back under ~16px) so a tiny scroll near the line can't flap the state. They are
+  // anchored to the document, not window.scrollY, so the header resizing never moves the trigger.
+  // baseH (the full, expanded height) is captured at the instant we condense, while the header
+  // is still static — never mid-animation — so the spacer always backfills against the real
+  // expanded size rather than a transitional one.
+  if(hdr && typeof IntersectionObserver!=='undefined'){
+    const mk=h=>{ const s=document.createElement('div'); s.setAttribute('aria-hidden','true');
+      s.style.cssText='position:absolute;top:0;left:0;width:1px;height:'+h+'px;pointer-events:none;';
+      document.body.appendChild(s); return s; };
+    new IntersectionObserver(es=>{ if(!es[0].isIntersecting && !hdr.classList.contains('scrolled') && window.innerHeight>500){
+      baseH=hdr.offsetHeight; hdr.classList.add('scrolled'); _hdrToggleAt=Date.now(); setHdrH();   // capture expanded height, then condense (portrait only — landscape header scrolls away static)
+    } }, {threshold:0}).observe(mk(64));
+    new IntersectionObserver(es=>{ if(es[0].isIntersecting && hdr.classList.contains('scrolled')){
+      hdr.classList.remove('scrolled'); _hdrToggleAt=Date.now();
+    } }, {threshold:0}).observe(mk(16));
+  }
+  window.addEventListener('resize', ()=>{
+    // Rotating into a short (landscape) viewport: drop any condensed state so the now-static
+    // header expands back and the spacer resets to 0 — otherwise a condense from portrait would
+    // leave a phantom bottom gap (the spacer backfill no longer has a sticky header to offset).
+    if(window.innerHeight<=500 && hdr && hdr.classList.contains('scrolled')){ hdr.classList.remove('scrolled'); _hdrToggleAt=Date.now(); }
+    setHdrH();
+  });
+  // Use the entry's reported size rather than reading offsetHeight — the latter forces a
+  // synchronous reflow on every animation frame as the header condenses (mobile jank); the
+  // entry already carries the new size, so the per-frame path stays layout-thrash-free.
+  if(typeof ResizeObserver!=='undefined' && hdr) new ResizeObserver(es=>{
+    const box=es[0].borderBoxSize && es[0].borderBoxSize[0];
+    setHdrH(box ? box.blockSize : undefined);
+  }).observe(hdr);
+  if(hdr) baseH=hdr.offsetHeight;   // expanded height at load (until the first condense recaptures it)
+  setHdrH();
 }
 
 const LS_KEY='guitarStudio.v1';

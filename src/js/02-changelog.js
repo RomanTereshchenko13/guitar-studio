@@ -1,6 +1,17 @@
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.25.0', date:'2026-06-18',
+    en:['A wider, more readable fretboard on desktop: on a large screen the neck now grows with the window — taller string spacing and bigger note dots — instead of stretching into a thin strip.',
+        'Keyboard shortcuts on desktop: Space to listen or stop, L to loop, M for the metronome, 1–3 to switch tabs, A–G to set the key, and [ / ] to transpose it by a semitone. Press ? (or the link below the page) for the full list.',
+        'Landscape is finally useful: turn your phone sideways and the screen splits in two — the controls, chord cards and progression scroll on the left while the neck stays pinned on the right, always in view.',
+        'A cleaner first look: each view\'s description and the board\'s playing tip now tuck behind a ? next to the heading — on every screen, not just phones — so the controls and the neck sit higher; tap ? whenever you want the explanation back.',
+        'A clearer hint that the chord rows scroll: when a row of chord types runs off the edge of a phone screen, it now fades at the right so you can tell there is more to swipe to.'],
+    uk:['Ширший і чіткіший гриф на комп\'ютері: на великому екрані гриф тепер росте разом із вікном — більша відстань між струнами й більші крапки нот — замість того щоб розтягуватися у вузьку смужку.',
+        'Гарячі клавіші на комп\'ютері: Space — прослухати чи зупинити, L — луп, M — метроном, 1–3 — перемикати вкладки, A–G — задати тоніку, [ / ] — транспонувати її на півтон. Натисни ? (або посилання під сторінкою), щоб побачити весь список.',
+        'Альбомна орієнтація нарешті корисна: поверни телефон боком — і екран ділиться навпіл: керування, картки акордів і прогресія гортаються ліворуч, а гриф лишається закріпленим праворуч, завжди в полі зору.',
+        'Чистіший перший погляд: опис кожного виду й підказка для гри на грифі тепер ховаються за позначкою ? біля заголовка — на кожному екрані, не лише на телефонах — тож керування й гриф сидять вище; натисни ?, коли захочеш повернути пояснення.',
+        'Чіткіший натяк, що ряди акордів гортаються: коли ряд типів акордів виходить за край екрана телефона, він тепер згасає праворуч, тож видно, що є куди гортнути.'] },
   { v:'1.24.0', date:'2026-06-17',
     en:['Mobile shell pass — less scrolling, the neck always in reach. On phones the fretboard now stays pinned in view while you scroll the chords, cards and progression below it, and gently snaps back into place — so you can pick a chord or chip and see it on the neck without scrolling back up.',
         'Shorter control stack: each view\'s description now tucks behind an ⓘ on the heading, and the chord/quality rows swipe sideways instead of stacking into tall blocks — so the board sits higher on a phone.',

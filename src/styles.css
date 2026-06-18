@@ -15,6 +15,12 @@
   /* overscroll-behavior (mobile shell): kill accidental pull-to-refresh / scroll
      chaining so an over-pull during a jam or (later) a timed drill can't reload the app. */
   body { background: var(--bg); color: var(--text); font-family: 'Hanken Grotesk', system-ui, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; padding: 0 0 4rem; overscroll-behavior-y: contain; }
+  /* The condensing sticky header changes the height of its normal-flow box, which sits above the
+     viewport once you've scrolled. Without this, the browser's scroll anchoring nudges scrollY to
+     keep content visually put — and that nudge moves the viewport past the condense trigger again,
+     which re-fires the toggle, which re-anchors… an endless flip-flop in one spot (caught by
+     tools/scroll-check.js). Opting out keeps scrollY where the user left it. */
+  html { overflow-anchor: none; }
 
   /* keyboard accessibility: visible focus on every interactive control */
   .btn:focus-visible, .tab:focus-visible, .langbtn:focus-visible, .ver:focus-visible,
@@ -111,12 +117,17 @@
   @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   .panel-head { margin-bottom: 20px; }
   .panel-head h2 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 22px; letter-spacing: -0.01em; margin-bottom: 4px; }
-  .panel-head p { font-size: 14px; color: var(--text-dim); max-width: 680px; }
+  .panel-head p { display: none; font-size: 14px; color: var(--text-dim); max-width: 680px; }
   .ph-top { display: flex; align-items: center; gap: 9px; }
-  /* per-panel help toggle: a ⓘ/? button next to the heading. Hidden on desktop
-     (the description always shows inline); on a phone the description collapses
-     behind it to shorten the control stack above the board (pre-Phase-3 shell). */
-  .ph-help { display: none; }
+  /* Help toggle: a ? button by each panel heading. By default the view's description
+     AND the board's playing-hint are collapsed behind it — on EVERY viewport now (was
+     phone-only) — so the controls + neck sit higher and the default screen reads clean;
+     tap ? to reveal the explanatory text. A body-level .help-open drives both, since the
+     description (.main) and the hint (.board-meta) live in different subtrees. */
+  .ph-help { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; padding: 0; line-height: 1; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--bg-panel); color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .ph-help:hover { color: var(--text); border-color: var(--text-faint); }
+  .ph-help.on { background: var(--accent); color: #07203a; border-color: var(--accent); }
+  body.help-open .panel.active .panel-head p { display: block; margin-top: 6px; }
 
   .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 13px; align-items: center; }
   .ctrl-label { font-size: 12px; color: var(--text-dim); margin-right: 4px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -213,7 +224,9 @@
   .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px; }
   .leg { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-dim); }
   .leg-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
-  .hint { font-size: 13px; color: var(--text-dim); margin-top: 18px; padding: 12px 15px; background: var(--bg-panel); border-radius: var(--radius); border-left: 2px solid var(--accent); }
+  /* the board's playing-hint is collapsed by default and revealed with the ? toggle (see .ph-help) */
+  .hint { display: none; font-size: 13px; color: var(--text-dim); margin-top: 18px; padding: 12px 15px; background: var(--bg-panel); border-radius: var(--radius); border-left: 2px solid var(--accent); }
+  body.help-open .hint { display: block; }
 
   .aside-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 15px; }
   .aside-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -259,6 +272,9 @@
   .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); }
   .toolbar.collapsed { display: none; }
   .toolbar .tb-group, .tb-bar .tb-group { display: flex; align-items: center; gap: 7px; }
+  /* the two tb-bar groups wrap their controls in .tbg-inner so they can fold via grid-rows on
+     mobile (see the condensing-header block); the inner keeps the original horizontal layout. */
+  .tbg-inner { display: flex; align-items: center; gap: 7px; min-width: 0; }
   .toolbar .tb-label, .tb-bar .tb-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
   .toolbar select { font-size: 12px; padding: 5px 9px; }
   .toolbar .divider { height: 20px; }
@@ -312,15 +328,74 @@
      directly below it via --hdr-h, kept in sync with the live header height in JS. */
   @media (max-width: 940px) {
     header { position: sticky; top: 0; z-index: 20; }
+    /* Condense by animating every height-contributing property — padding, font-size, margins,
+       and a height collapse instead of display:none — so the header glides between its two
+       sizes rather than snapping. The sticky board is pinned to --hdr-h, which the ResizeObserver
+       re-measures every frame, so it tracks the moving header height smoothly. (Neutralized under
+       prefers-reduced-motion by the global reset.) */
+    header, header .brand h1, header .brand-desc, header .tabs, header .tb-bar, header .tb-bar .tb-group {
+      transition: padding 0.22s ease, font-size 0.22s ease, margin 0.22s ease, max-height 0.22s ease, grid-template-rows 0.22s ease, opacity 0.16s ease, border-width 0.22s ease;
+    }
+    /* While the header height animates, every block below it is repositioned each frame. On a
+       phone, the layout engine recursing into the fretboard / card grid / sequencer is what
+       drops frames ("stutters" on Android Chrome). contain:layout isolates each section's
+       internal layout so a reposition is a cheap translate, not a full re-layout. (layout only —
+       NOT paint/size — so shadows, the neck's edge-fade and auto-sizing are untouched.) */
+    #board-region, .board-meta, #harmony-extras, .aside, .main { contain: layout; }
+    .brand-desc { max-height: 1.2em; overflow: hidden; }   /* single line — a tight cap is safe and keeps the collapse linear */
+    /* The tempo/backing groups fold with the grid-rows 1fr→0fr trick: it animates to their
+       real content height, so the collapse is linear with no guessed max-height to clip the
+       controls. .tbg-inner carries the original horizontal flex layout + overflow:hidden. */
+    .tb-bar .tb-group { display: grid; grid-template-rows: 1fr; }
+    .tb-bar .tbg-inner { min-height: 0; overflow: hidden; }   /* flex layout comes from the global .tbg-inner rule */
     header.scrolled { padding-top: 8px; }
-    header.scrolled .brand-desc, header.scrolled .brand .ver { display: none; }
+    header.scrolled .brand-desc { max-height: 0; opacity: 0; }
+    header.scrolled .brand .ver { display: none; }   /* height-neutral on the baseline row (h1 is taller) — fine to drop outright */
     header.scrolled .brand h1 { font-size: 19px; }
     header.scrolled .tabs { margin-top: 10px; }
     header.scrolled .tb-bar { margin-top: 8px; }
-    header.scrolled .tb-bar .tb-group { display: none; }
+    header.scrolled .tb-bar .tb-group { grid-template-rows: 0fr; min-height: 0; margin: 0; padding-top: 0; padding-bottom: 0; border-width: 0; opacity: 0; }
   }
   @supports (top: max(0px, env(safe-area-inset-top))) {
     @media (max-width: 940px) { header.scrolled { padding-top: max(8px, env(safe-area-inset-top)); } }
+  }
+  /* ---- landscape phones (wide but very short viewport) ----
+     The portrait mobile shell (max-width:940) pins a 250–320px condensing header above a sticky
+     board; on a ~390px-tall landscape phone that buries the neck entirely (the reported "unusable
+     in landscape"). Here the header goes static (the condense + magnetic-neck JS gate off below
+     this height, so nothing fights the scroll) and the page becomes a TWO-PANE split: the controls,
+     cards and progression scroll in the left column while the neck stays pinned on the right, always
+     in view — landscape's wide-short shape suits a split far better than one tall scroll. The split
+     is gated with :has() so it only applies when a board is actually shown (Harmony / Scales); the
+     Circle tab has no board, so it falls through to the single column from the portrait block above
+     and uses the full width. Lives after the portrait block so these rules win. */
+  @media (max-width: 940px) and (max-height: 500px) {
+    header { position: static; padding-top: max(10px, env(safe-area-inset-top)); }
+    .brand-desc { display: none; }
+    .brand h1 { font-size: 22px; }
+    header .tabs { margin-top: 8px; }
+    .tb-bar { margin-top: 8px; }
+    .toolbar { margin-top: 8px; padding: 8px 12px; }
+    .layout:has(#board-region:not([hidden])) {
+      grid-template-columns: minmax(0,1fr) minmax(300px, 46%);
+      grid-template-areas:
+        "main      board"
+        "extras    board"
+        "aside     board"
+        "boardmeta boardmeta";
+      column-gap: 16px;
+      padding-top: 12px;
+    }
+    /* pin the neck to the top of the right column; header is static here so it offsets from 8px,
+       not --hdr-h. align-self:start keeps it from stretching down its (tall) grid cell. */
+    .layout:has(#board-region:not([hidden])) #board-region {
+      position: sticky; top: 8px; align-self: start;
+      background: var(--bg); z-index: 5; box-shadow: none; padding-top: 0;
+    }
+    .aside { position: static; }
+    /* the changelog modal's 60px vertical padding leaves no room on a short screen */
+    .cl-overlay { padding: 16px; }
+    .cl-modal { max-height: calc(100vh - 32px); }
   }
   /* chord-tones reference (voicing cards + sequencer) sits below the board */
   #harmony-extras { margin-top: 26px; }
@@ -369,16 +444,31 @@
   .board.lefty .dot.playing { transform: scaleX(-1) scale(1.34); }
   .fretnums.lefty .fretnum { transform: scaleX(-1); }
 
+  /* ---- desktop board scale-up ----
+     Cell WIDTH already adapts to the screen (cellW() in render-shared grows each fret to fill
+     .main, up to 200px), but the board's VERTICAL size is fixed in CSS — so on a wide screen the
+     neck stretches into a thin strip with small dots floating in wide cells. Here we grow the
+     string spacing (.srow height), the dots and the labels with the viewport, so the neck reads as
+     a substantial instrument that rewards the room. Vertical + dot size only — the fixed 30px
+     slabel/ocell widths stay put (leftFixed() hardcodes 67/30 for board↔fretnum alignment), and
+     dots stay ≤33px so they still breathe inside the CELL_MIN=34 "All frets" cell. Two tiers give a
+     progressive feel; both are min-width so they never touch the phone/landscape shells above. */
+  @media (min-width: 941px) {
+    .srow { height: 46px; }
+    .dot { width: 30px; height: 30px; font-size: 11px; }
+    .slabel { font-size: 13px; }
+    .fretnum { font-size: 12px; }
+  }
+  @media (min-width: 1280px) {
+    .srow { height: 52px; }
+    .dot { width: 33px; height: 33px; font-size: 12px; }
+  }
+
   /* ---- mobile ---- */
   @media (max-width: 600px) {
     .wrap { padding: 0 14px; }
     .brand h1 { font-size: 25px; }
-    /* collapse the per-panel description behind the heading's ⓘ/? toggle, so the
-       board sits higher on a phone; tap the toggle to reveal it (1st mobile-shell step) */
-    .panel-head p { display: none; }
-    .panel-head.help-open p { display: block; margin-top: 6px; }
-    .ph-help { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; padding: 0; line-height: 1; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--bg-panel); color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; }
-    .panel-head.help-open .ph-help { background: var(--accent); color: #07203a; border-color: var(--accent); }
+    /* (the description + board-hint help toggle is now global — see .ph-help above) */
     /* control strips swipe instead of wrapping into tall blocks (2nd mobile-shell
        step). Scoped to panel-row groups — the shared context-bar root picker keeps
        wrapping so all 12 roots stay visible. */
@@ -388,6 +478,12 @@
        vertically, each tier's buttons swiping horizontally, instead of one tall wrap */
     #ch-quals, #arp-quals { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 10px; overflow: visible; }
     #ch-quals .group, #arp-quals .group { flex-wrap: nowrap; overflow-x: auto; min-width: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+    /* right-edge fade on a swipe group ONLY when it actually overflows (JS toggles
+       .scrollable, like the tab strip + neck), hinting the clipped buttons swipe → */
+    .row > .group.scrollable, #ch-quals .group.scrollable, #arp-quals .group.scrollable {
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+      mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+    }
     #ch-quals .group::-webkit-scrollbar, #arp-quals .group::-webkit-scrollbar { display: none; }
     .toolbar { gap: 8px 10px; }
     input[type="range"] { width: 92px; }
@@ -425,3 +521,18 @@
   .cl-rel ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
   .cl-rel li { position: relative; padding-left: 16px; font-size: 13px; color: var(--text-dim); line-height: 1.45; }
   .cl-rel li::before { content: '—'; position: absolute; left: 0; color: var(--text-faint); }
+
+  /* ---- keyboard-shortcuts cheat-sheet (desktop) ---- */
+  .kbd-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.62); display: none; align-items: center; justify-content: center; padding: 24px; z-index: 100; }
+  .kbd-overlay.open { display: flex; animation: fade 0.18s ease; }
+  .kbd-modal { background: var(--bg-panel); border: 1px solid var(--border-strong); border-radius: 14px; max-width: 430px; width: 100%; box-shadow: 0 18px 50px rgba(0,0,0,0.5); }
+  .kbd-body { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 11px; }
+  .kbd-row { display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--text-dim); }
+  .kbd-keys { display: flex; align-items: center; gap: 4px; flex: 0 0 104px; }
+  .kbd-row kbd { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text); background: var(--bg-panel-2); border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 6px; padding: 3px 7px; min-width: 22px; text-align: center; line-height: 1.2; }
+  /* the desktop affordance below the footer; hidden on phones (no physical keyboard) */
+  .kbd-hint-bar { display: none; }
+  .kbd-open-btn { display: inline-flex; align-items: center; gap: 8px; font-family: inherit; font-size: 12px; color: var(--text-faint); background: transparent; border: none; cursor: pointer; padding: 4px 0; transition: color 0.12s; }
+  .kbd-open-btn:hover { color: var(--text-dim); }
+  .kbd-open-btn kbd { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text-dim); background: var(--bg-panel-2); border: 1px solid var(--border-strong); border-radius: 5px; padding: 1px 6px; }
+  @media (min-width: 941px) { .kbd-hint-bar { display: block; margin-top: 12px; } }

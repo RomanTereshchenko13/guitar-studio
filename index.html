@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <!-- Euterpe (Guitar Studio) — generated single-file build (do not edit; edit src/ and run build.js).
-     Version: 1.24.0  (source of truth: APP_VERSION in src/js/01-version.js;
+     Version: 1.25.0  (source of truth: APP_VERSION in src/js/01-version.js;
      build.js fills this in). Release notes live in src/js/02-changelog.js (drives
      the in-app "What's new" modal and CHANGELOG.md). -->
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="1.24.0">
+<meta name="version" content="1.25.0">
 <meta name="description" content="Euterpe — a guitar studio for music theory and practice: scales, modes, chords, the fretboard, the circle of fifths, and a jam-along backing band. Works offline.">
 <meta name="theme-color" content="#16140f">
 <!-- Installed-app (standalone) hints. The manifest covers Android/desktop; these
@@ -46,6 +46,12 @@
   /* overscroll-behavior (mobile shell): kill accidental pull-to-refresh / scroll
      chaining so an over-pull during a jam or (later) a timed drill can't reload the app. */
   body { background: var(--bg); color: var(--text); font-family: 'Hanken Grotesk', system-ui, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; padding: 0 0 4rem; overscroll-behavior-y: contain; }
+  /* The condensing sticky header changes the height of its normal-flow box, which sits above the
+     viewport once you've scrolled. Without this, the browser's scroll anchoring nudges scrollY to
+     keep content visually put — and that nudge moves the viewport past the condense trigger again,
+     which re-fires the toggle, which re-anchors… an endless flip-flop in one spot (caught by
+     tools/scroll-check.js). Opting out keeps scrollY where the user left it. */
+  html { overflow-anchor: none; }
 
   /* keyboard accessibility: visible focus on every interactive control */
   .btn:focus-visible, .tab:focus-visible, .langbtn:focus-visible, .ver:focus-visible,
@@ -142,12 +148,17 @@
   @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   .panel-head { margin-bottom: 20px; }
   .panel-head h2 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 22px; letter-spacing: -0.01em; margin-bottom: 4px; }
-  .panel-head p { font-size: 14px; color: var(--text-dim); max-width: 680px; }
+  .panel-head p { display: none; font-size: 14px; color: var(--text-dim); max-width: 680px; }
   .ph-top { display: flex; align-items: center; gap: 9px; }
-  /* per-panel help toggle: a ⓘ/? button next to the heading. Hidden on desktop
-     (the description always shows inline); on a phone the description collapses
-     behind it to shorten the control stack above the board (pre-Phase-3 shell). */
-  .ph-help { display: none; }
+  /* Help toggle: a ? button by each panel heading. By default the view's description
+     AND the board's playing-hint are collapsed behind it — on EVERY viewport now (was
+     phone-only) — so the controls + neck sit higher and the default screen reads clean;
+     tap ? to reveal the explanatory text. A body-level .help-open drives both, since the
+     description (.main) and the hint (.board-meta) live in different subtrees. */
+  .ph-help { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; padding: 0; line-height: 1; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--bg-panel); color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .ph-help:hover { color: var(--text); border-color: var(--text-faint); }
+  .ph-help.on { background: var(--accent); color: #07203a; border-color: var(--accent); }
+  body.help-open .panel.active .panel-head p { display: block; margin-top: 6px; }
 
   .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 13px; align-items: center; }
   .ctrl-label { font-size: 12px; color: var(--text-dim); margin-right: 4px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -244,7 +255,9 @@
   .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px; }
   .leg { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-dim); }
   .leg-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
-  .hint { font-size: 13px; color: var(--text-dim); margin-top: 18px; padding: 12px 15px; background: var(--bg-panel); border-radius: var(--radius); border-left: 2px solid var(--accent); }
+  /* the board's playing-hint is collapsed by default and revealed with the ? toggle (see .ph-help) */
+  .hint { display: none; font-size: 13px; color: var(--text-dim); margin-top: 18px; padding: 12px 15px; background: var(--bg-panel); border-radius: var(--radius); border-left: 2px solid var(--accent); }
+  body.help-open .hint { display: block; }
 
   .aside-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 15px; }
   .aside-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -290,6 +303,9 @@
   .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); }
   .toolbar.collapsed { display: none; }
   .toolbar .tb-group, .tb-bar .tb-group { display: flex; align-items: center; gap: 7px; }
+  /* the two tb-bar groups wrap their controls in .tbg-inner so they can fold via grid-rows on
+     mobile (see the condensing-header block); the inner keeps the original horizontal layout. */
+  .tbg-inner { display: flex; align-items: center; gap: 7px; min-width: 0; }
   .toolbar .tb-label, .tb-bar .tb-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
   .toolbar select { font-size: 12px; padding: 5px 9px; }
   .toolbar .divider { height: 20px; }
@@ -343,15 +359,74 @@
      directly below it via --hdr-h, kept in sync with the live header height in JS. */
   @media (max-width: 940px) {
     header { position: sticky; top: 0; z-index: 20; }
+    /* Condense by animating every height-contributing property — padding, font-size, margins,
+       and a height collapse instead of display:none — so the header glides between its two
+       sizes rather than snapping. The sticky board is pinned to --hdr-h, which the ResizeObserver
+       re-measures every frame, so it tracks the moving header height smoothly. (Neutralized under
+       prefers-reduced-motion by the global reset.) */
+    header, header .brand h1, header .brand-desc, header .tabs, header .tb-bar, header .tb-bar .tb-group {
+      transition: padding 0.22s ease, font-size 0.22s ease, margin 0.22s ease, max-height 0.22s ease, grid-template-rows 0.22s ease, opacity 0.16s ease, border-width 0.22s ease;
+    }
+    /* While the header height animates, every block below it is repositioned each frame. On a
+       phone, the layout engine recursing into the fretboard / card grid / sequencer is what
+       drops frames ("stutters" on Android Chrome). contain:layout isolates each section's
+       internal layout so a reposition is a cheap translate, not a full re-layout. (layout only —
+       NOT paint/size — so shadows, the neck's edge-fade and auto-sizing are untouched.) */
+    #board-region, .board-meta, #harmony-extras, .aside, .main { contain: layout; }
+    .brand-desc { max-height: 1.2em; overflow: hidden; }   /* single line — a tight cap is safe and keeps the collapse linear */
+    /* The tempo/backing groups fold with the grid-rows 1fr→0fr trick: it animates to their
+       real content height, so the collapse is linear with no guessed max-height to clip the
+       controls. .tbg-inner carries the original horizontal flex layout + overflow:hidden. */
+    .tb-bar .tb-group { display: grid; grid-template-rows: 1fr; }
+    .tb-bar .tbg-inner { min-height: 0; overflow: hidden; }   /* flex layout comes from the global .tbg-inner rule */
     header.scrolled { padding-top: 8px; }
-    header.scrolled .brand-desc, header.scrolled .brand .ver { display: none; }
+    header.scrolled .brand-desc { max-height: 0; opacity: 0; }
+    header.scrolled .brand .ver { display: none; }   /* height-neutral on the baseline row (h1 is taller) — fine to drop outright */
     header.scrolled .brand h1 { font-size: 19px; }
     header.scrolled .tabs { margin-top: 10px; }
     header.scrolled .tb-bar { margin-top: 8px; }
-    header.scrolled .tb-bar .tb-group { display: none; }
+    header.scrolled .tb-bar .tb-group { grid-template-rows: 0fr; min-height: 0; margin: 0; padding-top: 0; padding-bottom: 0; border-width: 0; opacity: 0; }
   }
   @supports (top: max(0px, env(safe-area-inset-top))) {
     @media (max-width: 940px) { header.scrolled { padding-top: max(8px, env(safe-area-inset-top)); } }
+  }
+  /* ---- landscape phones (wide but very short viewport) ----
+     The portrait mobile shell (max-width:940) pins a 250–320px condensing header above a sticky
+     board; on a ~390px-tall landscape phone that buries the neck entirely (the reported "unusable
+     in landscape"). Here the header goes static (the condense + magnetic-neck JS gate off below
+     this height, so nothing fights the scroll) and the page becomes a TWO-PANE split: the controls,
+     cards and progression scroll in the left column while the neck stays pinned on the right, always
+     in view — landscape's wide-short shape suits a split far better than one tall scroll. The split
+     is gated with :has() so it only applies when a board is actually shown (Harmony / Scales); the
+     Circle tab has no board, so it falls through to the single column from the portrait block above
+     and uses the full width. Lives after the portrait block so these rules win. */
+  @media (max-width: 940px) and (max-height: 500px) {
+    header { position: static; padding-top: max(10px, env(safe-area-inset-top)); }
+    .brand-desc { display: none; }
+    .brand h1 { font-size: 22px; }
+    header .tabs { margin-top: 8px; }
+    .tb-bar { margin-top: 8px; }
+    .toolbar { margin-top: 8px; padding: 8px 12px; }
+    .layout:has(#board-region:not([hidden])) {
+      grid-template-columns: minmax(0,1fr) minmax(300px, 46%);
+      grid-template-areas:
+        "main      board"
+        "extras    board"
+        "aside     board"
+        "boardmeta boardmeta";
+      column-gap: 16px;
+      padding-top: 12px;
+    }
+    /* pin the neck to the top of the right column; header is static here so it offsets from 8px,
+       not --hdr-h. align-self:start keeps it from stretching down its (tall) grid cell. */
+    .layout:has(#board-region:not([hidden])) #board-region {
+      position: sticky; top: 8px; align-self: start;
+      background: var(--bg); z-index: 5; box-shadow: none; padding-top: 0;
+    }
+    .aside { position: static; }
+    /* the changelog modal's 60px vertical padding leaves no room on a short screen */
+    .cl-overlay { padding: 16px; }
+    .cl-modal { max-height: calc(100vh - 32px); }
   }
   /* chord-tones reference (voicing cards + sequencer) sits below the board */
   #harmony-extras { margin-top: 26px; }
@@ -400,16 +475,31 @@
   .board.lefty .dot.playing { transform: scaleX(-1) scale(1.34); }
   .fretnums.lefty .fretnum { transform: scaleX(-1); }
 
+  /* ---- desktop board scale-up ----
+     Cell WIDTH already adapts to the screen (cellW() in render-shared grows each fret to fill
+     .main, up to 200px), but the board's VERTICAL size is fixed in CSS — so on a wide screen the
+     neck stretches into a thin strip with small dots floating in wide cells. Here we grow the
+     string spacing (.srow height), the dots and the labels with the viewport, so the neck reads as
+     a substantial instrument that rewards the room. Vertical + dot size only — the fixed 30px
+     slabel/ocell widths stay put (leftFixed() hardcodes 67/30 for board↔fretnum alignment), and
+     dots stay ≤33px so they still breathe inside the CELL_MIN=34 "All frets" cell. Two tiers give a
+     progressive feel; both are min-width so they never touch the phone/landscape shells above. */
+  @media (min-width: 941px) {
+    .srow { height: 46px; }
+    .dot { width: 30px; height: 30px; font-size: 11px; }
+    .slabel { font-size: 13px; }
+    .fretnum { font-size: 12px; }
+  }
+  @media (min-width: 1280px) {
+    .srow { height: 52px; }
+    .dot { width: 33px; height: 33px; font-size: 12px; }
+  }
+
   /* ---- mobile ---- */
   @media (max-width: 600px) {
     .wrap { padding: 0 14px; }
     .brand h1 { font-size: 25px; }
-    /* collapse the per-panel description behind the heading's ⓘ/? toggle, so the
-       board sits higher on a phone; tap the toggle to reveal it (1st mobile-shell step) */
-    .panel-head p { display: none; }
-    .panel-head.help-open p { display: block; margin-top: 6px; }
-    .ph-help { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; padding: 0; line-height: 1; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--bg-panel); color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; }
-    .panel-head.help-open .ph-help { background: var(--accent); color: #07203a; border-color: var(--accent); }
+    /* (the description + board-hint help toggle is now global — see .ph-help above) */
     /* control strips swipe instead of wrapping into tall blocks (2nd mobile-shell
        step). Scoped to panel-row groups — the shared context-bar root picker keeps
        wrapping so all 12 roots stay visible. */
@@ -419,6 +509,12 @@
        vertically, each tier's buttons swiping horizontally, instead of one tall wrap */
     #ch-quals, #arp-quals { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 10px; overflow: visible; }
     #ch-quals .group, #arp-quals .group { flex-wrap: nowrap; overflow-x: auto; min-width: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+    /* right-edge fade on a swipe group ONLY when it actually overflows (JS toggles
+       .scrollable, like the tab strip + neck), hinting the clipped buttons swipe → */
+    .row > .group.scrollable, #ch-quals .group.scrollable, #arp-quals .group.scrollable {
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+      mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+    }
     #ch-quals .group::-webkit-scrollbar, #arp-quals .group::-webkit-scrollbar { display: none; }
     .toolbar { gap: 8px 10px; }
     input[type="range"] { width: 92px; }
@@ -456,6 +552,21 @@
   .cl-rel ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
   .cl-rel li { position: relative; padding-left: 16px; font-size: 13px; color: var(--text-dim); line-height: 1.45; }
   .cl-rel li::before { content: '—'; position: absolute; left: 0; color: var(--text-faint); }
+
+  /* ---- keyboard-shortcuts cheat-sheet (desktop) ---- */
+  .kbd-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.62); display: none; align-items: center; justify-content: center; padding: 24px; z-index: 100; }
+  .kbd-overlay.open { display: flex; animation: fade 0.18s ease; }
+  .kbd-modal { background: var(--bg-panel); border: 1px solid var(--border-strong); border-radius: 14px; max-width: 430px; width: 100%; box-shadow: 0 18px 50px rgba(0,0,0,0.5); }
+  .kbd-body { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 11px; }
+  .kbd-row { display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--text-dim); }
+  .kbd-keys { display: flex; align-items: center; gap: 4px; flex: 0 0 104px; }
+  .kbd-row kbd { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text); background: var(--bg-panel-2); border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 6px; padding: 3px 7px; min-width: 22px; text-align: center; line-height: 1.2; }
+  /* the desktop affordance below the footer; hidden on phones (no physical keyboard) */
+  .kbd-hint-bar { display: none; }
+  .kbd-open-btn { display: inline-flex; align-items: center; gap: 8px; font-family: inherit; font-size: 12px; color: var(--text-faint); background: transparent; border: none; cursor: pointer; padding: 4px 0; transition: color 0.12s; }
+  .kbd-open-btn:hover { color: var(--text-dim); }
+  .kbd-open-btn kbd { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text-dim); background: var(--bg-panel-2); border: 1px solid var(--border-strong); border-radius: 5px; padding: 1px 6px; }
+  @media (min-width: 941px) { .kbd-hint-bar { display: block; margin-top: 12px; } }
 </style>
 </head>
 <body>
@@ -484,15 +595,19 @@
     </nav>
     <div class="tb-bar">
       <div class="tb-group">
-        <span class="tb-label" data-i18n="tb_tempo">Темп</span>
-        <input type="range" id="tb-tempo" min="40" max="200" step="2" value="90" aria-label="Tempo">
-        <span class="bpm-val" id="tb-bpm">90 BPM</span>
+        <div class="tbg-inner">
+          <span class="tb-label" data-i18n="tb_tempo">Темп</span>
+          <input type="range" id="tb-tempo" min="40" max="200" step="2" value="90" aria-label="Tempo">
+          <span class="bpm-val" id="tb-bpm">90 BPM</span>
+        </div>
       </div>
       <div class="tb-group tb-backing">
-        <span class="tb-label" data-i18n="tb_backing">Супровід</span>
-        <button class="btn metro" id="tb-metro" aria-pressed="false"></button>
-        <button class="btn band" id="tb-bass" aria-pressed="false"></button>
-        <button class="btn band" id="tb-drums" aria-pressed="false"></button>
+        <div class="tbg-inner">
+          <span class="tb-label" data-i18n="tb_backing">Супровід</span>
+          <button class="btn metro" id="tb-metro" aria-pressed="false"></button>
+          <button class="btn band" id="tb-bass" aria-pressed="false"></button>
+          <button class="btn band" id="tb-drums" aria-pressed="false"></button>
+        </div>
       </div>
       <button class="btn play" id="g-play"></button>
       <button class="btn play loop" id="g-loop"></button>
@@ -700,6 +815,12 @@
 </div>
 
   <footer data-i18n="footer">Гітарна студія · стандартний стрій (E A D G B e) · працює офлайн</footer>
+  <!-- Desktop-only keyboard-shortcuts affordance: shortcuts no one can discover are
+       useless, so this opens the cheat-sheet (also bound to "?"). Hidden on phones,
+       which have no physical keyboard (CSS gates it to wide viewports). -->
+  <div class="kbd-hint-bar">
+    <button class="kbd-open-btn" id="kbd-open"><span data-i18n="kbd_hint">Гарячі клавіші</span> <kbd>?</kbd></button>
+  </div>
 </main>
 
 <div class="cl-overlay" id="cl-overlay" role="dialog" aria-modal="true" aria-labelledby="cl-title" hidden>
@@ -712,6 +833,25 @@
   </div>
 </div>
 
+<!-- Keyboard-shortcuts cheat-sheet (desktop power-use). Toggled by "?" or the
+     footer affordance; key caps are language-neutral, the descriptions localize. -->
+<div class="kbd-overlay" id="kbd-overlay" role="dialog" aria-modal="true" aria-labelledby="kbd-title" hidden>
+  <div class="kbd-modal">
+    <div class="cl-head">
+      <h2 id="kbd-title" data-i18n="kbd_title">Гарячі клавіші</h2>
+      <button class="cl-close" id="kbd-close" aria-label="close">✕</button>
+    </div>
+    <div class="kbd-body">
+      <div class="kbd-row"><span class="kbd-keys"><kbd>Space</kbd></span><span data-i18n="kbd_play">Прослухати / Стоп</span></div>
+      <div class="kbd-row"><span class="kbd-keys"><kbd>L</kbd></span><span data-i18n="kbd_loop">Луп — увімк/вимк</span></div>
+      <div class="kbd-row"><span class="kbd-keys"><kbd>M</kbd></span><span data-i18n="kbd_metro">Метроном — увімк/вимк</span></div>
+      <div class="kbd-row"><span class="kbd-keys"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span><span data-i18n="kbd_tabs">Перемкнути вкладки</span></div>
+      <div class="kbd-row"><span class="kbd-keys"><kbd>A</kbd>–<kbd>G</kbd></span><span data-i18n="kbd_root">Задати тоніку</span></div>
+      <div class="kbd-row"><span class="kbd-keys"><kbd>[</kbd><kbd>]</kbd></span><span data-i18n="kbd_transpose">Транспонувати на півтон</span></div>
+    </div>
+  </div>
+</div>
+
 <!-- Update-available toast: hidden until the service worker reports a new
      waiting version (14-pwa.js fills in the localized message + buttons and
      unhides it). role=status so it's announced politely. -->
@@ -720,10 +860,21 @@
 <script>
 /* Single source of truth for the app version. Bump on each release and update
    the changelog comment at the top of the file + the <meta name="version">. */
-const APP_VERSION = '1.24.0';
+const APP_VERSION = '1.25.0';
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.25.0', date:'2026-06-18',
+    en:['A wider, more readable fretboard on desktop: on a large screen the neck now grows with the window — taller string spacing and bigger note dots — instead of stretching into a thin strip.',
+        'Keyboard shortcuts on desktop: Space to listen or stop, L to loop, M for the metronome, 1–3 to switch tabs, A–G to set the key, and [ / ] to transpose it by a semitone. Press ? (or the link below the page) for the full list.',
+        'Landscape is finally useful: turn your phone sideways and the screen splits in two — the controls, chord cards and progression scroll on the left while the neck stays pinned on the right, always in view.',
+        'A cleaner first look: each view\'s description and the board\'s playing tip now tuck behind a ? next to the heading — on every screen, not just phones — so the controls and the neck sit higher; tap ? whenever you want the explanation back.',
+        'A clearer hint that the chord rows scroll: when a row of chord types runs off the edge of a phone screen, it now fades at the right so you can tell there is more to swipe to.'],
+    uk:['Ширший і чіткіший гриф на комп\'ютері: на великому екрані гриф тепер росте разом із вікном — більша відстань між струнами й більші крапки нот — замість того щоб розтягуватися у вузьку смужку.',
+        'Гарячі клавіші на комп\'ютері: Space — прослухати чи зупинити, L — луп, M — метроном, 1–3 — перемикати вкладки, A–G — задати тоніку, [ / ] — транспонувати її на півтон. Натисни ? (або посилання під сторінкою), щоб побачити весь список.',
+        'Альбомна орієнтація нарешті корисна: поверни телефон боком — і екран ділиться навпіл: керування, картки акордів і прогресія гортаються ліворуч, а гриф лишається закріпленим праворуч, завжди в полі зору.',
+        'Чистіший перший погляд: опис кожного виду й підказка для гри на грифі тепер ховаються за позначкою ? біля заголовка — на кожному екрані, не лише на телефонах — тож керування й гриф сидять вище; натисни ?, коли захочеш повернути пояснення.',
+        'Чіткіший натяк, що ряди акордів гортаються: коли ряд типів акордів виходить за край екрана телефона, він тепер згасає праворуч, тож видно, що є куди гортнути.'] },
   { v:'1.24.0', date:'2026-06-17',
     en:['Mobile shell pass — less scrolling, the neck always in reach. On phones the fretboard now stays pinned in view while you scroll the chords, cards and progression below it, and gently snaps back into place — so you can pick a chord or chip and see it on the neck without scrolling back up.',
         'Shorter control stack: each view\'s description now tucks behind an ⓘ on the heading, and the chord/quality rows swipe sideways instead of stacking into tall blocks — so the board sits higher on a phone.',
@@ -1008,6 +1159,8 @@ const I18N = {
     tr_shapes:'Форми тризвуку',
     pwa_install:'Встановити', pwa_install_tip:'Встановити Euterpe як застосунок',
     pwa_update:'Доступна нова версія Euterpe.', pwa_update_btn:'Оновити', pwa_dismiss:'Сховати',
+    kbd_title:'Гарячі клавіші', kbd_play:'Прослухати / Стоп', kbd_loop:'Луп — увімк/вимк', kbd_metro:'Метроном — увімк/вимк',
+    kbd_tabs:'Перемкнути вкладки', kbd_root:'Задати тоніку', kbd_transpose:'Транспонувати на півтон', kbd_hint:'Гарячі клавіші',
     ph_help:'Опис'
   },
   en: {
@@ -1078,6 +1231,8 @@ const I18N = {
     tr_shapes:'Triad shapes',
     pwa_install:'Install', pwa_install_tip:'Install Euterpe as an app',
     pwa_update:'A new version of Euterpe is available.', pwa_update_btn:'Reload', pwa_dismiss:'Dismiss',
+    kbd_title:'Keyboard shortcuts', kbd_play:'Listen / Stop', kbd_loop:'Loop on/off', kbd_metro:'Metronome on/off',
+    kbd_tabs:'Switch tabs', kbd_root:'Set the key (root)', kbd_transpose:'Transpose by a semitone', kbd_hint:'Keyboard shortcuts',
     ph_help:'Description'
   }
 };
@@ -1134,8 +1289,9 @@ let capo = 0;
 let tempo = 90;
 function beat(){ return 60/tempo; }
 
-/* collapsible toolbar; default open on wide screens, collapsed on phones */
-let toolbarOpen = (typeof window!=='undefined' && window.innerWidth>700);
+/* collapsible toolbar; default open on wide screens, collapsed on phones — and also
+   collapsed on a short (landscape-phone) viewport, where every row above the neck counts */
+let toolbarOpen = (typeof window!=='undefined' && window.innerWidth>700 && window.innerHeight>500);
 /* the chord-reference sidebar is only shown on chord-oriented tabs */
 const ASIDE_TABS = ['harmony'];
 
@@ -1807,6 +1963,18 @@ function renderBoard(boardEl, cellFn){
 }
 const INLAY_SINGLE = new Set(DOTS.filter(f=>f!==12&&f!==24));
 const INLAY_DOUBLE = new Set([12,24]);
+/* swipe affordance (mobile): on a phone the control rows + tiered quality pickers
+   swipe sideways instead of wrapping. When one actually overflows its track, fade its
+   right edge so the clipped buttons read as "more — swipe →" (the same cue the tab
+   strip and the neck already use). A no-op where groups wrap (desktop / wide), since
+   wrapped content never overflows — so this is safe to call on any viewport. Re-run
+   after a context change rebuilds these groups (see the call sites in wiring). */
+function markScrollables(){
+  if(typeof document==='undefined') return;
+  document.querySelectorAll('.row > .group, #ch-quals .group, #arp-quals .group').forEach(g=>{
+    g.classList.toggle('scrollable', g.scrollWidth > g.clientWidth + 1);
+  });
+}
 /* Heuristic fingering for a fretted shape. `frets` is indexed by display column
    (null = muted, 0 = open → no finger). Returns {colIndex: 1..4}. A genuine
    index-barre is detected when the lowest fret is played on 2+ strings AND a
@@ -2751,6 +2919,11 @@ if(typeof window!=='undefined'){
   });
 }
 
+/* Timestamp of the last header condense/expand. The magnetic neck (below) reads it so it
+   doesn't fire its own scroll nudge while the header is still animating between sizes —
+   otherwise that nudge lands ~110ms after a condense as a second, separate little jump. */
+let _hdrToggleAt=0;
+
 /* magnetic neck (mobile shell): the board is sticky in the single-column layout.
    When a scroll comes to rest with the neck just *barely* unpinned — its top only a
    few px below the pin line — gently settle it back into the pinned position, so a
@@ -2759,7 +2932,8 @@ if(typeof window!=='undefined'){
 if(typeof window!=='undefined'){
   let _magT=null;
   const magnetNeck=()=>{
-    if(window.innerWidth>940) return;                          // single-column only
+    if(window.innerWidth>940 || window.innerHeight<=500) return;   // portrait single-column only (landscape un-pins the neck, see CSS)
+    if(Date.now()-_hdrToggleAt < 400) return;                  // don't nudge over a header condense/expand transition
     const br=document.getElementById('board-region');
     if(!br || br.hidden) return;
     const pin=parseFloat(getComputedStyle(br).top)||0;         // sticky offset (0, or the safe-area inset in a PWA)
@@ -2771,25 +2945,65 @@ if(typeof window!=='undefined'){
 
 /* condensing sticky header (mobile shell): once you scroll past the brand the header
    slims (CSS .scrolled, ≤940 only) so tabs + transport stay reachable. The sticky board
-   pins directly below it, so we keep --hdr-h in sync with the live header height (which
-   changes when it condenses, the toolbar opens, or on resize/lang). */
+   pins directly below it, so we keep --hdr-h in sync with the live header height — and as
+   the header *animates* between sizes the ResizeObserver fires every frame, so the pinned
+   board tracks it smoothly instead of snapping. */
 if(typeof window!=='undefined'){
   const hdr=document.querySelector('header');
-  const setHdrH=()=>{ if(hdr) document.documentElement.style.setProperty('--hdr-h', hdr.offsetHeight+'px'); };
-  let _cond=false;
-  const onHdrScroll=()=>{
+  // A bottom spacer holds the *total document height constant* as the header condenses. This
+  // is what finally kills the "loops between two states in one spot" jitter: the header is
+  // position:sticky, so shrinking it shortens the page, and near the page bottom that clamps
+  // the scroll position — and because the header now animates, the clamp drags scrollY back
+  // across the trigger every frame, sustaining a condense/expand loop a dead-band can't outrun
+  // (the height delta is far larger than any sane band). Backfilling exactly the height the
+  // header gives up means the scroll range never moves, so a toggle can't reposition the scroll
+  // under itself, and the trigger only ever fires from a real, deliberate scroll.
+  let spacer=null, baseH=0;
+  if(hdr){
+    spacer=document.createElement('div');
+    spacer.setAttribute('aria-hidden','true');
+    spacer.style.cssText='width:100%;height:0;pointer-events:none;';
+    document.body.appendChild(spacer);
+  }
+  const setHdrH=(h)=>{
     if(!hdr) return;
-    const y=window.scrollY;
-    // hysteresis: condense past 48px, expand back under 24px, so a slow scroll across the
-    // boundary doesn't flip-flop (which clipped the pinned board as the offset lagged)
-    let cond=_cond;
-    if(!cond && y>48) cond=true; else if(cond && y<24) cond=false;
-    if(cond!==_cond){ _cond=cond; hdr.classList.toggle('scrolled', cond); setHdrH(); }  // sync: board offset tracks the new height at once
+    if(h==null) h=hdr.offsetHeight;                                  // explicit calls (init/resize); the per-frame path passes the size in
+    document.documentElement.style.setProperty('--hdr-h', h+'px');   // sticky board offsets below the live header height
+    if(spacer) spacer.style.height=Math.max(0, baseH-h)+'px';        // backfill the condensed delta → constant page height
   };
-  window.addEventListener('scroll', onHdrScroll, {passive:true});
-  window.addEventListener('resize', setHdrH);
-  if(typeof ResizeObserver!=='undefined' && hdr) new ResizeObserver(setHdrH).observe(hdr);
-  setHdrH(); onHdrScroll();
+  // Two sentinels at fixed document offsets give a hysteresis dead-band (condense past ~64px,
+  // expand only back under ~16px) so a tiny scroll near the line can't flap the state. They are
+  // anchored to the document, not window.scrollY, so the header resizing never moves the trigger.
+  // baseH (the full, expanded height) is captured at the instant we condense, while the header
+  // is still static — never mid-animation — so the spacer always backfills against the real
+  // expanded size rather than a transitional one.
+  if(hdr && typeof IntersectionObserver!=='undefined'){
+    const mk=h=>{ const s=document.createElement('div'); s.setAttribute('aria-hidden','true');
+      s.style.cssText='position:absolute;top:0;left:0;width:1px;height:'+h+'px;pointer-events:none;';
+      document.body.appendChild(s); return s; };
+    new IntersectionObserver(es=>{ if(!es[0].isIntersecting && !hdr.classList.contains('scrolled') && window.innerHeight>500){
+      baseH=hdr.offsetHeight; hdr.classList.add('scrolled'); _hdrToggleAt=Date.now(); setHdrH();   // capture expanded height, then condense (portrait only — landscape header scrolls away static)
+    } }, {threshold:0}).observe(mk(64));
+    new IntersectionObserver(es=>{ if(es[0].isIntersecting && hdr.classList.contains('scrolled')){
+      hdr.classList.remove('scrolled'); _hdrToggleAt=Date.now();
+    } }, {threshold:0}).observe(mk(16));
+  }
+  window.addEventListener('resize', ()=>{
+    // Rotating into a short (landscape) viewport: drop any condensed state so the now-static
+    // header expands back and the spacer resets to 0 — otherwise a condense from portrait would
+    // leave a phantom bottom gap (the spacer backfill no longer has a sticky header to offset).
+    if(window.innerHeight<=500 && hdr && hdr.classList.contains('scrolled')){ hdr.classList.remove('scrolled'); _hdrToggleAt=Date.now(); }
+    setHdrH();
+  });
+  // Use the entry's reported size rather than reading offsetHeight — the latter forces a
+  // synchronous reflow on every animation frame as the header condenses (mobile jank); the
+  // entry already carries the new size, so the per-frame path stays layout-thrash-free.
+  if(typeof ResizeObserver!=='undefined' && hdr) new ResizeObserver(es=>{
+    const box=es[0].borderBoxSize && es[0].borderBoxSize[0];
+    setHdrH(box ? box.blockSize : undefined);
+  }).observe(hdr);
+  if(hdr) baseH=hdr.offsetHeight;   // expanded height at load (until the first condense recaptures it)
+  setHdrH();
 }
 
 const LS_KEY='guitarStudio.v1';
@@ -2852,10 +3066,11 @@ function loadState(){ try{
 /* ---- shared root picker, display mode, sub-view toggle, global play ---- */
 /* Each render fn paints panel content for its mode and the ONE shared board only
    when its mode is active (isBoardMode), so a cross-view pass paints the board once. */
-function renderContextViews(){ renderChords(); renderTriads(); renderArp(); renderIdentify(); renderScales(); renderNotes(); }
+function renderContextViews(){ renderChords(); renderTriads(); renderArp(); renderIdentify(); renderScales(); renderNotes(); markScrollables(); }
 function renderActiveContext(){
   if(currentTab==='harmony'){ (hView==='identify'?renderIdentify:hView==='triads'?renderTriads:hView==='arp'?renderArp:renderChords)(); }
   else if(currentTab==='scales'){ scView==='notes'?renderNotes():renderScales(); }
+  markScrollables();
 }
 
 /* ---- one musical context (spine #1, 1a) ----
@@ -2897,7 +3112,7 @@ function setHView(v){ hView=v;
   document.getElementById('harmony-p').textContent = t(head+'_p');
   applyHarmonyExtras();
   (v==='identify'?renderIdentify:v==='triads'?renderTriads:v==='arp'?renderArp:renderChords)();
-  updateGlobalPlay(); saveState();
+  markScrollables(); updateGlobalPlay(); saveState();
 }
 document.getElementById('hv-chords').onclick=()=>setHView('chords');
 document.getElementById('hv-triads').onclick=()=>setHView('triads');
@@ -2913,7 +3128,7 @@ function setScView(v){ scView=v;
   document.getElementById('scales-h').textContent = t(v==='notes'?'nt_h':'sc_h');
   document.getElementById('scales-p').textContent = t(v==='notes'?'nt_p':'sc_p');
   v==='notes'?renderNotes():renderScales();
-  updateGlobalPlay(); saveState();
+  markScrollables(); updateGlobalPlay(); saveState();
 }
 document.getElementById('sv-scale').onclick=()=>setScView('scale');
 document.getElementById('sv-notes').onclick=()=>setScView('notes');
@@ -3060,15 +3275,17 @@ document.getElementById('sub-notes').addEventListener('click',e=>{
 
 document.getElementById('aside-toggle').onclick=function(){ const b=document.getElementById('aside-body'); const hidden=b.style.display==='none'; b.style.display=hidden?'block':'none'; this.textContent=hidden?'−':'+'; this.setAttribute('aria-expanded', hidden); };
 
-/* per-panel help toggle (mobile shell pass): the ⓘ/? button in each panel heading
-   reveals/collapses that panel's description on a phone. Inert on desktop, where the
-   description always shows and the button is display:none. */
-document.querySelectorAll('.ph-help').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    const ph=btn.closest('.panel-head'); if(!ph) return;
-    btn.setAttribute('aria-expanded', ph.classList.toggle('help-open') ? 'true' : 'false');
-  });
-});
+/* help toggle: one ? collapses/reveals BOTH the active view's description and the
+   board's playing-hint, on every viewport now (was phone-only, description-only), so
+   the default screen reads clean. A body-level class drives it because those two texts
+   live in different subtrees (.main vs .board-meta); every ? button reflects the state. */
+let helpOpen = false;
+function applyHelpState(){
+  document.body.classList.toggle('help-open', helpOpen);
+  document.querySelectorAll('.ph-help').forEach(b=>{ b.classList.toggle('on', helpOpen); b.setAttribute('aria-expanded', helpOpen?'true':'false'); });
+}
+document.querySelectorAll('.ph-help').forEach(btn=>{ btn.addEventListener('click',()=>{ helpOpen=!helpOpen; applyHelpState(); }); });
+applyHelpState();
 
 function selectTab(name){
   // Playback (loop / progression) deliberately persists across tabs — it acts
@@ -3137,7 +3354,47 @@ function closeChangelog(){ const o=document.getElementById('cl-overlay'); o.clas
 document.getElementById('app-ver').onclick=openChangelog;
 document.getElementById('cl-close').onclick=closeChangelog;
 document.getElementById('cl-overlay').addEventListener('click',e=>{ if(e.target.id==='cl-overlay') closeChangelog(); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeChangelog(); });
+
+/* ---- keyboard-shortcuts cheat-sheet ---- */
+function openKbd(){ const o=document.getElementById('kbd-overlay'); if(!o) return; o.hidden=false; o.classList.add('open'); }
+function closeKbd(){ const o=document.getElementById('kbd-overlay'); if(!o) return; o.classList.remove('open'); o.hidden=true; }
+{ const c=document.getElementById('kbd-close'); if(c) c.onclick=closeKbd;
+  const ov=document.getElementById('kbd-overlay'); if(ov) ov.addEventListener('click',e=>{ if(e.target.id==='kbd-overlay') closeKbd(); });
+  const ob=document.getElementById('kbd-open'); if(ob) ob.onclick=openKbd; }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeChangelog(); closeKbd(); } });
+
+/* ---- global keyboard shortcuts (desktop power-use; also seeds Phase-3 drills) ----
+   Space=Listen/Stop · L=Loop · M=Metronome · 1/2/3=tabs · A–G=key · [ ]=transpose · ?=help.
+   Guards: ignored while typing in a field, while a modal is open, or with a Ctrl/Meta/Alt
+   chord (so browser shortcuts survive). Space is only hijacked when focus is NOT on an
+   interactive control, so a focused fretboard dot / button keeps its native Space. */
+const NOTE_KEY = { a:9, b:11, c:0, d:2, e:4, f:5, g:7 };
+function transposeKey(delta){ const pc=mod(gRoot+delta,12); setKey(pc, ROOTS[pc]); }
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  const tg=e.target;
+  if(tg && (tg.tagName==='INPUT'||tg.tagName==='SELECT'||tg.tagName==='TEXTAREA'||tg.isContentEditable)) return;
+  if(!document.getElementById('cl-overlay').hidden || !document.getElementById('kbd-overlay').hidden) return;  // modal open
+  const k=e.key;
+  if(k===' '||k==='Spacebar'){
+    if(tg && tg.closest && tg.closest('button,a,[role="button"],[tabindex]')) return;   // let the focused control keep Space
+    e.preventDefault();
+    if(typeof seqClock!=='undefined' && seqClock) seqStop();
+    else if(typeof loopClock!=='undefined' && loopClock) stopLoop();
+    else globalPlay();
+    return;
+  }
+  if(k==='?'){ e.preventDefault(); openKbd(); return; }
+  if(k==='1'){ selectTab('harmony'); return; }
+  if(k==='2'){ selectTab('scales'); return; }
+  if(k==='3'){ selectTab('circle'); return; }
+  if(k==='['){ transposeKey(-1); return; }
+  if(k===']'){ transposeKey(1); return; }
+  const lk = k.length===1 ? k.toLowerCase() : '';
+  if(lk==='l'){ const lp=document.getElementById('g-loop'); if(lp && !lp.hidden && !lp.disabled) loopToggle(); return; }
+  if(lk==='m'){ const mb=document.getElementById('tb-metro'); if(mb && !mb.disabled) metroToggle(); return; }
+  if(lk && NOTE_KEY[lk]!==undefined){ const pc=NOTE_KEY[lk]; setKey(pc, ROOTS[pc]); return; }
+});
 
 /* ---- graceful degradation when the browser has no Web Audio (Phase C+) ----
    Disable the transport controls with a hint instead of leaving dead buttons. */
@@ -3170,6 +3427,12 @@ applyTuning();
 applyLang();
 selectTab(currentTab);
 syncTabsScroll();
+markScrollables();
+// re-measure swipe-group overflow when the viewport changes (rotate / resize), and once
+// the webfont has loaded — button widths shift on the font swap, so a measure taken with
+// the fallback font would mis-detect overflow and show / hide the fade incorrectly.
+window.addEventListener('resize', markScrollables);
+try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(markScrollables); }catch(_){}
 applyAudioAvailability();
 document.getElementById('app-ver').textContent = 'v' + APP_VERSION;
 

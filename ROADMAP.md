@@ -10,7 +10,7 @@ Code is authored as small `src/js/NN-*.js` modules and concatenated by a pure-st
 `build.js` (no bundler, no transpile). Every item below is reachable with the Web Audio API
 and vanilla JS. New phases add new `src/` modules; they never add a dependency.
 
-_Last updated: 2026-06-17 · shipping: v1.24.0_
+_Last updated: 2026-06-18 · shipping: v1.25.0_
 
 ---
 
@@ -295,9 +295,32 @@ _Next mobile work (the shared selection surface — folds into the Phase 3 drill
 chord/triad + root selection across the Chords and Scales panels — consistent control surface, a
 chord-over-scale overlay in Scales, a compact piano-style root picker, less vertical height._
 
+**Follow-up — UX polish (desktop + reachability). ✅ Shipped v1.25.0.** A second pass extending the
+shell work to the desktop and the still-rough corners, again no new musical surface:
+- **Desktop fretboard scale-up.** ✅ The neck's *width* already adapted (JS `cellW()`); its *vertical*
+  size was fixed, so a wide screen stretched it into a thin strip. Two `min-width` tiers grow `.srow`
+  height + dot size with the viewport (vertical + dot only — the 30 px slabel/ocell widths stay put so
+  `leftFixed()`'s board↔fretnum alignment is untouched; dots capped ≤33 px to still breathe in the
+  `CELL_MIN=34` all-frets cell).
+- **Keyboard shortcuts.** ✅ Space = listen/stop, L = loop, M = metronome, 1–3 = tabs, A–G = key,
+  `[`/`]` = transpose, `?` = a bilingual cheat-sheet (also a desktop-only footer affordance). Guarded
+  against field-typing, modals and modifier chords; Space only hijacked when focus isn't on a control,
+  so a focused dot/button keeps native Space. Seeds the Phase-3 drill transport.
+- **Landscape two-pane.** ✅ Replaced the earlier "scroll away as one column" landscape fix with a real
+  split (`:has(#board-region:not([hidden]))`-gated): controls/cards/progression scroll left, the neck
+  pins right and stays in view. The board-less Circle tab falls through to the full-width single column.
+- **Help collapses everywhere.** ✅ The per-view description **and** the board's playing-hint now tuck
+  behind the heading `?` on *every* viewport (was phone-only, description-only), driven by a body-level
+  `help-open` since the two texts live in different subtrees — a cleaner default screen.
+- **Swipe affordance.** ✅ The swiping control rows + tiered quality pickers fade at the right edge when
+  they actually overflow (`markScrollables`, the same cue the tab strip + neck use; re-measured on
+  resize and after the webfont loads).
+
 **Validation:** `npm test` stayed green throughout (271 checks) — CSS/structure changes don't touch the
 fret-cell width math the overflow assertion measures (`boardWidth()`), and sticky/header are inert in
-jsdom; the sticky board + condensing header got a real-device pass on iOS Safari.
+jsdom; the sticky board + condensing header got a real-device pass on iOS Safari. The v1.25.0 pass added
+two headless functional checks (`tools/kbd-check.js`, a help-toggle probe) and screenshot passes across
+desktop / landscape / narrow-phone widths.
 
 ---
 

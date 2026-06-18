@@ -2,6 +2,14 @@
 
 _Generated from `src/js/02-changelog.js` by `build.js` — do not edit by hand._
 
+## v1.25.0 — 2026-06-18
+
+- A wider, more readable fretboard on desktop: on a large screen the neck now grows with the window — taller string spacing and bigger note dots — instead of stretching into a thin strip.
+- Keyboard shortcuts on desktop: Space to listen or stop, L to loop, M for the metronome, 1–3 to switch tabs, A–G to set the key, and [ / ] to transpose it by a semitone. Press ? (or the link below the page) for the full list.
+- Landscape is finally useful: turn your phone sideways and the screen splits in two — the controls, chord cards and progression scroll on the left while the neck stays pinned on the right, always in view.
+- A cleaner first look: each view's description and the board's playing tip now tuck behind a ? next to the heading — on every screen, not just phones — so the controls and the neck sit higher; tap ? whenever you want the explanation back.
+- A clearer hint that the chord rows scroll: when a row of chord types runs off the edge of a phone screen, it now fades at the right so you can tell there is more to swipe to.
+
 ## v1.24.0 — 2026-06-17
 
 - Mobile shell pass — less scrolling, the neck always in reach. On phones the fretboard now stays pinned in view while you scroll the chords, cards and progression below it, and gently snaps back into place — so you can pick a chord or chip and see it on the neck without scrolling back up.

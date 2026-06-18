@@ -68,6 +68,8 @@ const I18N = {
     tr_shapes:'Форми тризвуку',
     pwa_install:'Встановити', pwa_install_tip:'Встановити Euterpe як застосунок',
     pwa_update:'Доступна нова версія Euterpe.', pwa_update_btn:'Оновити', pwa_dismiss:'Сховати',
+    kbd_title:'Гарячі клавіші', kbd_play:'Прослухати / Стоп', kbd_loop:'Луп — увімк/вимк', kbd_metro:'Метроном — увімк/вимк',
+    kbd_tabs:'Перемкнути вкладки', kbd_root:'Задати тоніку', kbd_transpose:'Транспонувати на півтон', kbd_hint:'Гарячі клавіші',
     ph_help:'Опис'
   },
   en: {
@@ -138,6 +140,8 @@ const I18N = {
     tr_shapes:'Triad shapes',
     pwa_install:'Install', pwa_install_tip:'Install Euterpe as an app',
     pwa_update:'A new version of Euterpe is available.', pwa_update_btn:'Reload', pwa_dismiss:'Dismiss',
+    kbd_title:'Keyboard shortcuts', kbd_play:'Listen / Stop', kbd_loop:'Loop on/off', kbd_metro:'Metronome on/off',
+    kbd_tabs:'Switch tabs', kbd_root:'Set the key (root)', kbd_transpose:'Transpose by a semitone', kbd_hint:'Keyboard shortcuts',
     ph_help:'Description'
   }
 };

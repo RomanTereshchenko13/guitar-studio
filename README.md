@@ -143,6 +143,8 @@ guitar-studio/
 ├── .gitignore
 ├── tools/
 │   ├── shoot.js            dev-only responsive screenshots (system Edge/Chrome)
+│   ├── scroll-check.js     dev-only headless scroll/sticky-header regression check
+│   ├── kbd-check.js        dev-only headless keyboard-shortcut functional check
 │   └── make-icons.js       dev-only icon PNG rasterizer (system Edge/Chrome)
 ├── .github/workflows/
 │   └── test.yml            CI: runs the smoke suite on push/PR

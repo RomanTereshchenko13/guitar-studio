@@ -77,6 +77,18 @@ function renderBoard(boardEl, cellFn){
 }
 const INLAY_SINGLE = new Set(DOTS.filter(f=>f!==12&&f!==24));
 const INLAY_DOUBLE = new Set([12,24]);
+/* swipe affordance (mobile): on a phone the control rows + tiered quality pickers
+   swipe sideways instead of wrapping. When one actually overflows its track, fade its
+   right edge so the clipped buttons read as "more — swipe →" (the same cue the tab
+   strip and the neck already use). A no-op where groups wrap (desktop / wide), since
+   wrapped content never overflows — so this is safe to call on any viewport. Re-run
+   after a context change rebuilds these groups (see the call sites in wiring). */
+function markScrollables(){
+  if(typeof document==='undefined') return;
+  document.querySelectorAll('.row > .group, #ch-quals .group, #arp-quals .group').forEach(g=>{
+    g.classList.toggle('scrollable', g.scrollWidth > g.clientWidth + 1);
+  });
+}
 /* Heuristic fingering for a fretted shape. `frets` is indexed by display column
    (null = muted, 0 = open → no finger). Returns {colIndex: 1..4}. A genuine
    index-barre is detected when the lowest fret is played on 2+ strings AND a
