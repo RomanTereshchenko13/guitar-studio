@@ -1,0 +1,109 @@
+# Euterpe (guitar-studio)
+
+Guitar theory & practice app — scales, modes, chords, triads, circle of fifths,
+fretboard viz, Karplus-Strong audio engine, jam-along backing band. Bilingual
+UI (Ukrainian / English). Brand is **Euterpe**; the package slug / internal ids
+stay `guitar-studio`.
+
+## The one rule that matters: edit `src/`, never the generated files
+
+The core app is a single `index.html` **generated** by `build.js` (pure string
+assembly — no bundler, no transpile). "Zero-dependency" here means *behavioural*:
+it fetches nothing at runtime and has no supply-chain dependency — not that
+third-party code is banned (it can be vendored; see Dependency policy below). On top of that, a thin
+**additive PWA layer** makes it installable/offline when served over HTTPS (e.g.
+GitHub Pages): `manifest.webmanifest` + a service worker (`sw.js`) + raster
+`icons/` add a home-screen icon, its own window, and offline caching. The PWA is
+sidecar-only — it's dormant on a `file://` / `dist/` copy and in the jsdom tests
+(`src/js/14-pwa.js` self-disables off HTTPS), so the app is still the one file.
+
+These files are **build output / generated — never hand-edit them**, your changes
+will be overwritten:
+
+- `index.html`   → generated from `src/index.template.html` + `src/styles.css` + `src/js/*.js`
+- `sw.js`        → generated from `src/sw.template.js` (`APP_VERSION` stamped into the cache name)
+- `CHANGELOG.md` → generated from `src/js/02-changelog.js`
+- `icons/icon.svg` → copied from `src/icons/icon.svg`
+- `icons/*.png`  → rasterized from `src/icons/icon.svg` by `tools/make-icons.js`
+- `dist/*`       → versioned standalone copies (gitignored)
+
+Editable PWA sidecar (NOT generated, edit directly): `manifest.webmanifest`.
+
+Edit the sources, then run the build.
+
+## Where things live (all editable sources under `src/`)
+
+- `src/js/NN-*.js` — ordered modules, concatenated alphabetically (zero-padded
+  `01`..`14`). Order matters; the number is the load order.
+  - `01-version.js` — `APP_VERSION`, the **single source of truth** for the version
+  - `02-changelog.js` — release notes (EN/UK); drives the in-app modal AND `CHANGELOG.md`
+  - `03-i18n.js` — translation strings · `04-constants.js` · `05-audio.js`
+  - `06-backing.js` · `07-render-shared.js` · `08-chords.js` · `09-triads.js`
+  - `10-scales.js` · `11-notes-circle-lang.js` · `12-toolbar-state.js`
+  - `13-wiring-init.js` · `14-pwa.js`
+- `src/styles.css` — all CSS
+- `src/index.template.html` — markup shell with `@@STYLES@@` / `@@SCRIPT@@` / `@@FAVICON@@` markers
+- `src/sw.template.js` — service worker (`@@VERSION@@` → cache name)
+- `src/icons/icon.svg` — the app icon, authored once
+
+## Commands
+
+```bash
+node build.js     # rebuild index.html, sw.js, dist/, CHANGELOG.md from src/
+npm test          # from repo root: rebuilds first (pretest), then runs jsdom suite
+```
+
+- `npm test` (root) rebuilds then runs `tests/smoke.js` (270+ jsdom checks). CI
+  runs the same on every push/PR, so **the committed `index.html` must always
+  match `src/`** — rebuild before committing.
+- `tests/` needs a one-time `cd tests && npm install` (jsdom, dev-only).
+
+## `tools/` — dev-only helpers
+
+All four drive the **system Edge/Chrome in headless mode** — no npm install, no
+bundled browser, nothing added to the shipped app. They read the built
+`index.html`, so `node build.js` first. Output goes to `tools/shots/`
+(gitignored). They locate the browser under `Program Files\{Microsoft\Edge,
+Google\Chrome}` and bail if not found.
+
+- `node tools/shoot.js [widths]` — responsive **screenshots** for eyeballing
+  layout. Default widths `390 768 1280`; pass custom (`360 414 820`) or
+  `WxH` (`390x3200`). Renders inside a fixed-width `<iframe>` so the iframe width
+  is the true layout viewport, and flags **HORIZONTAL OVERFLOW** if the page
+  exceeds it. Throwaway PNGs → `tools/shots/wNNN.png`.
+- `node tools/scroll-check.js [WxH ...]` — headless **scroll/sticky-header
+  regression check** (CI-style, exits 1 on issue). Injects a diagnostic that
+  scrolls the page in real time and reports condensing-header bugs: flip-flop,
+  scroll drift, slow-scroll thrash, layout jump. Default `390x740 390x1100`;
+  ~15s real time per viewport (uses real timers, not virtual-time, because the
+  condense trigger is an IntersectionObserver).
+- `node tools/kbd-check.js` — headless **keyboard-shortcut functional check**
+  (exits 1 on failure). Dispatches real keydown events and asserts the DOM
+  responds: tab switch (`1/2/3`), root set (`g/a/c`), transpose (`[`/`]`), help
+  overlay (`?`/`Escape`), and the typing/focus guards.
+- `node tools/make-icons.js` — **rasterize** `src/icons/icon.svg` into the PWA
+  PNGs (`icon-192`, `icon-512`, `icon-maskable`, `apple-touch-icon`) in `icons/`.
+  Run after editing the SVG; the PNGs are committed (Pages serves them). The
+  maskable variant nests the mark in the safe circle on a `#1b1712` full-bleed bg.
+
+## Conventions
+
+- **Every new UI string needs symmetric Ukrainian + English entries** — the test
+  harness enforces this; an unpaired key fails the suite.
+- Versioning: bump `APP_VERSION` in `src/js/01-version.js`; add a matching
+  `02-changelog.js` entry. Polish/fixes = patch bump (1.25.0 → 1.25.1), not minor.
+- Release: `git tag vX.Y.Z && git push --tags`. Current shipping version is at the
+  top of `ROADMAP.md`.
+- **Dependency policy (the guarantee is behavioural, not purist):** one file,
+  fetches nothing at runtime, no supply-chain dependency, works offline. The only
+  thing the app fetches is Google Fonts. Third-party code is *not* banned but is
+  tightly gated — it must be (a) **permissively licensed** (MIT/BSD/0BSD/Apache-2.0,
+  **never copyleft** — GPL would relicense the whole single-file output),
+  (b) **vendored**: source copied into `src/`, audited, and concatenated by
+  `build.js` so nothing is fetched at runtime, and (c) solving a genuinely hard,
+  already-solved problem. The one sanctioned addition so far: **`pitchy` (0BSD),
+  vendored**, for pitch detection (Phase 8 / F2). Everything else stays
+  hand-rolled. See the Dependency policy in `ROADMAP.md` before adding any lib.
+
+See `README.md` for the full architecture write-up and `ROADMAP.md` for the
+phased plan.
