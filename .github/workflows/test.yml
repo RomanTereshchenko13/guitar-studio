@@ -19,3 +19,15 @@ jobs:
       - name: Run smoke suite (release gate)
         working-directory: tests
         run: npm test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dev deps (root — eslint)
+        run: npm ci --no-audit --no-fund
+      - name: Lint src/js as one concatenated scope
+        run: npm run lint

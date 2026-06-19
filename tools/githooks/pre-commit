@@ -1,0 +1,37 @@
+#!/bin/sh
+# Pre-commit gate for Euterpe — fast, deterministic checks so a broken state can't
+# land. Enable once per clone with:   git config core.hooksPath tools/githooks
+#
+# Runs, in order:
+#   1. lint   — src/js linted as ONE concatenated scope (the shipped reality)
+#   2. test   — npm test rebuilds (pretest) then runs the jsdom smoke suite
+#   3. sync   — the generated single-file artifacts must match a fresh build of src/
+# The visual/orientation review (shoot.js + an AI reviewing the PNGs) is a manual
+# step, so the hook just nudges you when the visual surface (CSS / markup) changed.
+set -e
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+
+printf '\n[pre-commit] 1/3  lint (src/js as one concatenated scope)…\n'
+npm run lint
+
+printf '\n[pre-commit] 2/3  build + smoke suite…\n'
+npm test
+
+printf '\n[pre-commit] 3/3  verify generated files are in sync with src/…\n'
+node build.js >/dev/null
+if ! git diff --quiet -- index.html sw.js CHANGELOG.md; then
+  echo '  ✗ index.html / sw.js / CHANGELOG.md differ from a fresh build of src/.'
+  echo '    Run "node build.js", stage the regenerated files, and commit again.'
+  git --no-pager diff --stat -- index.html sw.js CHANGELOG.md
+  exit 1
+fi
+
+# Nudge a visual pass when the rendered surface changed — orientation review is manual.
+if git diff --cached --name-only | grep -Eq '^src/(styles\.css|index\.template\.html)$'; then
+  printf '\n[pre-commit] note: styles/markup changed — consider a visual pass before pushing\n'
+  printf '              (screenshot all tabs across the orientation matrix, then have an AI review the PNGs):\n'
+  printf '              node tools/shoot.js tabs 390x844 844x390 360x740 768x1024 1024x768 1280x800 1920x1080\n'
+fi
+
+printf '\n[pre-commit] all green ✓\n'

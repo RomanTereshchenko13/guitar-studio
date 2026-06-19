@@ -51,7 +51,14 @@ Edit the sources, then run the build.
 ```bash
 node build.js     # rebuild index.html, sw.js, dist/, CHANGELOG.md from src/
 npm test          # from repo root: rebuilds first (pretest), then runs jsdom suite
+npm run lint      # static-analysis gate: lints src/js as one concatenated scope (CI runs this too)
 ```
+
+**Pre-commit gate (one-time per clone):** `git config core.hooksPath tools/githooks`
+installs `tools/githooks/pre-commit`, which runs lint → build+smoke → and verifies
+the generated `index.html`/`sw.js`/`CHANGELOG.md` still match a fresh build of `src/`
+(blocks the commit if they're stale). It nudges a manual visual pass when
+`src/styles.css` or `src/index.template.html` changed.
 
 - `npm test` (root) rebuilds then runs `tests/smoke.js` (270+ jsdom checks). CI
   runs the same on every push/PR, so **the committed `index.html` must always
@@ -60,11 +67,13 @@ npm test          # from repo root: rebuilds first (pretest), then runs jsdom su
 
 ## `tools/` — dev-only helpers
 
-All four drive the **system Edge/Chrome in headless mode** — no npm install, no
-bundled browser, nothing added to the shipped app. They read the built
-`index.html`, so `node build.js` first. Output goes to `tools/shots/`
-(gitignored). They locate the browser under `Program Files\{Microsoft\Edge,
-Google\Chrome}` and bail if not found.
+Most drive the **system Edge/Chrome in headless mode** — no bundled browser,
+nothing added to the shipped app. The browser-driven ones read the built
+`index.html`, so `node build.js` first; they locate the browser under
+`Program Files\{Microsoft\Edge,Google\Chrome}` and bail if not found. The
+linter (`lint.js`) is pure Node — ESLint + `globals` are dev-only
+devDependencies in the **root** `package.json` (same status as jsdom in
+`tests/`), so the root needs a one-time `npm install`.
 
 - `node tools/shoot.js [widths]` — responsive **screenshots** for eyeballing
   layout. Default widths `390 768 1280`; pass custom (`360 414 820`) or
@@ -85,6 +94,22 @@ Google\Chrome}` and bail if not found.
   PNGs (`icon-192`, `icon-512`, `icon-maskable`, `apple-touch-icon`) in `icons/`.
   Run after editing the SVG; the PNGs are committed (Pages serves them). The
   maskable variant nests the mark in the safe circle on a `#1b1712` full-bleed bg.
+- `npm run lint` (`node tools/lint.js`) — **static-analysis gate.** Concatenates
+  `src/js/*.js` in build order and lints it as **one shared script scope** (the
+  shipped reality — all modules share one scope), then maps findings back to
+  `src/js/NN-*.js:line`. Catches the bug class jsdom can miss: a typo'd/missing
+  cross-file symbol (`no-undef`), a duplicate top-level name (`no-redeclare`),
+  and dead code (`no-unused-vars`, warnings). Errors exit 1; **runs in CI** as a
+  second job (`.github/workflows/test.yml`). Config: `eslint.config.js`.
+  `no-use-before-define` is deliberately OFF — cross-file refs execute post-load,
+  so the lexical check is all false positives here.
+
+**Visual / orientation review** is not a script — run `node tools/shoot.js` with the
+orientation matrix and have an AI (e.g. this Claude Code session) review the PNGs.
+Each `WxH` token is a real viewport so the shape-based shells fire (landscape phone =
+`max-width:940 & max-height:500`), and the `tabs` token captures **all three tabs**
+(harmony/scales/circle) per size → `w{W}-{panel}.png`:
+`node tools/shoot.js tabs 390x844 844x390 360x740 768x1024 1024x768 1280x800 1920x1080`.
 
 ## Conventions
 

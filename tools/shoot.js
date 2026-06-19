@@ -14,9 +14,15 @@
    measures scrollWidth vs innerWidth and prints HORIZONTAL OVERFLOW if the page
    itself (not the in-board scroller) exceeds the viewport.
 
-   Run:  node tools/shoot.js                 # default widths 390, 768, 1280
-         node tools/shoot.js 360 414 820     # custom widths
-         node tools/shoot.js 390x3200        # explicit width x height        */
+   Tabs: by default only the first-load tab (harmony) is captured. Pass tab tokens
+   to reach the others — `harmony` / `scales` / `circle`, or `tabs` for all three.
+   With a tab token the file is `w{W}-{panel}.png`; without, `w{W}.png` (unchanged).
+   This is how the visual review covers ALL tabs across orientations.
+
+   Run:  node tools/shoot.js                       # default widths 390 768 1280, harmony
+         node tools/shoot.js 360 414 820           # custom widths
+         node tools/shoot.js 390x3200              # explicit width x height
+         node tools/shoot.js tabs 390x844 1280x800 # all 3 tabs at those viewports */
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -36,41 +42,62 @@ const browser = CANDIDATES.find(p => fs.existsSync(p));
 if (!browser) { console.error('No Edge/Chrome found in the usual install locations.'); process.exit(1); }
 if (!fs.existsSync(indexHtml)) { console.error('index.html not found — run `node build.js` first.'); process.exit(1); }
 
-const specs = (process.argv.slice(2).length ? process.argv.slice(2) : ['390', '768', '1280'])
+// Split args into tab tokens and size tokens. Tabs default to [null] (capture the
+// first-load tab, original behaviour); `tabs` expands to all three panels.
+const PANELS = ['harmony', 'scales', 'circle'];
+const tabArgs = [];
+const sizeArgs = [];
+for (const a of process.argv.slice(2)) {
+  if (a === 'tabs') tabArgs.push(...PANELS);
+  else if (PANELS.includes(a)) tabArgs.push(a);
+  else sizeArgs.push(a);
+}
+const tabs = tabArgs.length ? [...new Set(tabArgs)] : [null];
+
+const specs = (sizeArgs.length ? sizeArgs : ['390', '768', '1280'])
   .map(s => { const [w, h] = s.split('x'); return { w: parseInt(w, 10), h: parseInt(h, 10) || 3200 }; })
   .filter(s => s.w > 0);
 
 fs.mkdirSync(outDir, { recursive: true });
 const fileUrl = p => 'file:///' + p.replace(/\\/g, '/');
+const baseHtml = fs.readFileSync(indexHtml, 'utf8');
 
-// the app's HTML, with a self-overflow probe appended (runs in the app's OWN
-// document, so it sees the true iframe viewport and needs no cross-origin read).
-const appHtml = fs.readFileSync(indexHtml, 'utf8').replace('</body>', `
+// the app's HTML, with an optional tab-switch and a self-overflow probe appended
+// (both run in the app's OWN document, so they see the true iframe viewport).
+function appFor(panel) {
+  const switcher = panel
+    ? `<script>addEventListener('load',function(){try{var b=document.querySelector('.tab[data-panel="${panel}"]');if(b)b.click();}catch(e){}});</script>`
+    : '';
+  return baseHtml.replace('</body>', `${switcher}
 <div id="__probe" style="position:fixed;left:6px;bottom:6px;z-index:99999;font:bold 12px monospace;padding:4px 7px;border-radius:5px"></div>
 <script>addEventListener('load',function(){setTimeout(function(){
   var sw=document.documentElement.scrollWidth,iw=innerWidth,p=document.getElementById('__probe'),over=sw>iw+1;
   p.textContent=(over?'HORIZONTAL OVERFLOW ':'fits ')+'IW='+iw+' SW='+sw;
   p.style.background=over?'#c0392b':'#1f7a3f';p.style.color='#fff';
-},500);});</script>
+},600);});</script>
 </body>`);
+}
 
 for (const { w, h } of specs) {
-  const appCopy = path.join(outDir, `_app_${w}.html`);
-  const wrapper = path.join(outDir, `_wrap_${w}.html`);
-  fs.writeFileSync(appCopy, appHtml);
-  // app in a fixed-width iframe so the iframe width IS the app's layout viewport
-  fs.writeFileSync(wrapper, `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+  for (const panel of tabs) {
+    const tag = panel ? `${w}-${panel}` : `${w}`;
+    const appCopy = path.join(outDir, `_app_${tag}.html`);
+    const wrapper = path.join(outDir, `_wrap_${tag}.html`);
+    fs.writeFileSync(appCopy, appFor(panel));
+    // app in a fixed-width iframe so the iframe width IS the app's layout viewport
+    fs.writeFileSync(wrapper, `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;background:#333">
-<iframe src="_app_${w}.html" style="width:${w}px;height:${h}px;border:0;display:block"></iframe>
+<iframe src="_app_${tag}.html" style="width:${w}px;height:${h}px;border:0;display:block"></iframe>
 </body></html>`);
 
-  const out = path.join(outDir, `w${w}.png`);
-  execFileSync(browser, [
-    '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=2',
-    '--virtual-time-budget=3000',
-    `--screenshot=${out}`, `--window-size=${w},${h}`, fileUrl(wrapper),
-  ], { stdio: 'ignore' });
-  fs.unlinkSync(wrapper); fs.unlinkSync(appCopy);
-  console.log(`  ${w}px -> ${path.relative(root, out)}`);
+    const out = path.join(outDir, `w${tag}.png`);
+    execFileSync(browser, [
+      '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=2',
+      '--virtual-time-budget=3000',
+      `--screenshot=${out}`, `--window-size=${w},${h}`, fileUrl(wrapper),
+    ], { stdio: 'ignore' });
+    fs.unlinkSync(wrapper); fs.unlinkSync(appCopy);
+    console.log(`  ${w}px${panel ? ' / ' + panel : ''} -> ${path.relative(root, out)}`);
+  }
 }
 console.log('Done. (Fresh headless profile => first-run UI, no saved state.)');
