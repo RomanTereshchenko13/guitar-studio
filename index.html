@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <!-- Euterpe (Guitar Studio) — generated single-file build (do not edit; edit src/ and run build.js).
-     Version: 1.27.0  (source of truth: APP_VERSION in src/js/01-version.js;
+     Version: 1.27.1  (source of truth: APP_VERSION in src/js/01-version.js;
      build.js fills this in). Release notes live in src/js/02-changelog.js (drives
      the in-app "What's new" modal and CHANGELOG.md). -->
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="1.27.0">
+<meta name="version" content="1.27.1">
 <meta name="description" content="Euterpe — a guitar studio for music theory and practice: scales, modes, chords, the fretboard, the circle of fifths, and a jam-along backing band. Works offline.">
 <meta name="theme-color" content="#16140f">
 <!-- Installed-app (standalone) hints. The manifest covers Android/desktop; these
@@ -268,9 +268,10 @@
   .fretnums { display: flex; margin-left: 67px; padding-left: 7px; }
   .fretnum { flex: 1; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); padding-top: 7px; }
   .fretnum.mark { color: var(--text-dim); font-weight: 700; }
-  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px; }
-  .leg { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-dim); }
-  .leg-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; }
+  .leg { display: flex; align-items: baseline; gap: 6px; font-size: 12px; color: var(--text-dim); }
+  .leg-dot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; align-self: center; }
+  .leg-deg { color: var(--text-faint); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
   /* the board's playing-hint is collapsed by default and revealed with the ? toggle (see .ph-help) */
   .hint { display: none; font-size: 13px; color: var(--text-dim); margin-top: 18px; padding: 12px 15px; background: var(--bg-panel); border-radius: var(--radius); border-left: 2px solid var(--accent); }
   body.help-open .hint { display: block; }
@@ -491,6 +492,9 @@
   .chordbox .cb-name { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; margin-bottom: 8px; color: var(--text); }
   .chordbox svg { display: block; }
   .chordbox .cb-cap { font-size: 11px; color: var(--text-faint); margin-top: 7px; max-width: 160px; }
+  .chordbox[hidden] { display: none; }
+  /* "More / Fewer shapes" toggle below the shape cards — its own line, low-key */
+  .cd-more { margin-top: 2px; font-size: 12px; padding: 6px 12px; }
   .cd-string { stroke: var(--line-string); stroke-width: 1.3; }
   .cd-fret { stroke: var(--line-fret); stroke-width: 1.3; }
   .cd-nut { stroke: #d8cba8; stroke-width: 4; }
@@ -536,6 +540,15 @@
   @media (max-width: 600px) {
     .wrap { padding: 0 14px; }
     .brand h1 { font-size: 25px; }
+    /* phone legend: drop the degree detail and tighten so the colour key fits one
+       clean row right under the neck, instead of wrapping into a second line that
+       reads as part of the neck's horizontal scroll just above it */
+    .legend { gap: 12px; margin-top: 13px; }
+    .leg { font-size: 11.5px; gap: 5px; }
+    .leg-deg { display: none; }
+    /* the "tap a card to pick the shape" hint is discovery help; on a phone the
+       cards already read as tappable (they highlight), so reclaim the row */
+    #shapes-body .cd-hint { display: none; }
     /* un-box the View / Root / Display bar on phones: the desktop "horizontal context
        bar" panel becomes a tall, heavy box once it wraps. Drop the border/background
        and stack each control as a clean labelled row (label on its own line, buttons
@@ -897,6 +910,7 @@
   <div id="shapes-body">
     <div class="cd-hint" data-i18n="cd_pick_hint">Натисни картку, щоб обрати форму для «Прослухати» / «Лупа»</div>
     <div class="chorddia" id="ch-diagram"></div>
+    <button type="button" class="btn cd-more" id="cd-more" aria-expanded="false" hidden></button>
   </div>
 </div>
 </div>
@@ -947,10 +961,15 @@
 <script>
 /* Single source of truth for the app version. Bump on each release and update
    the changelog comment at the top of the file + the <meta name="version">. */
-const APP_VERSION = '1.27.0';
+const APP_VERSION = '1.27.1';
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.27.1', date:'2026-06-19',
+    en:['The chord-shapes card now opens with just the first few shapes — the open shape and the nearest forms — and a "More shapes" button reveals the rest of the library when you want them, so the card no longer floods a phone with diagrams.',
+        'The note-colour key under the neck is tidier on phones: it now fits a single clean row (the degree numbers tuck away on small screens) instead of wrapping into a second line that looked like part of the neck\'s scroll.'],
+    uk:['Картка форм акорду тепер відкривається лише з кількома першими формами — відкритою та найближчими — а кнопка «Більше форм» показує решту бібліотеки, коли вони потрібні, тож картка більше не засипає телефон діаграмами.',
+        'Кольорова легенда нот під грифом охайніша на телефоні: тепер вона вміщується в один рядок (номери ступенів ховаються на малих екранах) замість того, щоб переноситися на другий рядок, який виглядав частиною прокрутки грифа.'] },
   { v:'1.27.0', date:'2026-06-19',
     en:['The links between the tabs now go both ways. In Scales, once you overlay one of the key\'s chords on the neck, an "Open in chords" button jumps you straight to that chord in the Chords view — so the diatonic-chord row is no longer a dead end.',
         'The Circle of fifths gains an "Open in chords" button beside "Open in scales", so you can jump from a key straight to its tonic chord on the neck.'],
@@ -1241,7 +1260,7 @@ const I18N = {
     seq_play:'Грати', seq_loop:'Цикл', seq_bars:'тактів', seq_empty:'Порожньо — додай поточний акорд або вибери пресет',
     b_allnotes:'Всі ноти', b_natonly:'Тільки натуральні', b_clear:'Зняти',
     pos_all:'Вся', inv_all:'Всі', inv_root:'Основне', inv_1st:'1-ше', inv_2nd:'2-ге',
-    leg_root:'Тоніка (1)', leg_third:'Терція (3 / ♭3)', leg_fifth:'Квінта (5)', leg_seventh:'Септима (7 / ♭7)', leg_ext:'Розширення (6 · 9 · 11 · 13)',
+    leg_root:'Тоніка', leg_third:'Терція', leg_fifth:'Квінта', leg_seventh:'Септима', leg_ext:'Розширення',
     leg_nat:'Натуральна нота', leg_sharpflat:'Дієз / бемоль', leg_highlight:'Виділена нота',
     leg_sc_other:'Інші ноти гами',
     footer:'Euterpe · гітарна студія · стандартний стрій (E A D G B e) · працює офлайн',
@@ -1269,6 +1288,7 @@ const I18N = {
     cd_na:'немає простої форми', cd_calc:'обчислена аплікатура', cd_pos:'вище по грифу',
     cd_voicings:'Форми акорду', cd_eshape:'барре у формі E', cd_ashape:'барре у формі A',
     cd_fret:'лад', cd_pick_hint:'Натисни картку, щоб обрати форму для «Прослухати» / «Лупа»',
+    cd_more:'Більше форм', cd_less:'Менше форм',
     tr_shapes:'Форми тризвуку',
     pwa_install:'Встановити', pwa_install_tip:'Встановити Euterpe як застосунок',
     pwa_update:'Доступна нова версія Euterpe.', pwa_update_btn:'Оновити', pwa_dismiss:'Сховати',
@@ -1316,7 +1336,7 @@ const I18N = {
     seq_play:'Play', seq_loop:'Cycle', seq_bars:'bars', seq_empty:'Empty — add the current chord or pick a preset',
     b_allnotes:'All notes', b_natonly:'Naturals only', b_clear:'Clear',
     pos_all:'All', inv_all:'All', inv_root:'Root', inv_1st:'1st', inv_2nd:'2nd',
-    leg_root:'Root (1)', leg_third:'Third (3 / ♭3)', leg_fifth:'Fifth (5)', leg_seventh:'Seventh (7 / ♭7)', leg_ext:'Extensions (6 · 9 · 11 · 13)',
+    leg_root:'Root', leg_third:'Third', leg_fifth:'Fifth', leg_seventh:'Seventh', leg_ext:'Extensions',
     leg_nat:'Natural note', leg_sharpflat:'Sharp / flat', leg_highlight:'Selected note',
     leg_sc_other:'Other scale tones',
     footer:'Euterpe · guitar studio · standard tuning (E A D G B e) · works offline',
@@ -1344,6 +1364,7 @@ const I18N = {
     cd_na:'no simple shape', cd_calc:'computed voicing', cd_pos:'up the neck',
     cd_voicings:'Chord shapes', cd_eshape:'E-shape barre', cd_ashape:'A-shape barre',
     cd_fret:'fret', cd_pick_hint:'Tap a card to choose the shape for Listen / Loop',
+    cd_more:'More shapes', cd_less:'Fewer shapes',
     tr_shapes:'Triad shapes',
     pwa_install:'Install', pwa_install_tip:'Install Euterpe as an app',
     pwa_update:'A new version of Euterpe is available.', pwa_update_btn:'Reload', pwa_dismiss:'Dismiss',
@@ -2171,19 +2192,22 @@ function paintBoard(cellFn, legendHTML, hintHTML){
   document.getElementById('legend').innerHTML = legendHTML || '';
   document.getElementById('hint').innerHTML = hintHTML || '';
 }
-function legChip(varName, key){ return `<div class="leg"><span class="leg-dot" style="background:var(${varName})"></span><span>${t(key)}</span></div>`; }
-function chordLegendHTML(){ return legChip('--root','leg_root')+legChip('--third','leg_third')+legChip('--fifth','leg_fifth')+legChip('--seventh','leg_seventh')+legChip('--ext','leg_ext'); }
-function triadLegendHTML(){ return legChip('--root','leg_root')+legChip('--third','leg_third')+legChip('--fifth','leg_fifth'); }
+/* A legend chip: colour swatch + name, plus an optional degree detail (e.g. "3 / ♭3").
+   The degree sits in its own span so it can be dropped on phones where the legend
+   must fit one line (see the 600px block in styles.css) while desktop keeps it. */
+function legChip(varName, key, deg){ return `<div class="leg"><span class="leg-dot" style="background:var(${varName})"></span><span class="leg-nm">${t(key)}</span>${deg?`<span class="leg-deg">${deg}</span>`:''}</div>`; }
+function chordLegendHTML(){ return legChip('--root','leg_root','1')+legChip('--third','leg_third','3 / ♭3')+legChip('--fifth','leg_fifth','5')+legChip('--seventh','leg_seventh','7 / ♭7')+legChip('--ext','leg_ext','6 · 9 · 11 · 13'); }
+function triadLegendHTML(){ return legChip('--root','leg_root','1')+legChip('--third','leg_third','3 / ♭3')+legChip('--fifth','leg_fifth','5'); }
 function notesLegendHTML(){ return legChip('--natural','leg_nat')+legChip('--sharp','leg_sharpflat')+legChip('--root','leg_highlight'); }
 function scaleLegendHTML(){
-  if(scOverlay) return legChip('--root','leg_root')+legChip('--third','leg_third')+legChip('--fifth','leg_fifth')+legChip('--seventh','leg_seventh')+
-    `<div class="leg"><span class="leg-dot" style="background:rgba(220,200,160,0.4)"></span><span>${t('leg_sc_other')}</span></div>`;
+  if(scOverlay) return legChip('--root','leg_root','1')+legChip('--third','leg_third','3 / ♭3')+legChip('--fifth','leg_fifth','5')+legChip('--seventh','leg_seventh','7 / ♭7')+
+    `<div class="leg"><span class="leg-dot" style="background:rgba(220,200,160,0.4)"></span><span class="leg-nm">${t('leg_sc_other')}</span></div>`;
   const ivs=SCALES[scIdx].iv;
   const present=new Set(ivs.map(iv=>scClass(iv, ivs)));
-  let out=legChip('--root','leg_root')+legChip('--third','leg_third');
-  if(present.has('d-fifth')) out+=legChip('--fifth','leg_fifth');
-  if(present.has('d-sev')) out+=legChip('--seventh','leg_seventh');
-  if(present.has('d-other')) out+=`<div class="leg"><span class="leg-dot" style="background:var(--sc-other)"></span><span>${t('leg_sc_other')}</span></div>`;
+  let out=legChip('--root','leg_root','1')+legChip('--third','leg_third','3 / ♭3');
+  if(present.has('d-fifth')) out+=legChip('--fifth','leg_fifth','5');
+  if(present.has('d-sev')) out+=legChip('--seventh','leg_seventh','7 / ♭7');
+  if(present.has('d-other')) out+=`<div class="leg"><span class="leg-dot" style="background:var(--sc-other)"></span><span class="leg-nm">${t('leg_sc_other')}</span></div>`;
   return out;
 }
 function buildRootBtns(container, current, onPick){
@@ -2273,6 +2297,7 @@ function labClass(lab){
 let gRoot=9, gRootLbl='A', gMode='names';
 let chQual=1;
 let chVoicing=0;   // index of the selected voicing card (open / E-barre / A-barre / computed)
+let chShapesExpanded=false;   // collapsed by default: show the first few shapes, expand for the rest
 let arpPos=0;      // Arpeggio view (Phase 2): isolated practice box (0 = whole neck, 1..5)
 let idSel=[];      // Identify sub-view (1c): MIDIs the user has tapped on the board (transient scratch)
 function chDegClass(iv){ if(iv===0)return'd-root'; if(iv===3||iv===4)return'd-third'; if([6,7,8].includes(iv))return'd-fifth'; return'd-sev'; }
@@ -2383,7 +2408,7 @@ function renderQualPicker(containerId, toggleId, onPick){
   if(tog){ tog.setAttribute('aria-expanded', adv?'true':'false'); tog.textContent=(adv?t('qual_less')+' ▴':t('qual_more')+' ▾'); }
 }
 function buildChQuals(){
-  renderQualPicker('ch-quals','ch-quals-toggle', i=>{ chQual=i; chVoicing=0; buildChQuals(); renderChords(); saveState(); });
+  renderQualPicker('ch-quals','ch-quals-toggle', i=>{ chQual=i; chVoicing=0; chShapesExpanded=false; buildChQuals(); renderChords(); saveState(); });
 }
 function renderChords(){
   const q=QUALITIES[chQual];
@@ -2410,7 +2435,7 @@ function renderChords(){
    (chQual) with the chord-tones view so switching views keeps the chord — that's
    the bridge. Reuses the chord-tone board paint + the scale-view box window. */
 function buildArpQuals(){
-  renderQualPicker('arp-quals','arp-quals-toggle', i=>{ chQual=i; chVoicing=0; buildChQuals(); buildArpQuals(); renderArp(); saveState(); });
+  renderQualPicker('arp-quals','arp-quals-toggle', i=>{ chQual=i; chVoicing=0; chShapesExpanded=false; buildChQuals(); buildArpQuals(); renderArp(); saveState(); });
 }
 function buildArpPos(){
   const c=document.getElementById('arp-pos'); if(!c) return; c.innerHTML='';
@@ -2594,6 +2619,9 @@ function genVoicing(rootPc, ivs){
 /* Most shape cards to show for one chord (open + barres + a few movable forms up
    the neck). Capped so the row stays tidy and the saved card index stays in range. */
 const MAX_VOICINGS = 6;
+/* How many shape cards show before the "More shapes" toggle; the rest stay hidden
+   until expanded, so the default view is a tidy starter set rather than the full library. */
+const CHORD_SHAPES_COLLAPSED = 3;
 /* Movable voicings discovered by scanning 4-fret windows up the neck: one full,
    playable shape per position (root in the bass, every chord tone present, ≥4 strings,
    ≤3-fret span). Returned low-position-first; the caller dedupes them against the
@@ -2670,10 +2698,25 @@ function renderChordDiagram(){
   const list=chordVoicings(gRoot, short, q.iv);
   if(!list.length){ cont.innerHTML=`<div class="chordbox"><div class="cb-name">${gRootLbl}${short}</div><div class="cb-cap">${t('cd_na')}</div></div>`; return; }
   if(chVoicing>list.length-1) chVoicing=0;             // clamp after a quality change
-  cont.innerHTML = list.map((v,i)=>
-    `<button type="button" class="chordbox${i===chVoicing?' sel':''}" data-v="${i}" aria-pressed="${i===chVoicing}">`+
-    `<div class="cb-name">${gRootLbl}${short}</div>${chordBoxSVG(v, funcMap)}`+
-    `<div class="cb-cap">${voicingCaption(v)}</div></button>`).join('');
+  // Collapsed by default to a handful of shapes (the long up-the-neck tail reads as
+  // overwhelming on a phone); the "More shapes" toggle below reveals the rest.
+  // ...but never hide the currently-selected shape (e.g. one restored from saved
+  // state that lives in the tail), or its "selected" highlight would vanish while
+  // Listen / Loop still use it.
+  const collapsed = !chShapesExpanded && list.length>CHORD_SHAPES_COLLAPSED && chVoicing<CHORD_SHAPES_COLLAPSED;
+  cont.innerHTML = list.map((v,i)=>{
+    const hide = collapsed && i>=CHORD_SHAPES_COLLAPSED;
+    return `<button type="button" class="chordbox${i===chVoicing?' sel':''}" data-v="${i}" aria-pressed="${i===chVoicing}"${hide?' hidden':''}>`+
+      `<div class="cb-name">${gRootLbl}${short}</div>${chordBoxSVG(v, funcMap)}`+
+      `<div class="cb-cap">${voicingCaption(v)}</div></button>`;
+  }).join('');
+  const more=document.getElementById('cd-more');
+  if(more){
+    // hidden when there's no tail to fold, or when a tail shape is selected (it's
+    // forced visible above, so collapsing can't apply and chShapesExpanded tracks the view)
+    if(list.length<=CHORD_SHAPES_COLLAPSED || chVoicing>=CHORD_SHAPES_COLLAPSED){ more.hidden=true; }
+    else { more.hidden=false; more.textContent = chShapesExpanded ? t('cd_less') : `${t('cd_more')} (${list.length-CHORD_SHAPES_COLLAPSED})`; more.setAttribute('aria-expanded', String(chShapesExpanded)); }
+  }
 }
 
 /* ===================== TRIADS ===================== */
@@ -3443,6 +3486,11 @@ document.getElementById('ch-diagram').addEventListener('click',e=>{
   if(dot && dot.dataset.midi!=null){ e.stopPropagation(); pluck(parseInt(dot.dataset.midi)); return; }
   const card=e.target.closest('.chordbox'); if(!card || card.dataset.v==null) return;
   chVoicing=+card.dataset.v; renderChordDiagram(); saveState();
+});
+
+/* "More / Fewer shapes": expand the collapsed shape library in place */
+document.getElementById('cd-more').addEventListener('click',()=>{
+  chShapesExpanded=!chShapesExpanded; renderChordDiagram();
 });
 
 /* triad cards: a dot click sounds that string. Inversion/string-set buttons are

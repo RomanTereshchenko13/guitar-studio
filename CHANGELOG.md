@@ -2,6 +2,11 @@
 
 _Generated from `src/js/02-changelog.js` by `build.js` — do not edit by hand._
 
+## v1.27.1 — 2026-06-19
+
+- The chord-shapes card now opens with just the first few shapes — the open shape and the nearest forms — and a "More shapes" button reveals the rest of the library when you want them, so the card no longer floods a phone with diagrams.
+- The note-colour key under the neck is tidier on phones: it now fits a single clean row (the degree numbers tuck away on small screens) instead of wrapping into a second line that looked like part of the neck's scroll.
+
 ## v1.27.0 — 2026-06-19
 
 - The links between the tabs now go both ways. In Scales, once you overlay one of the key's chords on the neck, an "Open in chords" button jumps you straight to that chord in the Chords view — so the diatonic-chord row is no longer a dead end.

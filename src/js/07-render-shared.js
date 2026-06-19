@@ -158,19 +158,22 @@ function paintBoard(cellFn, legendHTML, hintHTML){
   document.getElementById('legend').innerHTML = legendHTML || '';
   document.getElementById('hint').innerHTML = hintHTML || '';
 }
-function legChip(varName, key){ return `<div class="leg"><span class="leg-dot" style="background:var(${varName})"></span><span>${t(key)}</span></div>`; }
-function chordLegendHTML(){ return legChip('--root','leg_root')+legChip('--third','leg_third')+legChip('--fifth','leg_fifth')+legChip('--seventh','leg_seventh')+legChip('--ext','leg_ext'); }
-function triadLegendHTML(){ return legChip('--root','leg_root')+legChip('--third','leg_third')+legChip('--fifth','leg_fifth'); }
+/* A legend chip: colour swatch + name, plus an optional degree detail (e.g. "3 / ♭3").
+   The degree sits in its own span so it can be dropped on phones where the legend
+   must fit one line (see the 600px block in styles.css) while desktop keeps it. */
+function legChip(varName, key, deg){ return `<div class="leg"><span class="leg-dot" style="background:var(${varName})"></span><span class="leg-nm">${t(key)}</span>${deg?`<span class="leg-deg">${deg}</span>`:''}</div>`; }
+function chordLegendHTML(){ return legChip('--root','leg_root','1')+legChip('--third','leg_third','3 / ♭3')+legChip('--fifth','leg_fifth','5')+legChip('--seventh','leg_seventh','7 / ♭7')+legChip('--ext','leg_ext','6 · 9 · 11 · 13'); }
+function triadLegendHTML(){ return legChip('--root','leg_root','1')+legChip('--third','leg_third','3 / ♭3')+legChip('--fifth','leg_fifth','5'); }
 function notesLegendHTML(){ return legChip('--natural','leg_nat')+legChip('--sharp','leg_sharpflat')+legChip('--root','leg_highlight'); }
 function scaleLegendHTML(){
-  if(scOverlay) return legChip('--root','leg_root')+legChip('--third','leg_third')+legChip('--fifth','leg_fifth')+legChip('--seventh','leg_seventh')+
-    `<div class="leg"><span class="leg-dot" style="background:rgba(220,200,160,0.4)"></span><span>${t('leg_sc_other')}</span></div>`;
+  if(scOverlay) return legChip('--root','leg_root','1')+legChip('--third','leg_third','3 / ♭3')+legChip('--fifth','leg_fifth','5')+legChip('--seventh','leg_seventh','7 / ♭7')+
+    `<div class="leg"><span class="leg-dot" style="background:rgba(220,200,160,0.4)"></span><span class="leg-nm">${t('leg_sc_other')}</span></div>`;
   const ivs=SCALES[scIdx].iv;
   const present=new Set(ivs.map(iv=>scClass(iv, ivs)));
-  let out=legChip('--root','leg_root')+legChip('--third','leg_third');
-  if(present.has('d-fifth')) out+=legChip('--fifth','leg_fifth');
-  if(present.has('d-sev')) out+=legChip('--seventh','leg_seventh');
-  if(present.has('d-other')) out+=`<div class="leg"><span class="leg-dot" style="background:var(--sc-other)"></span><span>${t('leg_sc_other')}</span></div>`;
+  let out=legChip('--root','leg_root','1')+legChip('--third','leg_third','3 / ♭3');
+  if(present.has('d-fifth')) out+=legChip('--fifth','leg_fifth','5');
+  if(present.has('d-sev')) out+=legChip('--seventh','leg_seventh','7 / ♭7');
+  if(present.has('d-other')) out+=`<div class="leg"><span class="leg-dot" style="background:var(--sc-other)"></span><span class="leg-nm">${t('leg_sc_other')}</span></div>`;
   return out;
 }
 function buildRootBtns(container, current, onPick){

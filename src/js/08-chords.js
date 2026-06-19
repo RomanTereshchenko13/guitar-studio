@@ -75,6 +75,7 @@ function labClass(lab){
 let gRoot=9, gRootLbl='A', gMode='names';
 let chQual=1;
 let chVoicing=0;   // index of the selected voicing card (open / E-barre / A-barre / computed)
+let chShapesExpanded=false;   // collapsed by default: show the first few shapes, expand for the rest
 let arpPos=0;      // Arpeggio view (Phase 2): isolated practice box (0 = whole neck, 1..5)
 let idSel=[];      // Identify sub-view (1c): MIDIs the user has tapped on the board (transient scratch)
 function chDegClass(iv){ if(iv===0)return'd-root'; if(iv===3||iv===4)return'd-third'; if([6,7,8].includes(iv))return'd-fifth'; return'd-sev'; }
@@ -185,7 +186,7 @@ function renderQualPicker(containerId, toggleId, onPick){
   if(tog){ tog.setAttribute('aria-expanded', adv?'true':'false'); tog.textContent=(adv?t('qual_less')+' ▴':t('qual_more')+' ▾'); }
 }
 function buildChQuals(){
-  renderQualPicker('ch-quals','ch-quals-toggle', i=>{ chQual=i; chVoicing=0; buildChQuals(); renderChords(); saveState(); });
+  renderQualPicker('ch-quals','ch-quals-toggle', i=>{ chQual=i; chVoicing=0; chShapesExpanded=false; buildChQuals(); renderChords(); saveState(); });
 }
 function renderChords(){
   const q=QUALITIES[chQual];
@@ -212,7 +213,7 @@ function renderChords(){
    (chQual) with the chord-tones view so switching views keeps the chord — that's
    the bridge. Reuses the chord-tone board paint + the scale-view box window. */
 function buildArpQuals(){
-  renderQualPicker('arp-quals','arp-quals-toggle', i=>{ chQual=i; chVoicing=0; buildChQuals(); buildArpQuals(); renderArp(); saveState(); });
+  renderQualPicker('arp-quals','arp-quals-toggle', i=>{ chQual=i; chVoicing=0; chShapesExpanded=false; buildChQuals(); buildArpQuals(); renderArp(); saveState(); });
 }
 function buildArpPos(){
   const c=document.getElementById('arp-pos'); if(!c) return; c.innerHTML='';
@@ -396,6 +397,9 @@ function genVoicing(rootPc, ivs){
 /* Most shape cards to show for one chord (open + barres + a few movable forms up
    the neck). Capped so the row stays tidy and the saved card index stays in range. */
 const MAX_VOICINGS = 6;
+/* How many shape cards show before the "More shapes" toggle; the rest stay hidden
+   until expanded, so the default view is a tidy starter set rather than the full library. */
+const CHORD_SHAPES_COLLAPSED = 3;
 /* Movable voicings discovered by scanning 4-fret windows up the neck: one full,
    playable shape per position (root in the bass, every chord tone present, ≥4 strings,
    ≤3-fret span). Returned low-position-first; the caller dedupes them against the
@@ -472,9 +476,24 @@ function renderChordDiagram(){
   const list=chordVoicings(gRoot, short, q.iv);
   if(!list.length){ cont.innerHTML=`<div class="chordbox"><div class="cb-name">${gRootLbl}${short}</div><div class="cb-cap">${t('cd_na')}</div></div>`; return; }
   if(chVoicing>list.length-1) chVoicing=0;             // clamp after a quality change
-  cont.innerHTML = list.map((v,i)=>
-    `<button type="button" class="chordbox${i===chVoicing?' sel':''}" data-v="${i}" aria-pressed="${i===chVoicing}">`+
-    `<div class="cb-name">${gRootLbl}${short}</div>${chordBoxSVG(v, funcMap)}`+
-    `<div class="cb-cap">${voicingCaption(v)}</div></button>`).join('');
+  // Collapsed by default to a handful of shapes (the long up-the-neck tail reads as
+  // overwhelming on a phone); the "More shapes" toggle below reveals the rest.
+  // ...but never hide the currently-selected shape (e.g. one restored from saved
+  // state that lives in the tail), or its "selected" highlight would vanish while
+  // Listen / Loop still use it.
+  const collapsed = !chShapesExpanded && list.length>CHORD_SHAPES_COLLAPSED && chVoicing<CHORD_SHAPES_COLLAPSED;
+  cont.innerHTML = list.map((v,i)=>{
+    const hide = collapsed && i>=CHORD_SHAPES_COLLAPSED;
+    return `<button type="button" class="chordbox${i===chVoicing?' sel':''}" data-v="${i}" aria-pressed="${i===chVoicing}"${hide?' hidden':''}>`+
+      `<div class="cb-name">${gRootLbl}${short}</div>${chordBoxSVG(v, funcMap)}`+
+      `<div class="cb-cap">${voicingCaption(v)}</div></button>`;
+  }).join('');
+  const more=document.getElementById('cd-more');
+  if(more){
+    // hidden when there's no tail to fold, or when a tail shape is selected (it's
+    // forced visible above, so collapsing can't apply and chShapesExpanded tracks the view)
+    if(list.length<=CHORD_SHAPES_COLLAPSED || chVoicing>=CHORD_SHAPES_COLLAPSED){ more.hidden=true; }
+    else { more.hidden=false; more.textContent = chShapesExpanded ? t('cd_less') : `${t('cd_more')} (${list.length-CHORD_SHAPES_COLLAPSED})`; more.setAttribute('aria-expanded', String(chShapesExpanded)); }
+  }
 }
 

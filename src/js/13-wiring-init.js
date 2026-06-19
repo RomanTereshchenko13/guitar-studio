@@ -175,6 +175,11 @@ document.getElementById('ch-diagram').addEventListener('click',e=>{
   chVoicing=+card.dataset.v; renderChordDiagram(); saveState();
 });
 
+/* "More / Fewer shapes": expand the collapsed shape library in place */
+document.getElementById('cd-more').addEventListener('click',()=>{
+  chShapesExpanded=!chShapesExpanded; renderChordDiagram();
+});
+
 /* triad cards: a dot click sounds that string. Inversion/string-set buttons are
    the selector here, so cards aren't separately selectable. */
 document.getElementById('tr-diagram').addEventListener('click',e=>{

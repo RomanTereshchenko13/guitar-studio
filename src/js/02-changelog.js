@@ -1,6 +1,11 @@
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'1.27.1', date:'2026-06-19',
+    en:['The chord-shapes card now opens with just the first few shapes — the open shape and the nearest forms — and a "More shapes" button reveals the rest of the library when you want them, so the card no longer floods a phone with diagrams.',
+        'The note-colour key under the neck is tidier on phones: it now fits a single clean row (the degree numbers tuck away on small screens) instead of wrapping into a second line that looked like part of the neck\'s scroll.'],
+    uk:['Картка форм акорду тепер відкривається лише з кількома першими формами — відкритою та найближчими — а кнопка «Більше форм» показує решту бібліотеки, коли вони потрібні, тож картка більше не засипає телефон діаграмами.',
+        'Кольорова легенда нот під грифом охайніша на телефоні: тепер вона вміщується в один рядок (номери ступенів ховаються на малих екранах) замість того, щоб переноситися на другий рядок, який виглядав частиною прокрутки грифа.'] },
   { v:'1.27.0', date:'2026-06-19',
     en:['The links between the tabs now go both ways. In Scales, once you overlay one of the key\'s chords on the neck, an "Open in chords" button jumps you straight to that chord in the Chords view — so the diatonic-chord row is no longer a dead end.',
         'The Circle of fifths gains an "Open in chords" button beside "Open in scales", so you can jump from a key straight to its tonic chord on the neck.'],
