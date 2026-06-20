@@ -1,14 +1,25 @@
 ---
 name: project-review
-description: Review a Euterpe diff against the project's own invariants — generated-file edits, i18n symmetry, single-scope discipline, dependency policy, version/changelog coupling. Use alongside /code-review when reviewing changes in this repo. Catches rule violations generic review can't know about.
+description: Full review of a Euterpe diff — runs the built-in /code-review for correctness/cleanup AND layers Euterpe's own invariants (generated-file edits, i18n symmetry, single-scope discipline, dependency policy, version/changelog coupling). Use when reviewing changes in this repo. Catches rule violations generic review can't know about.
 ---
 
 # Euterpe project-invariant review
 
-Generic `/code-review` finds correctness and cleanup issues. This skill checks the
-rules **unique to this repo** that generic review has no way to know. Run it on the
-current diff (`git diff` / `git diff --cached`) and report violations with
-`file:line` and a fix. These complement, not replace, `/code-review`.
+A complete review = generic correctness/cleanup **plus** this repo's unique rules.
+This skill runs **both** so you get one combined report on the current diff
+(`git diff` / `git diff --cached`).
+
+## Step 1 — run the built-in code review
+
+First invoke the **`code-review`** skill (i.e. run `/code-review`; default to
+`medium` effort, or pass the effort the user asked for — `high`/`max`/`ultra`).
+That covers correctness bugs and reuse/simplification/efficiency cleanups. Keep
+its findings to fold into the combined report below.
+
+## Step 2 — check the Euterpe invariants
+
+Then check the rules **unique to this repo** that generic review has no way to
+know, reporting violations with `file:line` and a fix.
 
 ## Checklist
 
@@ -49,6 +60,8 @@ current diff (`git diff` / `git diff --cached`) and report violations with
 
 ## Report
 
-Group findings by severity (blocker / should-fix / nit), each with `file:line`,
-the rule violated, and the fix. If the diff is clean against all invariants, say
-so explicitly.
+Merge the `/code-review` findings (Step 1) with the invariant violations (Step 2)
+into **one** list, grouped by severity (blocker / should-fix / nit), each with
+`file:line` and the fix. Tag each item with its source — `[code-review]` or
+`[invariant]` — so it's clear which pass caught it. If the diff is clean on both
+passes, say so explicitly.
