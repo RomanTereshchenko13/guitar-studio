@@ -34,13 +34,15 @@ Edit the sources, then run the build.
 ## Where things live (all editable sources under `src/`)
 
 - `src/js/NN-*.js` — ordered modules, concatenated alphabetically (zero-padded
-  `01`..`14`). Order matters; the number is the load order.
+  `01`..`15`). Order matters; the number is the load order.
   - `01-version.js` — `APP_VERSION`, the **single source of truth** for the version
   - `02-changelog.js` — release notes (EN/UK); drives the in-app modal AND `CHANGELOG.md`
   - `03-i18n.js` — translation strings · `04-constants.js` · `05-audio.js`
   - `06-backing.js` · `07-render-shared.js` · `08-chords.js` · `09-triads.js`
   - `10-scales.js` · `11-notes-circle-lang.js` · `12-toolbar-state.js`
-  - `13-wiring-init.js` · `14-pwa.js`
+  - `13-learner.js` — learner model (spine #3): per-item SRS history + sessions ring
+    buffer; persists via `12-toolbar-state.js`'s `saveState`/`loadState`
+  - `14-wiring-init.js` · `15-pwa.js`
 - `src/styles.css` — all CSS
 - `src/index.template.html` — markup shell with `@@STYLES@@` / `@@SCRIPT@@` / `@@FAVICON@@` markers
 - `src/sw.template.js` — service worker (`@@VERSION@@` → cache name)
@@ -110,6 +112,26 @@ Each `WxH` token is a real viewport so the shape-based shells fire (landscape ph
 `max-width:940 & max-height:500`), and the `tabs` token captures **all three tabs**
 (harmony/scales/circle) per size → `w{W}-{panel}.png`:
 `node tools/shoot.js tabs 390x844 844x390 360x740 768x1024 1024x768 1280x800 1920x1080`.
+
+## Skills (`.claude/skills/`)
+
+Recurring project workflows packaged as **AI-invokable skills**. They are prompts
+for the agent (this session), not shell scripts — Claude auto-picks one when your
+request matches its description, or you can run it by name (e.g. `/release`). Each
+leads with the "edit `src/`, never the generated files" rule.
+
+- **`release`** — bump `APP_VERSION` + paired EN/UK changelog entry, build/lint/test,
+  ROADMAP version line, tag & push.
+- **`visual-review`** — run the `shoot.js` orientation matrix across all tabs and
+  review the PNGs for overflow / landscape-parity / header issues (the manual step
+  the pre-commit hook only nudges about).
+- **`add-i18n-string`** — add a UI string with symmetric `uk`/`en` keys in
+  `03-i18n.js`, then rebuild + test.
+- **`preflight`** — run every gate on demand: lint → test → generated-file sync →
+  scroll-check → kbd-check (the pre-commit hook's superset).
+- **`project-review`** — review a diff against Euterpe's invariants (generated-file
+  edits, i18n symmetry, single concatenated scope, dependency policy,
+  version↔changelog) — complements `/code-review`.
 
 ## Conventions
 
