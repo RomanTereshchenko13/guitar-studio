@@ -299,6 +299,10 @@
             <span class="dc-name" data-i18n="drill_changes">Зміна акордів за хвилину</span>
             <span class="dc-meta" data-i18n="drill_changes_meta">Чисті зміни за хвилину · коуч (без оцінки)</span>
           </button></li>
+          <li><button type="button" class="drill-card" id="start-strum">
+            <span class="dc-name" data-i18n="drill_strum">Малюнки боя</span>
+            <span class="dc-meta" data-i18n="drill_strum_meta">Удари вниз/вгору по сітці · коуч</span>
+          </button></li>
         </ul>
       </div>
       <!-- Progress readout (3b): the learner model's aggregate stats; renderPractice()
@@ -350,6 +354,26 @@
         </div>
       </div>
       <div class="drill-summary" id="cm-summary" hidden></div>
+    </div>
+
+    <!-- Strumming-pattern trainer (Phase 5b): a coach visualizer — pick a pattern,
+         press Play, and the down/up strums loop over the current chord, highlighting
+         each 8th-note slot in time. No score (coach tier). Hidden until started. -->
+    <div id="sp-area" hidden>
+      <div class="drill-head">
+        <button type="button" class="btn" id="sp-quit" data-i18n="drill_quit">Вийти</button>
+        <span class="drill-count" id="sp-chord"></span>
+      </div>
+      <div class="row"><span class="ctrl-label" data-i18n="sp_pattern">Малюнок</span><div class="group" id="sp-patterns"></div></div>
+      <div class="sp-name" id="sp-name"></div>
+      <div class="sp-grid" id="sp-grid"></div>
+      <div class="cm-active-foot">
+        <span class="drill-sub" id="sp-hint"></span>
+        <span class="sp-controls">
+          <button type="button" class="btn" id="sp-click" aria-pressed="false"></button>
+          <button type="button" class="btn play" id="sp-play"></button>
+        </span>
+      </div>
     </div>
 
     <!-- Active drill (3c): note-naming. Its own board (painted by renderBoard into

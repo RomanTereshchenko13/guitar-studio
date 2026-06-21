@@ -120,6 +120,7 @@ function applyLang(){
   if(typeof renderEar==='function') renderEar();             // Phase 4: ear progress chips
   if(typeof refreshEarLang==='function') refreshEarLang();   // re-localize an in-flight ear prompt
   if(typeof refreshChangesLang==='function') refreshChangesLang();   // re-localize an in-flight changes drill (5a)
+  if(typeof refreshStrumLang==='function') refreshStrumLang();       // re-localize an in-flight strum trainer (5b)
   setHView(hView); setScView(scView); updateGlobalPlay();
   if(typeof applyAudioAvailability==='function') applyAudioAvailability();
   activateRoot(document.getElementById('g-roots'), gRoot);

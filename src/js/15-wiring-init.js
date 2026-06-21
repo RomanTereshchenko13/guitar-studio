@@ -285,17 +285,18 @@ function setMode(mode){
   // end the other modes' running drills when we leave them
   if(currentMode!=='practice' && typeof drill!=='undefined' && drill) exitDrill();
   if(currentMode!=='practice' && typeof cmDrill!=='undefined' && cmDrill) exitChanges();
+  if(currentMode!=='practice' && typeof spDrill!=='undefined' && spDrill) exitStrum();
   if(currentMode!=='ear' && typeof ear!=='undefined' && ear) exitEar();
   if(currentMode==='reference'){
     applyAsideState(); applyContextBar(); applyBoardRegion(); applyHarmonyExtras(); renderActiveContext();
   } else if(currentMode==='practice'){
     // entering Practice with no drill running: show the home view (drill starters
     // swap it for the active drill area right after)
-    const anyDrill=(typeof drill!=='undefined' && drill) || (typeof cmDrill!=='undefined' && cmDrill);
+    const anyDrill=(typeof drill!=='undefined' && drill) || (typeof cmDrill!=='undefined' && cmDrill) || (typeof spDrill!=='undefined' && spDrill);
     if(!anyDrill){
       const home=document.getElementById('practice-home');
       if(home) home.hidden=false;
-      ['drill-area','cm-area'].forEach(id=>{ const a=document.getElementById(id); if(a) a.hidden=true; });
+      ['drill-area','cm-area','sp-area'].forEach(id=>{ const a=document.getElementById(id); if(a) a.hidden=true; });
     }
     renderPractice();
   } else {   // ear
@@ -500,6 +501,9 @@ if (typeof window!=='undefined' && window.__GS_ALLOW_TEST__) {
     startChanges, cmBegin, cmTap, cmUntap, finishChanges, exitChanges, getCm:()=>cmDrill,
     CM_PAIRS, CM_DURS, cmPairId, cmPairBest,
     setCmPair:(i)=>{ cmPairIdx=i; if(cmDrill) cmDrill.pairIdx=i; }, setCmDur:(i)=>{ cmDurIdx=i; if(cmDrill) cmDrill.dur=CM_DURS[i]; },
+    // strumming-pattern trainer (Phase 5b)
+    startStrum, spPlay, spStop, spToggle, exitStrum, getSp:()=>spDrill,
+    STRUM_PATTERNS, setSpPattern:(i)=>{ spIdx=i; if(spDrill) spDrill.patIdx=i; },
     CAGED_BY_POS, isCAGEDScale,
     setFret:(i)=>{ fretRangeIdx=i; },
     setCapo:(i)=>{ capo=i; }, getCapo:()=>capo,

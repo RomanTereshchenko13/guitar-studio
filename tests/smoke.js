@@ -185,7 +185,8 @@ if (T) {
    'tb_volume','tb_tuner',
    'practice_grp_fretboard','practice_grp_rhythm','drill_changes','drill_changes_meta',
    'cm_pair','cm_dur','cm_sec','cm_click','cm_start','cm_stop','cm_setup_note',
-   'cm_changes','cm_cpm','cm_best','cm_tap_hint','cm_undo','cm_newbest'].forEach(k => {
+   'cm_changes','cm_cpm','cm_best','cm_tap_hint','cm_undo','cm_newbest',
+   'drill_strum','drill_strum_meta','sp_pattern','sp_chord','sp_play','sp_stop','sp_hint'].forEach(k => {
     ok('i18n new key present (uk+en): ' + k,
        T.I18N.uk[k] !== undefined && T.I18N.en[k] !== undefined);
   });
@@ -518,6 +519,51 @@ if (T) {
     T.startChanges();
     T.setMode('reference');
     ok('5a: leaving Practice exits a running changes drill', T.getCm() === null);
+    T.resetLearner();
+  })();
+
+  /* ---- Phase 5b: strumming-pattern trainer (coach visualizer) ---- */
+  (function strumDrill() {
+    const doc = win.document;
+    ok('5b: strum drill card present (start-strum)', !!doc.getElementById('start-strum'));
+    ok('5b: strum area + grid present', !!doc.getElementById('sp-area') && !!doc.getElementById('sp-grid'));
+
+    // patterns are well-formed: 8 eighth-note slots, only D/U/'' and inline en+uk names
+    ok('5b: at least 4 strum patterns', T.STRUM_PATTERNS.length >= 4);
+    ok('5b: every pattern is one 4/4 bar of 8 slots',
+       T.STRUM_PATTERNS.every(p => p.seg.length === 8 && p.seg.every(s => s === 'D' || s === 'U' || s === '')));
+    ok('5b: every pattern carries en + uk names',
+       T.STRUM_PATTERNS.every(p => p.en && p.uk));
+
+    T.resetLearner();
+    T.initAudio();
+    T.setCtxNow(0);
+    T.setMode('practice');
+    T.startStrum();
+    ok('5b: startStrum opens the trainer, not yet playing', !!T.getSp() && T.getSp().playing === false);
+    T.setSpPattern(2);
+    T.spPlay();
+    let sp = T.getSp();
+    ok('5b: play starts the loop on the chosen pattern', sp.playing === true && sp.patIdx === 2);
+
+    // drive the scheduler forward; over ~10s even a slow tempo clears one full bar (8 slots)
+    for (let s = 0; s <= 10; s += 0.05) { T.setCtxNow(s); T.schedAdvance(); }
+    sp = T.getSp();
+    ok('5b: the playhead advances through the 8 slots', sp.slot >= 0 && sp.slot < 8);
+    ok('5b: at least one full bar elapses', sp.bars >= 1);
+
+    T.spStop();
+    ok('5b: stop ends the loop', T.getSp().playing === false);
+    const ss = T.getLearner().sessions;
+    ok('5b: a practiced strum session is recorded (bars >= 1)',
+       ss.length >= 1 && /^strum:/.test(ss[ss.length - 1].drill) && ss[ss.length - 1].score >= 1);
+    ok('5b: strum coach mints no per-item SRS', T.learnerStats().items === 0);
+
+    // leaving Practice stops + clears a running trainer
+    T.spPlay();
+    T.setMode('reference');
+    ok('5b: leaving Practice exits a running strum trainer', T.getSp() === null);
+    T.setCtxNow(0);
     T.resetLearner();
   })();
 

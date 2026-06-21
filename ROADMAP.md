@@ -464,8 +464,13 @@ mode, to keep the bottom nav at three and leave slot 4 for Progress) under a **R
   pinned item shape (spine #3) is untouched and no per-item SRS is minted. Optional metronome on its
   own scheduler clock; count-in + a new-best fanfare on the cue bus. _Honest coach framing: it counts
   your taps, not your guitar — which is the authentic form of this exercise; mic scoring is Phase 8/F1._
-- **Strumming-pattern trainer** — down/up patterns on the beat grid, synced to the scheduler;
-  see and hear the pattern even without scoring.
+- **Strumming-pattern trainer** ✅ **Built** (5b · ships with the Phase 5 release, held off a
+  per-increment version bump). A coach *visualizer*: five common down/up patterns on a one-bar 8th-note
+  grid (1 & 2 & 3 & 4 &), looped over the current context chord (spine #1) on its own scheduler clock and
+  highlighted slot-by-slot in time — so you **see and hear** the pattern and strum along. `strumMidi`
+  sweeps down (low→high) / up (high→low); optional beat-reference click. A practiced run (≥1 full bar)
+  records a session (`strum:<id>`, bars played) so Practice progress reflects it, but mints no per-item SRS.
+  _Honest coach framing: no timing score — mic onset scoring is Phase 8/F1._
 - **Comping the progression** — play the right chord at the right time as the progression
   cycles (the rhythm-side mirror of chord-tone targeting).
 - **Groove / feel** — accents, syncopation, palm-mute dynamics, swing.

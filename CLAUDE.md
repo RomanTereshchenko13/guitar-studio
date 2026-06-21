@@ -46,11 +46,11 @@ Edit the sources, then run the build.
     load slot 14, before wiring). `14-drill-notes.js` is the Practice note-naming drill
     (3c); `14-drill-ear.js` is Ear training (Phase 4) — interval / chord-quality / rhythm
     recognition, multiple-choice on the audio buses; `14-drill-rhythm.js` is the Rhythm
-    pillar (Phase 5) — the "one-minute changes" chord-change coach (5a), a setup→timed
+    pillar (Phase 5) — the "one-minute changes" chord-change coach (5a, `cm*`) + the strumming-pattern trainer (5b, `sp*`), a setup→timed
     run→summary flow living as a card in the Practice home. They reuse the cue bus and the
     learner model; the shared progress readout (`renderProgressInto`) lives in the ear module.
-    The note/ear drills write per-item SRS; the changes coach writes only a sessions entry
-    (best-per-pair is derived from the ring buffer, so the pinned item shape is untouched).
+    The note/ear drills write per-item SRS; the rhythm coaches write only a sessions entry
+    (best-per-pair / bars-played is derived from the ring buffer, so the pinned item shape stays untouched).
   - `15-wiring-init.js` · `16-pwa.js`
 - `src/styles.css` — all CSS
 - `src/index.template.html` — markup shell with `@@STYLES@@` / `@@SCRIPT@@` / `@@FAVICON@@` markers
