@@ -56,6 +56,14 @@ let toolbarOpen = (typeof window!=='undefined' && window.innerWidth>700 && windo
 let backingOpen = false;
 /* the chord-shape voicing cards (right rail) are collapsible + persisted, default open */
 let shapesOpen = true;
+/* accessibility prefs (Phase 9 feel pass): a colour-blind-safe (Okabe–Ito) palette
+   and distinct per-function dot shapes, so note roles (root/3rd/5th/7th/ext) read
+   without relying on hue. Off by default; applied as body classes by applyA11y()
+   and persisted via saveState()/loadState(). */
+let cbPalette = false, fnShapes = false;
+/* first-run onboarding: a one-time welcome card shown only to brand-new visitors
+   (no saved state); dismissing it sets welcomeSeen so it never returns. */
+let welcomeSeen = false;
 /* the chord-reference sidebar is only shown on chord-oriented tabs */
 const ASIDE_TABS = ['harmony'];
 

@@ -2,6 +2,14 @@
 
 _Generated from `src/js/02-changelog.js` by `build.js` — do not edit by hand._
 
+## v2.4.0 — 2026-06-22
+
+- Practice's Rhythm section is now complete with three new coach drills you play along with over the backing band.
+- Strumming patterns: common down/up patterns loop over your chord on an eighth-note grid, lit slot-by-slot in time — see it, hear it, strum along.
+- Comp the progression: a progression cycles with bass and drums while a big NOW chord and a NEXT preview land each change in time. Groove & feel: loop a one-bar groove and toggle swing, the backbeat accent and palm-muting to feel what makes it sit right.
+- New accessibility options in Settings: a colour-blind-safe palette and a distinct shape for each note role (root, third, fifth, seventh), so the fretboard reads without relying on colour alone.
+- A short welcome now greets first-time visitors with the three ways in — Reference, Practice and Ear.
+
 ## v2.3.0 — 2026-06-21
 
 - Practice now has a Rhythm section, starting with the classic "one-minute changes" — the most useful drill there is for getting your chord changes clean and fast.

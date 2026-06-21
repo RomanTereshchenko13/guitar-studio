@@ -779,3 +779,39 @@
   .kbd-open-btn:hover { color: var(--text-dim); }
   .kbd-open-btn kbd { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text-dim); background: var(--bg-panel-2); border: 1px solid var(--border-strong); border-radius: 5px; padding: 1px 6px; }
   @media (min-width: 941px) { .kbd-hint-bar { display: block; margin-top: 12px; } }
+
+  /* ===================== Accessibility (Phase 9 feel pass) =====================
+     The note-function colours (root / 3rd / 5th / 7th / ext) carry meaning by hue
+     alone. Two opt-in body classes, toggled in Settings (applyA11y), close that gap:
+       .cb-palette — swap the function colours for the Okabe–Ito CVD-safe set
+       .fn-shapes  — give each function a distinct dot silhouette, so the neck reads
+                     from shape even when the colours can't be told apart
+     Both are pure CSS — nothing repaints when they toggle. */
+  body.cb-palette {
+    --root: #0072B2; --third: #E69F00; --fifth: #009E73; --seventh: #D55E00;
+    --ext: #CC79A7; --sc-other: #9b9486; --natural: #56B4E9; --sharp: #E69F00;
+  }
+  /* the new root/seventh fills are dark — flip those dots (and the few accent chips
+     that fill with var(--root)) to white text for contrast; the other functions
+     keep their dark text on lighter fills */
+  body.cb-palette .d-root, body.cb-palette .d-sev,
+  body.cb-palette .dot.quiz.hit, body.cb-palette .ear-choice.correct,
+  body.cb-palette .seq-chip.active, body.cb-palette .btn.metro.active,
+  body.cb-palette .co-beat.on { color: #fff; }
+  /* distinct per-function dot shapes. clip-path changes only the silhouette, so the
+     scale (hover/playing) and lefty-mirror transforms and the layout are untouched.
+     Root stays the circle (the home shape). */
+  body.fn-shapes .dot.d-third { border-radius: 4px; }                                                    /* square */
+  body.fn-shapes .dot.d-fifth { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }                  /* diamond */
+  body.fn-shapes .dot.d-sev   { clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); } /* hexagon */
+  body.fn-shapes .dot.d-ext   { clip-path: polygon(50% 0, 100% 100%, 0 100%); }                          /* triangle */
+
+  /* ---- first-run welcome card (onboarding) — reuses the .cl-overlay / .cl-modal look ---- */
+  .wc-modal { max-width: 440px; }
+  .wc-body { padding: 14px 20px 20px; }
+  .wc-lead { font-size: 14px; color: var(--text-dim); margin-bottom: 13px; }
+  .wc-list { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+  .wc-list li { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  .wc-list b { color: var(--text); font-weight: 600; }
+  .wc-actions { display: flex; justify-content: flex-end; }
+  .wc-actions .btn.play { font-size: 14px; padding: 9px 24px; }

@@ -10,7 +10,7 @@ Code is authored as small `src/js/NN-*.js` modules and concatenated by a pure-st
 `build.js` (no bundler, no transpile). Every item below is reachable with the Web Audio API
 and vanilla JS. New phases add new `src/` modules; they never add a dependency.
 
-_Last updated: 2026-06-21 · shipping: v2.3.0_
+_Last updated: 2026-06-22 · shipping: v2.4.0_
 
 ---
 
@@ -464,20 +464,19 @@ mode, to keep the bottom nav at three and leave slot 4 for Progress) under a **R
   pinned item shape (spine #3) is untouched and no per-item SRS is minted. Optional metronome on its
   own scheduler clock; count-in + a new-best fanfare on the cue bus. _Honest coach framing: it counts
   your taps, not your guitar — which is the authentic form of this exercise; mic scoring is Phase 8/F1._
-- **Strumming-pattern trainer** ✅ **Built** (5b · ships with the Phase 5 release, held off a
-  per-increment version bump). A coach *visualizer*: five common down/up patterns on a one-bar 8th-note
+- **Strumming-pattern trainer** ✅ **Shipped v2.4.0** (5b). A coach *visualizer*: five common down/up patterns on a one-bar 8th-note
   grid (1 & 2 & 3 & 4 &), looped over the current context chord (spine #1) on its own scheduler clock and
   highlighted slot-by-slot in time — so you **see and hear** the pattern and strum along. `strumMidi`
   sweeps down (low→high) / up (high→low); optional beat-reference click. A practiced run (≥1 full bar)
   records a session (`strum:<id>`, bars played) so Practice progress reflects it, but mints no per-item SRS.
   _Honest coach framing: no timing score — mic onset scoring is Phase 8/F1._
-- **Comping the progression** ✅ **Built** (5c · ships with the Phase 5 release). The rhythm-side
+- **Comping the progression** ✅ **Shipped v2.4.0** (5c). The rhythm-side
   mirror of chord-tone targeting: a chosen preset (`SEQ_PRESETS`, resolved to the context key, spine #1)
   cycles with a forced backing band (bass + groove + a guide comp via `compStrum`/`scheduleBand(force)`)
   on its own scheduler clock; a big **NOW** chord + a **NEXT** preview (reusing `cmChord`/`cmChordBox`)
   + a 4-beat indicator make the change land in time. Switch the progression live. A practiced run
   records a session (bars comped), minting no per-item SRS. _Coach tier — no timing score (Phase 8/F1)._
-- **Groove / feel** ✅ **Built** (5d · ships with the Phase 5 release). A feel *lab*: loop a one-bar
+- **Groove / feel** ✅ **Shipped v2.4.0** (5d). A feel *lab*: loop a one-bar
   groove (swung hats + kick/snare backbeat + bass + a down-up comp) over the context chord on one
   8th-note scheduler clock, with swing baked into the off-beats, and toggle the things that make a
   groove feel right — **swing** (straight → swing → shuffle), a **backbeat accent**, and **palm-mute**
@@ -576,11 +575,13 @@ product people find, adopt, and recommend — none of them DSP, all high-leverag
   landing pages for SEO. Currently absent and cheap. _Also here:_ **printable / exportable
   chord & scale sheets** — a print stylesheet (and/or a one-page export) of the current
   board + diagrams, useful for teachers and students and a low-effort offline artifact.
-- **Polish & feel.** Onboarding/first-run, drill responsiveness and animation, cue sound,
-  empty/error states — the bar "good" actually lives at, owned by no other phase. _Includes_ a
-  **colour-blind / alternate palette** option: the function colours (root / third / fifth /
-  seventh) currently carry meaning by hue alone, so a high-contrast or shape-augmented palette
-  is the accessibility gap that belongs with the feel pass.
+- **Polish & feel.** Drill responsiveness and animation, cue sound, empty/error states —
+  the bar "good" actually lives at, owned by no other phase. _Shipped early (v2.4.0):_ a
+  **first-run welcome card** (lightweight onboarding for brand-new visitors, dismissed once
+  and remembered) and the **colour-blind / alternate palette** option — an Okabe–Ito CVD-safe
+  palette plus distinct per-function dot **shapes** (toggles in Settings ▸ Accessibility), so
+  the function colours (root / third / fifth / seventh) no longer carry meaning by hue alone.
+  _Still open:_ deeper onboarding, empty/error states, and the broader feel pass.
 
 **Honest scope.** Even complete, this wins its *niche* — the best free, private, no-login,
 install-free, bilingual tool unifying reference + jamming + practice — not a head-to-head win

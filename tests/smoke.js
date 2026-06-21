@@ -188,7 +188,9 @@ if (T) {
    'cm_changes','cm_cpm','cm_best','cm_tap_hint','cm_undo','cm_newbest',
    'drill_strum','drill_strum_meta','sp_pattern','sp_chord','sp_play','sp_stop','sp_hint',
    'drill_comp','drill_comp_meta','co_prog','co_now','co_next','co_hint',
-   'drill_groove','drill_groove_meta','gf_swing','gf_accent','gf_mute','gf_hint'].forEach(k => {
+   'drill_groove','drill_groove_meta','gf_swing','gf_accent','gf_mute','gf_hint',
+   'a11y_label','a11y_palette','a11y_shapes',
+   'wc_title','wc_lead','wc_ref','wc_practice','wc_ear','wc_got'].forEach(k => {
     ok('i18n new key present (uk+en): ' + k,
        T.I18N.uk[k] !== undefined && T.I18N.en[k] !== undefined);
   });
@@ -660,6 +662,29 @@ if (T) {
     ok('5d: leaving Practice exits a running groove drill', T.getGf() === null);
     T.setCtxNow(0);
     T.resetLearner();
+  })();
+
+  /* ---- Accessibility + onboarding (Phase 9 feel pass) ---- */
+  (function(){
+    const body = win.document.body;
+    // the two toggles flip the body classes the CSS keys off (palette + dot shapes)
+    T.setCbPalette(true); T.setFnShapes(true); T.applyA11y();
+    ok('a11y: cb-palette body class applied', body.classList.contains('cb-palette'));
+    ok('a11y: fn-shapes body class applied', body.classList.contains('fn-shapes'));
+    const pBtn = win.document.getElementById('tb-cbpalette');
+    ok('a11y: palette toggle present + reflects pressed state',
+       !!pBtn && pBtn.getAttribute('aria-pressed') === 'true');
+    T.setCbPalette(false); T.setFnShapes(false); T.applyA11y();
+    ok('a11y: toggles off clear both body classes',
+       !body.classList.contains('cb-palette') && !body.classList.contains('fn-shapes'));
+    // onboarding: showWelcome reveals the card; dismiss hides it AND records welcomeSeen
+    const ov = win.document.getElementById('welcome-overlay');
+    ok('onboarding: welcome overlay present in DOM', !!ov);
+    T.setWelcomeSeen(false); T.showWelcome();
+    ok('onboarding: showWelcome reveals the card', !!ov && ov.hidden === false);
+    T.dismissWelcome();
+    ok('onboarding: dismiss hides the card + records seen',
+       !!ov && ov.hidden === true && T.getA11y().welcomeSeen === true);
   })();
 
   /* ---- musical correctness: voicing fifths incl. ♭5 / ♯5 (Phase C bass) ---- */

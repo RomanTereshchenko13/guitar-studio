@@ -12,6 +12,7 @@ function buildToolbar(){
   const vv=document.getElementById('tb-vol-val'); if(vv) vv.textContent=Math.round(masterVol*100)+'%';
   buildTuner();
   const lb=document.getElementById('tb-lefty'); lb.classList.toggle('active', lefty); lb.setAttribute('aria-pressed', lefty);
+  if(typeof applyA11y==='function') applyA11y();   // keep the accessibility toggles in sync after a rebuild (e.g. language switch)
   applyToolbarState();
 }
 /* reference-tone tuner: one button per open string of the current tuning, low → high
@@ -172,6 +173,7 @@ let currentTab='harmony';
 let currentMode='reference';
 function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({
   lang, mode:currentMode, tab:currentTab, tuningIdx, fretRangeIdx, tempo, masterVol, lefty, toolbarOpen, backingOpen, shapesOpen, capo,
+  cbPalette, fnShapes, welcomeSeen,
   gRoot, gRootLbl, gMode, hView, scView,
   chQual, arpPos, scIdx, scPos, scOverlay,
   chVoicing,
@@ -194,6 +196,12 @@ function loadState(){ try{
   if(typeof s.toolbarOpen==='boolean') toolbarOpen=s.toolbarOpen;
   if(typeof s.backingOpen==='boolean') backingOpen=s.backingOpen;
   if(typeof s.shapesOpen==='boolean') shapesOpen=s.shapesOpen;
+  if(typeof s.cbPalette==='boolean') cbPalette=s.cbPalette;
+  if(typeof s.fnShapes==='boolean') fnShapes=s.fnShapes;
+  // grandfather existing users: a save with no welcomeSeen field is a returning
+  // visitor (predates onboarding), so don't pop the welcome at them — only a
+  // genuinely first visit (no saved state at all) leaves welcomeSeen false.
+  welcomeSeen = (typeof s.welcomeSeen==='boolean') ? s.welcomeSeen : true;
   if(Number.isInteger(s.gRoot)&&s.gRoot>=0&&s.gRoot<12){ gRoot=s.gRoot; if(typeof s.gRootLbl==='string') gRootLbl=s.gRootLbl; }
   if(s.gMode==='names'||s.gMode==='deg') gMode=s.gMode;
   if(s.hView==='chords'||s.hView==='triads'||s.hView==='arp') hView=s.hView;   // identify stays transient (idSel is scratch)

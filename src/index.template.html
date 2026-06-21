@@ -112,6 +112,14 @@
         <span class="tb-label" data-i18n="tb_capo">Каподастр</span>
         <select id="tb-capo"></select>
       </div>
+      <!-- Accessibility (Phase 9 feel pass): the function colours carry meaning by
+           hue alone, so offer a colour-blind-safe palette + distinct per-function
+           dot shapes. Both are body-class toggles (applyA11y) and persisted. -->
+      <div class="tb-group">
+        <span class="tb-label" data-i18n="a11y_label">Доступність</span>
+        <button class="btn" id="tb-cbpalette" aria-pressed="false" data-i18n="a11y_palette">Палітра для дальтоніків</button>
+        <button class="btn" id="tb-shapes" aria-pressed="false" data-i18n="a11y_shapes">Форми на нотах</button>
+      </div>
     </div>
     <!-- Backing band (metronome + synth bass/drums): secondary jam-along tools, one
          tap to reveal. The toggle tints green while any of them is active so you can
@@ -580,6 +588,27 @@
       <button class="cl-close" id="cl-close" aria-label="close">✕</button>
     </div>
     <div class="cl-body" id="cl-body"></div>
+  </div>
+</div>
+
+<!-- First-run welcome (Phase 9 onboarding): a one-time, dismissible orientation card
+     shown only to brand-new visitors (no saved state). Reuses the changelog overlay/
+     modal styling; dismissing it records welcomeSeen so it never returns. -->
+<div class="cl-overlay" id="welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="wc-title" hidden>
+  <div class="cl-modal wc-modal">
+    <div class="cl-head">
+      <h2 id="wc-title" data-i18n="wc_title">Вітаємо в Euterpe</h2>
+      <button class="cl-close" id="wc-close" aria-label="close">✕</button>
+    </div>
+    <div class="cl-body wc-body">
+      <p class="wc-lead" data-i18n="wc_lead">Гітарна студія для теорії та практики. Три способи почати:</p>
+      <ul class="wc-list">
+        <li><b data-i18n="mode_reference">Довідник</b> — <span data-i18n="wc_ref">обери тональність і досліджуй акорди, гами й гриф.</span></li>
+        <li><b data-i18n="mode_practice">Практика</b> — <span data-i18n="wc_practice">вправи, що ведуть облік прогресу й повертають складне.</span></li>
+        <li><b data-i18n="mode_ear">Слух</b> — <span data-i18n="wc_ear">тренуй слух — впізнавай інтервали, акорди й ритм на звук.</span></li>
+      </ul>
+      <div class="wc-actions"><button class="btn play" id="wc-got" data-i18n="wc_got">Зрозуміло</button></div>
+    </div>
   </div>
 </div>
 

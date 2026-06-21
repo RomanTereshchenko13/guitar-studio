@@ -356,6 +356,18 @@ document.getElementById('tb-tuning').onchange=function(){ tuningIdx=+this.value;
   if(ts) ts.addEventListener('click', e=>{ const b=e.target.closest('[data-midi]'); if(b) tunerTone(+b.dataset.midi); }); }
 document.getElementById('tb-frets').onchange=function(){ fretRangeIdx=+this.value; renderAllBoards(); saveState(); };
 { const cp=document.getElementById('tb-capo'); if(cp) cp.onchange=function(){ capo=+this.value; renderAllBoards(); saveState(); }; }
+/* accessibility toggles (Phase 9 feel pass): a colour-blind-safe palette + distinct
+   per-function dot shapes. Both are pure body-class switches — the CSS does the work
+   (see styles.css), so there's nothing to repaint — and both persist. */
+function applyA11y(){
+  if(typeof document==='undefined' || !document.body) return;
+  document.body.classList.toggle('cb-palette', cbPalette);
+  document.body.classList.toggle('fn-shapes', fnShapes);
+  const p=document.getElementById('tb-cbpalette'); if(p){ p.classList.toggle('active', cbPalette); p.setAttribute('aria-pressed', cbPalette?'true':'false'); }
+  const s=document.getElementById('tb-shapes');    if(s){ s.classList.toggle('active', fnShapes);  s.setAttribute('aria-pressed', fnShapes?'true':'false'); }
+}
+{ const p=document.getElementById('tb-cbpalette'); if(p) p.onclick=function(){ cbPalette=!cbPalette; applyA11y(); saveState(); };
+  const s=document.getElementById('tb-shapes');    if(s) s.onclick=function(){ fnShapes=!fnShapes;  applyA11y(); saveState(); }; }
 document.getElementById('tb-lefty').onclick=function(){ lefty=!lefty; this.classList.toggle('active',lefty); this.setAttribute('aria-pressed',lefty); renderAllBoards(); renderCircle(); saveState(); };
 /* the metronome / loop / sequencer clocks read beat() live, so the tempo glides
    without restarting — just update the value and the label here. */
@@ -397,7 +409,18 @@ function closeKbd(){ const o=document.getElementById('kbd-overlay'); if(!o) retu
 { const c=document.getElementById('kbd-close'); if(c) c.onclick=closeKbd;
   const ov=document.getElementById('kbd-overlay'); if(ov) ov.addEventListener('click',e=>{ if(e.target.id==='kbd-overlay') closeKbd(); });
   const ob=document.getElementById('kbd-open'); if(ob) ob.onclick=openKbd; }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeChangelog(); closeKbd(); } });
+/* ---- first-run welcome (onboarding) ----
+   A one-time orientation card for brand-new visitors. Reuses the changelog overlay
+   look; dismissing it (button / ✕ / backdrop / Escape) records welcomeSeen so it
+   never returns. dismissWelcome no-ops when the card isn't open, so it's safe to
+   call from the shared Escape handler. */
+function showWelcome(){ const o=document.getElementById('welcome-overlay'); if(!o) return; o.hidden=false; o.classList.add('open'); const g=document.getElementById('wc-got'); if(g) try{ g.focus(); }catch(_){} }
+function dismissWelcome(){ const o=document.getElementById('welcome-overlay'); if(!o||o.hidden) return; o.classList.remove('open'); o.hidden=true; welcomeSeen=true; saveState(); }
+{ const g=document.getElementById('wc-got');   if(g) g.onclick=dismissWelcome;
+  const c=document.getElementById('wc-close'); if(c) c.onclick=dismissWelcome;
+  const o=document.getElementById('welcome-overlay'); if(o) o.addEventListener('click',e=>{ if(e.target.id==='welcome-overlay') dismissWelcome(); }); }
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeChangelog(); closeKbd(); dismissWelcome(); } });
 
 /* ---- global keyboard shortcuts (desktop power-use; also seeds Phase-3 drills) ----
    Space=Listen/Stop · L=Loop · M=Metronome · 1/2/3=tabs · A–G=key · [ ]=transpose · ?=help.
@@ -472,7 +495,11 @@ markScrollables();
 window.addEventListener('resize', markScrollables);
 try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(markScrollables); }catch(_){}
 applyAudioAvailability();
+applyA11y();   // apply restored accessibility prefs (palette / shapes) on load
 document.getElementById('app-ver').textContent = 'v' + APP_VERSION;
+// First-run onboarding: only a genuinely first visit (no saved state) leaves
+// welcomeSeen false — returning users are grandfathered in loadState().
+if(!welcomeSeen) showWelcome();
 
 /* ---- test introspection hook (Phase C+) ----
    Built ONLY when a harness sets window.__GS_ALLOW_TEST__ before the page loads,
@@ -515,11 +542,16 @@ if (typeof window!=='undefined' && window.__GS_ALLOW_TEST__) {
     CAGED_BY_POS, isCAGEDScale,
     setFret:(i)=>{ fretRangeIdx=i; },
     setCapo:(i)=>{ capo=i; }, getCapo:()=>capo,
+    // accessibility + onboarding (Phase 9 feel pass)
+    applyA11y, showWelcome, dismissWelcome,
+    setCbPalette:(v)=>{ cbPalette=!!v; }, setFnShapes:(v)=>{ fnShapes=!!v; }, setWelcomeSeen:(v)=>{ welcomeSeen=!!v; },
+    getA11y:()=>({ cbPalette, fnShapes, welcomeSeen }),
     setChQual:(i)=>{ chQual=i; chVoicing=0; }, setChVoicing:(i)=>{ chVoicing=i; },
     setTriad:(q,set,inv)=>{ trQual=q; trSet=set; trInv=inv; },
     initAudio:()=>audio(),
     setCtxNow:(t)=>{ if(actx) actx.currentTime=t; },
     state:()=>({ gRoot, gRootLbl, scIdx, scView, chQual, chVoicing, currentTab, currentMode, hView,
-                 loop:!!loopClock, loopMode, seq:!!seqClock, fretRangeIdx, lang, tempo })
+                 loop:!!loopClock, loopMode, seq:!!seqClock, fretRangeIdx, lang, tempo,
+                 cbPalette, fnShapes, welcomeSeen })
   };
 }

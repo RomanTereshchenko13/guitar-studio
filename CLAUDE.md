@@ -42,12 +42,16 @@ Edit the sources, then run the build.
   - `10-scales.js` · `11-notes-circle-lang.js` · `12-toolbar-state.js`
   - `13-learner.js` — learner model (spine #3): per-item SRS history + sessions ring
     buffer; persists via `12-toolbar-state.js`'s `saveState`/`loadState`
-  - `14-drill-ear.js` + `14-drill-notes.js` + `14-drill-rhythm.js` — the drills (all at
-    load slot 14, before wiring). `14-drill-notes.js` is the Practice note-naming drill
-    (3c); `14-drill-ear.js` is Ear training (Phase 4) — interval / chord-quality / rhythm
-    recognition, multiple-choice on the audio buses; `14-drill-rhythm.js` is the Rhythm
-    pillar (Phase 5) — the "one-minute changes" chord-change coach (5a, `cm*`) + the strumming-pattern trainer (5b, `sp*`) + comp-the-progression (5c, `co*`) + the groove/feel lab (5d, `gf*`), a setup→timed
-    run→summary flow living as a card in the Practice home. They reuse the cue bus and the
+  - `14-drill-ear.js` + `14-drill-notes.js` + `14-drill-rhythm-{1-changes,2-strum,3-comp,4-groove}.js`
+    — the drills (all at load slot 14, before wiring). `14-drill-notes.js` is the Practice
+    note-naming drill (3c); `14-drill-ear.js` is Ear training (Phase 4) — interval /
+    chord-quality / rhythm recognition, multiple-choice on the audio buses; the four
+    `14-drill-rhythm-*.js` files are the Rhythm pillar (Phase 5), one coach per file in
+    load order — the "one-minute changes" chord-change coach (5a, `cm*`) + the
+    strumming-pattern trainer (5b, `sp*`) + comp-the-progression (5c, `co*`) + the
+    groove/feel lab (5d, `gf*`), each a setup→timed run→summary flow living as a card in
+    the Practice home (the `-1/-2/-3/-4` suffix preserves the cm→sp→co→gf concat order).
+    They reuse the cue bus and the
     learner model; the shared progress readout (`renderProgressInto`) lives in the ear module.
     The note/ear drills write per-item SRS; the rhythm coaches write only a sessions entry
     (best-per-pair / bars-played is derived from the ring buffer, so the pinned item shape stays untouched).

@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <!-- Euterpe (Guitar Studio) — generated single-file build (do not edit; edit src/ and run build.js).
-     Version: 2.3.0  (source of truth: APP_VERSION in src/js/01-version.js;
+     Version: 2.4.0  (source of truth: APP_VERSION in src/js/01-version.js;
      build.js fills this in). Release notes live in src/js/02-changelog.js (drives
      the in-app "What's new" modal and CHANGELOG.md). -->
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2.3.0">
+<meta name="version" content="2.4.0">
 <meta name="description" content="Euterpe — a guitar studio for music theory and practice: scales, modes, chords, the fretboard, the circle of fifths, and a jam-along backing band. Works offline.">
 <meta name="theme-color" content="#16140f">
 <!-- Installed-app (standalone) hints. The manifest covers Android/desktop; these
@@ -810,6 +810,42 @@
   .kbd-open-btn:hover { color: var(--text-dim); }
   .kbd-open-btn kbd { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text-dim); background: var(--bg-panel-2); border: 1px solid var(--border-strong); border-radius: 5px; padding: 1px 6px; }
   @media (min-width: 941px) { .kbd-hint-bar { display: block; margin-top: 12px; } }
+
+  /* ===================== Accessibility (Phase 9 feel pass) =====================
+     The note-function colours (root / 3rd / 5th / 7th / ext) carry meaning by hue
+     alone. Two opt-in body classes, toggled in Settings (applyA11y), close that gap:
+       .cb-palette — swap the function colours for the Okabe–Ito CVD-safe set
+       .fn-shapes  — give each function a distinct dot silhouette, so the neck reads
+                     from shape even when the colours can't be told apart
+     Both are pure CSS — nothing repaints when they toggle. */
+  body.cb-palette {
+    --root: #0072B2; --third: #E69F00; --fifth: #009E73; --seventh: #D55E00;
+    --ext: #CC79A7; --sc-other: #9b9486; --natural: #56B4E9; --sharp: #E69F00;
+  }
+  /* the new root/seventh fills are dark — flip those dots (and the few accent chips
+     that fill with var(--root)) to white text for contrast; the other functions
+     keep their dark text on lighter fills */
+  body.cb-palette .d-root, body.cb-palette .d-sev,
+  body.cb-palette .dot.quiz.hit, body.cb-palette .ear-choice.correct,
+  body.cb-palette .seq-chip.active, body.cb-palette .btn.metro.active,
+  body.cb-palette .co-beat.on { color: #fff; }
+  /* distinct per-function dot shapes. clip-path changes only the silhouette, so the
+     scale (hover/playing) and lefty-mirror transforms and the layout are untouched.
+     Root stays the circle (the home shape). */
+  body.fn-shapes .dot.d-third { border-radius: 4px; }                                                    /* square */
+  body.fn-shapes .dot.d-fifth { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }                  /* diamond */
+  body.fn-shapes .dot.d-sev   { clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); } /* hexagon */
+  body.fn-shapes .dot.d-ext   { clip-path: polygon(50% 0, 100% 100%, 0 100%); }                          /* triangle */
+
+  /* ---- first-run welcome card (onboarding) — reuses the .cl-overlay / .cl-modal look ---- */
+  .wc-modal { max-width: 440px; }
+  .wc-body { padding: 14px 20px 20px; }
+  .wc-lead { font-size: 14px; color: var(--text-dim); margin-bottom: 13px; }
+  .wc-list { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+  .wc-list li { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  .wc-list b { color: var(--text); font-weight: 600; }
+  .wc-actions { display: flex; justify-content: flex-end; }
+  .wc-actions .btn.play { font-size: 14px; padding: 9px 24px; }
 </style>
 </head>
 <body>
@@ -892,6 +928,14 @@
       <div class="tb-group">
         <span class="tb-label" data-i18n="tb_capo">Каподастр</span>
         <select id="tb-capo"></select>
+      </div>
+      <!-- Accessibility (Phase 9 feel pass): the function colours carry meaning by
+           hue alone, so offer a colour-blind-safe palette + distinct per-function
+           dot shapes. Both are body-class toggles (applyA11y) and persisted. -->
+      <div class="tb-group">
+        <span class="tb-label" data-i18n="a11y_label">Доступність</span>
+        <button class="btn" id="tb-cbpalette" aria-pressed="false" data-i18n="a11y_palette">Палітра для дальтоніків</button>
+        <button class="btn" id="tb-shapes" aria-pressed="false" data-i18n="a11y_shapes">Форми на нотах</button>
       </div>
     </div>
     <!-- Backing band (metronome + synth bass/drums): secondary jam-along tools, one
@@ -1364,6 +1408,27 @@
   </div>
 </div>
 
+<!-- First-run welcome (Phase 9 onboarding): a one-time, dismissible orientation card
+     shown only to brand-new visitors (no saved state). Reuses the changelog overlay/
+     modal styling; dismissing it records welcomeSeen so it never returns. -->
+<div class="cl-overlay" id="welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="wc-title" hidden>
+  <div class="cl-modal wc-modal">
+    <div class="cl-head">
+      <h2 id="wc-title" data-i18n="wc_title">Вітаємо в Euterpe</h2>
+      <button class="cl-close" id="wc-close" aria-label="close">✕</button>
+    </div>
+    <div class="cl-body wc-body">
+      <p class="wc-lead" data-i18n="wc_lead">Гітарна студія для теорії та практики. Три способи почати:</p>
+      <ul class="wc-list">
+        <li><b data-i18n="mode_reference">Довідник</b> — <span data-i18n="wc_ref">обери тональність і досліджуй акорди, гами й гриф.</span></li>
+        <li><b data-i18n="mode_practice">Практика</b> — <span data-i18n="wc_practice">вправи, що ведуть облік прогресу й повертають складне.</span></li>
+        <li><b data-i18n="mode_ear">Слух</b> — <span data-i18n="wc_ear">тренуй слух — впізнавай інтервали, акорди й ритм на звук.</span></li>
+      </ul>
+      <div class="wc-actions"><button class="btn play" id="wc-got" data-i18n="wc_got">Зрозуміло</button></div>
+    </div>
+  </div>
+</div>
+
 <!-- Keyboard-shortcuts cheat-sheet (desktop power-use). Toggled by "?" or the
      footer affordance; key caps are language-neutral, the descriptions localize. -->
 <div class="kbd-overlay" id="kbd-overlay" role="dialog" aria-modal="true" aria-labelledby="kbd-title" hidden>
@@ -1391,10 +1456,21 @@
 <script>
 /* Single source of truth for the app version. Bump on each release and update
    the changelog comment at the top of the file + the <meta name="version">. */
-const APP_VERSION = '2.3.0';
+const APP_VERSION = '2.4.0';
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'2.4.0', date:'2026-06-22',
+    en:['Practice\'s Rhythm section is now complete with three new coach drills you play along with over the backing band.',
+        'Strumming patterns: common down/up patterns loop over your chord on an eighth-note grid, lit slot-by-slot in time — see it, hear it, strum along.',
+        'Comp the progression: a progression cycles with bass and drums while a big NOW chord and a NEXT preview land each change in time. Groove & feel: loop a one-bar groove and toggle swing, the backbeat accent and palm-muting to feel what makes it sit right.',
+        'New accessibility options in Settings: a colour-blind-safe palette and a distinct shape for each note role (root, third, fifth, seventh), so the fretboard reads without relying on colour alone.',
+        'A short welcome now greets first-time visitors with the three ways in — Reference, Practice and Ear.'],
+    uk:['Розділ «Ритм» у «Практиці» тепер повний — три нові коуч-вправи, які граєш разом із гуртом супроводу.',
+        'Малюнки боя: поширені удари вниз/вгору крутяться над твоїм акордом по сітці восьмих, підсвічуючись клітинка за клітинкою в темп — бачиш, чуєш і граєш разом.',
+        'Акомпанемент прогресії: прогресія крутиться з басом і ударними, а великий акорд «Зараз» і прев’ю «Далі» допомагають вчасно змінювати акорди. Грув і відчуття: зацикли однотактовий грув і вмикай свінг, бекбіт-акцент та глушіння, щоб відчути, що робить грув живим.',
+        'Нові опції доступності в «Налаштуваннях»: палітра для дальтоніків і окрема форма для кожної ролі ноти (тоніка, терція, квінта, септима), щоб гриф читався без опори лише на колір.',
+        'Новачків тепер вітає коротке віконце з трьома способами почати — «Довідник», «Практика» та «Слух».'] },
   { v:'2.3.0', date:'2026-06-21',
     en:['Practice now has a Rhythm section, starting with the classic "one-minute changes" — the most useful drill there is for getting your chord changes clean and fast.',
         'Pick a chord pair (A–D, C–G, G–Em and more), choose 30/60/90 seconds, and switch between the two shapes as cleanly as you can. The two chord diagrams stay on screen the whole time so you always know where your fingers go.',
@@ -1774,6 +1850,13 @@ const I18N = {
     inv_2nd_desc:'Друге обернення — у басу квінта',
     tb_settings:'Налаштування', tb_volume:'Гучність', tb_tuner:'Тюнер',
     tb_tuning:'Стрій', tb_lefty:'Ліворукий', tb_frets:'Лади', tb_tempo:'Темп', tb_capo:'Каподастр', capo_off:'без',
+    a11y_label:'Доступність', a11y_palette:'Палітра для дальтоніків', a11y_shapes:'Форми на нотах',
+    wc_title:'Вітаємо в Euterpe',
+    wc_lead:'Гітарна студія для теорії та практики. Три способи почати:',
+    wc_ref:'обери тональність і досліджуй акорди, гами й гриф.',
+    wc_practice:'вправи, що ведуть облік прогресу й повертають складне.',
+    wc_ear:'тренуй слух — впізнавай інтервали, акорди й ритм на звук.',
+    wc_got:'Зрозуміло',
     tb_metro_on:'Метроном', tb_metro_off:'Метроном',
     tb_bass:'Бас', tb_drums:'Ударні', tb_backing:'Супровід',
     qg_basic:'Базові', qg_seventh:'Септакорди', qg_ext:'Розширені',
@@ -1878,6 +1961,13 @@ const I18N = {
     inv_2nd_desc:'Second inversion — fifth in the bass',
     tb_settings:'Settings', tb_volume:'Volume', tb_tuner:'Tuner',
     tb_tuning:'Tuning', tb_lefty:'Left-handed', tb_frets:'Frets', tb_tempo:'Tempo', tb_capo:'Capo', capo_off:'off',
+    a11y_label:'Accessibility', a11y_palette:'Colour-blind palette', a11y_shapes:'Shapes on dots',
+    wc_title:'Welcome to Euterpe',
+    wc_lead:'A guitar studio for theory and practice. Three ways in:',
+    wc_ref:'pick a key and explore chords, scales and the fretboard.',
+    wc_practice:'drills that track your progress and resurface what you miss.',
+    wc_ear:'train your ear — recognise intervals, chords and rhythm by sound.',
+    wc_got:'Got it',
     tb_metro_on:'Metronome', tb_metro_off:'Metronome',
     tb_bass:'Bass', tb_drums:'Drums', tb_backing:'Backing',
     qg_basic:'Basic', qg_seventh:'Sevenths', qg_ext:'Extended',
@@ -1961,6 +2051,14 @@ let toolbarOpen = (typeof window!=='undefined' && window.innerWidth>700 && windo
 let backingOpen = false;
 /* the chord-shape voicing cards (right rail) are collapsible + persisted, default open */
 let shapesOpen = true;
+/* accessibility prefs (Phase 9 feel pass): a colour-blind-safe (Okabe–Ito) palette
+   and distinct per-function dot shapes, so note roles (root/3rd/5th/7th/ext) read
+   without relying on hue. Off by default; applied as body classes by applyA11y()
+   and persisted via saveState()/loadState(). */
+let cbPalette = false, fnShapes = false;
+/* first-run onboarding: a one-time welcome card shown only to brand-new visitors
+   (no saved state); dismissing it sets welcomeSeen so it never returns. */
+let welcomeSeen = false;
 /* the chord-reference sidebar is only shown on chord-oriented tabs */
 const ASIDE_TABS = ['harmony'];
 
@@ -3704,6 +3802,7 @@ function buildToolbar(){
   const vv=document.getElementById('tb-vol-val'); if(vv) vv.textContent=Math.round(masterVol*100)+'%';
   buildTuner();
   const lb=document.getElementById('tb-lefty'); lb.classList.toggle('active', lefty); lb.setAttribute('aria-pressed', lefty);
+  if(typeof applyA11y==='function') applyA11y();   // keep the accessibility toggles in sync after a rebuild (e.g. language switch)
   applyToolbarState();
 }
 /* reference-tone tuner: one button per open string of the current tuning, low → high
@@ -3864,6 +3963,7 @@ let currentTab='harmony';
 let currentMode='reference';
 function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({
   lang, mode:currentMode, tab:currentTab, tuningIdx, fretRangeIdx, tempo, masterVol, lefty, toolbarOpen, backingOpen, shapesOpen, capo,
+  cbPalette, fnShapes, welcomeSeen,
   gRoot, gRootLbl, gMode, hView, scView,
   chQual, arpPos, scIdx, scPos, scOverlay,
   chVoicing,
@@ -3886,6 +3986,12 @@ function loadState(){ try{
   if(typeof s.toolbarOpen==='boolean') toolbarOpen=s.toolbarOpen;
   if(typeof s.backingOpen==='boolean') backingOpen=s.backingOpen;
   if(typeof s.shapesOpen==='boolean') shapesOpen=s.shapesOpen;
+  if(typeof s.cbPalette==='boolean') cbPalette=s.cbPalette;
+  if(typeof s.fnShapes==='boolean') fnShapes=s.fnShapes;
+  // grandfather existing users: a save with no welcomeSeen field is a returning
+  // visitor (predates onboarding), so don't pop the welcome at them — only a
+  // genuinely first visit (no saved state at all) leaves welcomeSeen false.
+  welcomeSeen = (typeof s.welcomeSeen==='boolean') ? s.welcomeSeen : true;
   if(Number.isInteger(s.gRoot)&&s.gRoot>=0&&s.gRoot<12){ gRoot=s.gRoot; if(typeof s.gRootLbl==='string') gRootLbl=s.gRootLbl; }
   if(s.gMode==='names'||s.gMode==='deg') gMode=s.gMode;
   if(s.hView==='chords'||s.hView==='triads'||s.hView==='arp') hView=s.hView;   // identify stays transient (idSel is scratch)
@@ -4645,8 +4751,6 @@ function refreshChangesLang(){ if(cmDrill) renderCm(); }
   const dd=document.getElementById('cm-durs');
   if(dd) dd.addEventListener('click', e=>{ const btn=e.target.closest('.cm-dur'); if(btn){ cmDurIdx=+btn.dataset.i; if(cmDrill) cmDrill.dur=CM_DURS[cmDurIdx]; renderCmSetup(); } });
 })();
-
-
 /* ===================== Drill: Strumming-pattern trainer (Phase 5b) =====================
    A coach VISUALIZER, not a quiz: a one-bar 4/4 pattern of down/up strums on an 8th-note
    grid, looped over the current context chord (spine #1) and highlighted slot-by-slot in
@@ -4757,8 +4861,6 @@ function refreshStrumLang(){ if(spDrill) renderStrum(); }
   const pp=document.getElementById('sp-patterns');
   if(pp) pp.addEventListener('click', e=>{ const btn=e.target.closest('.sp-pat'); if(btn){ spIdx=+btn.dataset.i; if(spDrill) spDrill.patIdx=spIdx; renderStrum(); } });
 })();
-
-
 /* ===================== Drill: Comp the progression (Phase 5c) =====================
    The rhythm-side mirror of chord-tone targeting: a chosen progression cycles with a
    full backing band (bass + groove + a guide comp) and you play the RIGHT CHORD at the
@@ -4861,8 +4963,6 @@ function refreshCompLang(){ if(coDrill) renderComp(); }
   const pg=document.getElementById('co-progs');
   if(pg) pg.addEventListener('click', e=>{ const btn=e.target.closest('.co-prog'); if(btn){ coIdx=+btn.dataset.i; if(coDrill){ coDrill.presetIdx=coIdx; coDrill.bars=compBuildBars(SEQ_PRESETS[coIdx]); if(coDrill.bar>=coDrill.bars.length) coDrill.bar=0; } renderComp(); } });
 })();
-
-
 /* ===================== Drill: Groove & feel (Phase 5d) =====================
    A feel LAB: loop a one-bar groove (swung hats + kick/snare backbeat + bass + a
    down-up guitar comp) over the context chord (spine #1) and toggle the things that
@@ -5339,6 +5439,18 @@ document.getElementById('tb-tuning').onchange=function(){ tuningIdx=+this.value;
   if(ts) ts.addEventListener('click', e=>{ const b=e.target.closest('[data-midi]'); if(b) tunerTone(+b.dataset.midi); }); }
 document.getElementById('tb-frets').onchange=function(){ fretRangeIdx=+this.value; renderAllBoards(); saveState(); };
 { const cp=document.getElementById('tb-capo'); if(cp) cp.onchange=function(){ capo=+this.value; renderAllBoards(); saveState(); }; }
+/* accessibility toggles (Phase 9 feel pass): a colour-blind-safe palette + distinct
+   per-function dot shapes. Both are pure body-class switches — the CSS does the work
+   (see styles.css), so there's nothing to repaint — and both persist. */
+function applyA11y(){
+  if(typeof document==='undefined' || !document.body) return;
+  document.body.classList.toggle('cb-palette', cbPalette);
+  document.body.classList.toggle('fn-shapes', fnShapes);
+  const p=document.getElementById('tb-cbpalette'); if(p){ p.classList.toggle('active', cbPalette); p.setAttribute('aria-pressed', cbPalette?'true':'false'); }
+  const s=document.getElementById('tb-shapes');    if(s){ s.classList.toggle('active', fnShapes);  s.setAttribute('aria-pressed', fnShapes?'true':'false'); }
+}
+{ const p=document.getElementById('tb-cbpalette'); if(p) p.onclick=function(){ cbPalette=!cbPalette; applyA11y(); saveState(); };
+  const s=document.getElementById('tb-shapes');    if(s) s.onclick=function(){ fnShapes=!fnShapes;  applyA11y(); saveState(); }; }
 document.getElementById('tb-lefty').onclick=function(){ lefty=!lefty; this.classList.toggle('active',lefty); this.setAttribute('aria-pressed',lefty); renderAllBoards(); renderCircle(); saveState(); };
 /* the metronome / loop / sequencer clocks read beat() live, so the tempo glides
    without restarting — just update the value and the label here. */
@@ -5380,7 +5492,18 @@ function closeKbd(){ const o=document.getElementById('kbd-overlay'); if(!o) retu
 { const c=document.getElementById('kbd-close'); if(c) c.onclick=closeKbd;
   const ov=document.getElementById('kbd-overlay'); if(ov) ov.addEventListener('click',e=>{ if(e.target.id==='kbd-overlay') closeKbd(); });
   const ob=document.getElementById('kbd-open'); if(ob) ob.onclick=openKbd; }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeChangelog(); closeKbd(); } });
+/* ---- first-run welcome (onboarding) ----
+   A one-time orientation card for brand-new visitors. Reuses the changelog overlay
+   look; dismissing it (button / ✕ / backdrop / Escape) records welcomeSeen so it
+   never returns. dismissWelcome no-ops when the card isn't open, so it's safe to
+   call from the shared Escape handler. */
+function showWelcome(){ const o=document.getElementById('welcome-overlay'); if(!o) return; o.hidden=false; o.classList.add('open'); const g=document.getElementById('wc-got'); if(g) try{ g.focus(); }catch(_){} }
+function dismissWelcome(){ const o=document.getElementById('welcome-overlay'); if(!o||o.hidden) return; o.classList.remove('open'); o.hidden=true; welcomeSeen=true; saveState(); }
+{ const g=document.getElementById('wc-got');   if(g) g.onclick=dismissWelcome;
+  const c=document.getElementById('wc-close'); if(c) c.onclick=dismissWelcome;
+  const o=document.getElementById('welcome-overlay'); if(o) o.addEventListener('click',e=>{ if(e.target.id==='welcome-overlay') dismissWelcome(); }); }
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeChangelog(); closeKbd(); dismissWelcome(); } });
 
 /* ---- global keyboard shortcuts (desktop power-use; also seeds Phase-3 drills) ----
    Space=Listen/Stop · L=Loop · M=Metronome · 1/2/3=tabs · A–G=key · [ ]=transpose · ?=help.
@@ -5455,7 +5578,11 @@ markScrollables();
 window.addEventListener('resize', markScrollables);
 try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(markScrollables); }catch(_){}
 applyAudioAvailability();
+applyA11y();   // apply restored accessibility prefs (palette / shapes) on load
 document.getElementById('app-ver').textContent = 'v' + APP_VERSION;
+// First-run onboarding: only a genuinely first visit (no saved state) leaves
+// welcomeSeen false — returning users are grandfathered in loadState().
+if(!welcomeSeen) showWelcome();
 
 /* ---- test introspection hook (Phase C+) ----
    Built ONLY when a harness sets window.__GS_ALLOW_TEST__ before the page loads,
@@ -5498,12 +5625,17 @@ if (typeof window!=='undefined' && window.__GS_ALLOW_TEST__) {
     CAGED_BY_POS, isCAGEDScale,
     setFret:(i)=>{ fretRangeIdx=i; },
     setCapo:(i)=>{ capo=i; }, getCapo:()=>capo,
+    // accessibility + onboarding (Phase 9 feel pass)
+    applyA11y, showWelcome, dismissWelcome,
+    setCbPalette:(v)=>{ cbPalette=!!v; }, setFnShapes:(v)=>{ fnShapes=!!v; }, setWelcomeSeen:(v)=>{ welcomeSeen=!!v; },
+    getA11y:()=>({ cbPalette, fnShapes, welcomeSeen }),
     setChQual:(i)=>{ chQual=i; chVoicing=0; }, setChVoicing:(i)=>{ chVoicing=i; },
     setTriad:(q,set,inv)=>{ trQual=q; trSet=set; trInv=inv; },
     initAudio:()=>audio(),
     setCtxNow:(t)=>{ if(actx) actx.currentTime=t; },
     state:()=>({ gRoot, gRootLbl, scIdx, scView, chQual, chVoicing, currentTab, currentMode, hView,
-                 loop:!!loopClock, loopMode, seq:!!seqClock, fretRangeIdx, lang, tempo })
+                 loop:!!loopClock, loopMode, seq:!!seqClock, fretRangeIdx, lang, tempo,
+                 cbPalette, fnShapes, welcomeSeen })
   };
 }
 

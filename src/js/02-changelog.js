@@ -1,6 +1,17 @@
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'2.4.0', date:'2026-06-22',
+    en:['Practice\'s Rhythm section is now complete with three new coach drills you play along with over the backing band.',
+        'Strumming patterns: common down/up patterns loop over your chord on an eighth-note grid, lit slot-by-slot in time — see it, hear it, strum along.',
+        'Comp the progression: a progression cycles with bass and drums while a big NOW chord and a NEXT preview land each change in time. Groove & feel: loop a one-bar groove and toggle swing, the backbeat accent and palm-muting to feel what makes it sit right.',
+        'New accessibility options in Settings: a colour-blind-safe palette and a distinct shape for each note role (root, third, fifth, seventh), so the fretboard reads without relying on colour alone.',
+        'A short welcome now greets first-time visitors with the three ways in — Reference, Practice and Ear.'],
+    uk:['Розділ «Ритм» у «Практиці» тепер повний — три нові коуч-вправи, які граєш разом із гуртом супроводу.',
+        'Малюнки боя: поширені удари вниз/вгору крутяться над твоїм акордом по сітці восьмих, підсвічуючись клітинка за клітинкою в темп — бачиш, чуєш і граєш разом.',
+        'Акомпанемент прогресії: прогресія крутиться з басом і ударними, а великий акорд «Зараз» і прев’ю «Далі» допомагають вчасно змінювати акорди. Грув і відчуття: зацикли однотактовий грув і вмикай свінг, бекбіт-акцент та глушіння, щоб відчути, що робить грув живим.',
+        'Нові опції доступності в «Налаштуваннях»: палітра для дальтоніків і окрема форма для кожної ролі ноти (тоніка, терція, квінта, септима), щоб гриф читався без опори лише на колір.',
+        'Новачків тепер вітає коротке віконце з трьома способами почати — «Довідник», «Практика» та «Слух».'] },
   { v:'2.3.0', date:'2026-06-21',
     en:['Practice now has a Rhythm section, starting with the classic "one-minute changes" — the most useful drill there is for getting your chord changes clean and fast.',
         'Pick a chord pair (A–D, C–G, G–Em and more), choose 30/60/90 seconds, and switch between the two shapes as cleanly as you can. The two chord diagrams stay on screen the whole time so you always know where your fingers go.',

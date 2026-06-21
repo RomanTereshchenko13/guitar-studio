@@ -59,10 +59,12 @@ if (!fs.existsSync(indexHtml)) { console.error('index.html not found — run `no
 const PANELS = ['harmony', 'scales', 'circle'];
 const tabArgs = [];
 const sizeArgs = [];
+const a11yArgs = [];                              // accessibility toggles (additive): cbpalette / shapes / a11y (both)
 let mode = null;                                  // null = reference (default), 'practice' = Practice surface
 for (const a of process.argv.slice(2)) {
   if (a === 'tabs') tabArgs.push(...PANELS);
   else if (PANELS.includes(a)) tabArgs.push(a);
+  else if (a === 'cbpalette' || a === 'shapes' || a === 'a11y') a11yArgs.push(a);
   else if (a === 'practice' || a === 'reference' || a === 'drill' || a === 'changes' || a === 'changes-run'
            || a === 'strum' || a === 'strum-run' || a === 'comp' || a === 'comp-run'
            || a === 'groove' || a === 'groove-run'
@@ -100,6 +102,12 @@ function appFor(panel) {
   if (mode && mode.indexOf('ear') === 0) clicks.push(`var m=document.querySelector('.modebtn[data-mode="ear"]');if(m)m.click();`);
   const earStart = { 'ear-interval': 'start-interval', 'ear-chordq': 'start-chordq', 'ear-rhythm': 'start-rhythm' }[mode];
   if (earStart) clicks.push(`var s=document.getElementById('${earStart}');if(s)s.click();`);
+  // accessibility toggles (additive): flip the colour-blind palette and/or dot shapes
+  if (a11yArgs.includes('cbpalette') || a11yArgs.includes('a11y')) clicks.push(`var b=document.getElementById('tb-cbpalette');if(b)b.click();`);
+  if (a11yArgs.includes('shapes') || a11yArgs.includes('a11y')) clicks.push(`var b=document.getElementById('tb-shapes');if(b)b.click();`);
+  // any non-default capture: dismiss the first-run welcome first so it doesn't block
+  // the surface (the no-arg shot keeps it, to capture the onboarding card itself).
+  if (panel || mode || a11yArgs.length) clicks.unshift(`var wc=document.getElementById('wc-got');if(wc)wc.click();`);
   const switcher = clicks.length
     ? `<script>addEventListener('load',function(){try{${clicks.join('')}}catch(e){}});</script>`
     : '';
@@ -115,7 +123,7 @@ function appFor(panel) {
 
 for (const { w, h } of specs) {
   for (const panel of tabs) {
-    const tag = (panel ? `${w}-${panel}` : `${w}`) + (mode ? '-' + mode : '');
+    const tag = (panel ? `${w}-${panel}` : `${w}`) + (mode ? '-' + mode : '') + (a11yArgs.length ? '-' + a11yArgs.join('-') : '');
     const appCopy = path.join(outDir, `_app_${tag}.html`);
     const wrapper = path.join(outDir, `_wrap_${tag}.html`);
     fs.writeFileSync(appCopy, appFor(panel));
