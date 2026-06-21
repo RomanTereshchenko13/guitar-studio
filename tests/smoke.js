@@ -182,7 +182,10 @@ if (T) {
    'ear_rhythm','ear_rhythm_meta','ear_int_prompt','ear_chord_prompt','ear_rhythm_prompt',
    'ear_replay','ear_next','ear_right','ear_wrong','ear_got',
    'pwa_install','pwa_install_tip','pwa_update','pwa_update_btn','pwa_dismiss',
-   'tb_volume','tb_tuner'].forEach(k => {
+   'tb_volume','tb_tuner',
+   'practice_grp_fretboard','practice_grp_rhythm','drill_changes','drill_changes_meta',
+   'cm_pair','cm_dur','cm_sec','cm_click','cm_start','cm_stop','cm_setup_note',
+   'cm_changes','cm_cpm','cm_best','cm_tap_hint','cm_undo','cm_newbest'].forEach(k => {
     ok('i18n new key present (uk+en): ' + k,
        T.I18N.uk[k] !== undefined && T.I18N.en[k] !== undefined);
   });
@@ -450,6 +453,71 @@ if (T) {
     T.exitEar();
     ok('P4: exit clears the active ear drill', T.getEar() === null);
     T.setMode('reference');
+    T.resetLearner();
+  })();
+
+  /* ---- Phase 5a: chord-change fluency (one-minute changes) coach drill ---- */
+  (function changesDrill() {
+    const doc = win.document;
+    // home gains the Rhythm group + the new card; the drill area exists
+    ok('5a: rhythm drill card present (start-changes)', !!doc.getElementById('start-changes'));
+    ok('5a: chord-change area present (cm-area)', !!doc.getElementById('cm-area'));
+    ok('5a: practice home grouped by pillar', doc.querySelectorAll('#practice-home .practice-section').length >= 2);
+    // the drill uses chord-diagram SVGs, not a fretboard, so the board count is unchanged
+    ok('5a: no extra fretboard added', doc.querySelectorAll('.fretboard').length === 2);
+
+    // presets + durations are sane
+    ok('5a: at least 6 chord pairs', T.CM_PAIRS.length >= 6);
+    ok('5a: 60s is a duration option', T.CM_DURS.indexOf(60) >= 0);
+
+    // setup → run lifecycle
+    T.resetLearner();
+    T.setMode('practice');
+    T.startChanges();
+    ok('5a: startChanges opens setup phase', T.getCm() && T.getCm().phase === 'setup');
+    T.setCmPair(3); T.setCmDur(0);          // pair index 3, 30 s
+    T.cmBegin();
+    let cm = T.getCm();
+    ok('5a: cmBegin enters the running phase', cm.phase === 'run' && cm.pairIdx === 3 && cm.dur === 30);
+    ok('5a: count starts at zero', cm.count === 0);
+
+    // tally counts taps; undo floors at zero
+    T.cmTap(); T.cmTap(); T.cmTap();
+    ok('5a: each tap counts a change', T.getCm().count === 3);
+    T.cmUntap();
+    ok('5a: undo removes one change', T.getCm().count === 2);
+    T.cmUntap(); T.cmUntap(); T.cmUntap();   // over-undo
+    ok('5a: undo floors at zero', T.getCm().count === 0);
+
+    // a 30s run with 5 changes = 10 changes/minute; finish records a session + sets a best
+    for (let i = 0; i < 5; i++) T.cmTap();
+    T.finishChanges();
+    cm = T.getCm();
+    ok('5a: finish computes changes-per-minute (5 in 30s = 10)', cm.cpm === 10);
+    ok('5a: finish marks a new personal best', cm.newBest === true && cm.best === 10);
+    const sessId = T.cmPairId(3);
+    const sess = T.getLearner().sessions;
+    ok('5a: a session is recorded under the pair id', sess.length === 1 && sess[0].drill === sessId);
+    ok('5a: session score is the changes-per-minute', sess[0].score === 10);
+    ok('5a: cmPairBest reads the best from sessions', T.cmPairBest(3) === 10);
+
+    // a weaker run does not beat the best
+    T.cmBegin();
+    T.cmTap();                 // 1 change in 30s = 2 cpm
+    T.finishChanges();
+    cm = T.getCm();
+    ok('5a: a weaker run is not a new best', cm.newBest === false && cm.cpm === 2);
+    ok('5a: best stays at the prior record', T.cmPairBest(3) === 10);
+
+    // changes drill writes sessions, not per-item SRS (accuracy stays about recognition)
+    ok('5a: changes drill mints no learner items', T.learnerStats().items === 0);
+
+    // exit clears the drill; leaving Practice mode also exits it
+    T.exitChanges();
+    ok('5a: exit clears the active drill', T.getCm() === null);
+    T.startChanges();
+    T.setMode('reference');
+    ok('5a: leaving Practice exits a running changes drill', T.getCm() === null);
     T.resetLearner();
   })();
 

@@ -284,15 +284,18 @@ function setMode(mode){
   });
   // end the other modes' running drills when we leave them
   if(currentMode!=='practice' && typeof drill!=='undefined' && drill) exitDrill();
+  if(currentMode!=='practice' && typeof cmDrill!=='undefined' && cmDrill) exitChanges();
   if(currentMode!=='ear' && typeof ear!=='undefined' && ear) exitEar();
   if(currentMode==='reference'){
     applyAsideState(); applyContextBar(); applyBoardRegion(); applyHarmonyExtras(); renderActiveContext();
   } else if(currentMode==='practice'){
     // entering Practice with no drill running: show the home view (drill starters
-    // call startDrill() right after, which swaps it for the active drill)
-    if(!(typeof drill!=='undefined' && drill)){
-      const home=document.getElementById('practice-home'), area=document.getElementById('drill-area');
-      if(home) home.hidden=false; if(area) area.hidden=true;
+    // swap it for the active drill area right after)
+    const anyDrill=(typeof drill!=='undefined' && drill) || (typeof cmDrill!=='undefined' && cmDrill);
+    if(!anyDrill){
+      const home=document.getElementById('practice-home');
+      if(home) home.hidden=false;
+      ['drill-area','cm-area'].forEach(id=>{ const a=document.getElementById(id); if(a) a.hidden=true; });
     }
     renderPractice();
   } else {   // ear
@@ -493,6 +496,10 @@ if (typeof window!=='undefined' && window.__GS_ALLOW_TEST__) {
     // ear-training drills (Phase 4)
     startEar, earAnswer, earNext, earReplay, exitEar, getEar:()=>ear,
     earChoices:()=>(ear?ear.cfg.choices(ear.cur):[]), INTERVALS, EAR_QUAL_IDX, RHYTHMS,
+    // chord-change fluency drill (Phase 5a)
+    startChanges, cmBegin, cmTap, cmUntap, finishChanges, exitChanges, getCm:()=>cmDrill,
+    CM_PAIRS, CM_DURS, cmPairId, cmPairBest,
+    setCmPair:(i)=>{ cmPairIdx=i; if(cmDrill) cmDrill.pairIdx=i; }, setCmDur:(i)=>{ cmDurIdx=i; if(cmDrill) cmDrill.dur=CM_DURS[i]; },
     CAGED_BY_POS, isCAGEDScale,
     setFret:(i)=>{ fretRangeIdx=i; },
     setCapo:(i)=>{ capo=i; }, getCapo:()=>capo,

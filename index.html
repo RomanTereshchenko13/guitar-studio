@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <!-- Euterpe (Guitar Studio) — generated single-file build (do not edit; edit src/ and run build.js).
-     Version: 2.2.0  (source of truth: APP_VERSION in src/js/01-version.js;
+     Version: 2.3.0  (source of truth: APP_VERSION in src/js/01-version.js;
      build.js fills this in). Release notes live in src/js/02-changelog.js (drives
      the in-app "What's new" modal and CHANGELOG.md). -->
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2.2.0">
+<meta name="version" content="2.3.0">
 <meta name="description" content="Euterpe — a guitar studio for music theory and practice: scales, modes, chords, the fretboard, the circle of fifths, and a jam-along backing band. Works offline.">
 <meta name="theme-color" content="#16140f">
 <!-- Installed-app (standalone) hints. The manifest covers Android/desktop; these
@@ -265,6 +265,35 @@
   .ear-feedback.bad { color: #e07a7a; }
   .ear-next-row { display: flex; justify-content: center; }
   .ear-next-row .btn.play { font-size: 14px; padding: 9px 26px; }
+
+  /* ---- practice home: drills grouped by pillar (Phase 5) ---- */
+  .practice-section { margin-top: 22px; }
+  .ps-label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .practice-section .practice-list { margin-top: 0; }
+
+  /* ---- chord-change fluency / one-minute changes (Phase 5a) ---- */
+  .cm-best-line { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-dim); margin: 12px 0; min-height: 18px; }
+  #cm-setup .drill-actions { margin-top: 10px; }
+  #cm-setup-note { max-width: 620px; }
+  .cm-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .cm-timer { font-family: 'JetBrains Mono', monospace; font-size: 34px; font-weight: 700; color: var(--text); }
+  .cm-chords { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+  .cm-chord { text-align: center; }
+  .cm-chordname { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .cm-chord svg { display: block; }
+  .cm-swap { color: var(--text-dim); font-size: 22px; }
+  /* the big thumb-zone tally: tap on each clean change */
+  .cm-tally { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    width: 100%; max-width: 620px; margin: 18px auto 0; padding: 26px 16px; min-height: 124px;
+    background: var(--bg-panel-2); border: 2px solid var(--root); border-radius: var(--radius);
+    color: var(--text); cursor: pointer; font-family: inherit; transition: background 0.12s, transform 0.1s; }
+  .cm-tally:hover { background: rgba(107,165,58,0.14); }
+  .cm-tally:active { transform: scale(0.99); }
+  .cm-count-val { font-family: 'JetBrains Mono', monospace; font-size: 54px; font-weight: 700; line-height: 1; color: var(--root); }
+  .cm-count-lab { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); }
+  .cm-tally.bump .cm-count-val { animation: cmBump 0.18s ease; }
+  @keyframes cmBump { 0% { transform: scale(1); } 40% { transform: scale(1.16); } 100% { transform: scale(1); } }
+  .cm-active-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 14px auto 0; max-width: 620px; }
 
   /* Mobile: the mode nav becomes a fixed bottom bar in the thumb zone (the roadmap's
      thumb-zone home). It escapes the sticky/condensing header — which is top-anchored
@@ -1004,18 +1033,75 @@
          active drill (#drill-area) while a session runs. -->
     <div id="practice-home">
       <p class="practice-soon" data-i18n="practice_intro">Вправи з рахунком, що ведуть облік твого прогресу й повертають те, що варто повторити.</p>
-      <ul class="practice-list">
-        <li><button type="button" class="drill-card" id="start-notes">
-          <span class="dc-name" data-i18n="drill_notes">Назви ноти на грифі</span>
-          <span class="dc-meta" data-i18n="drill_notes_meta">Грифознавство · рахунок за точністю</span>
-        </button></li>
-      </ul>
+      <!-- Drills grouped by pillar (Phase 5 adds the Rhythm group): Fretboard
+           knowledge vs playing THE changes. -->
+      <div class="practice-section">
+        <div class="ps-label" data-i18n="practice_grp_fretboard">Гриф</div>
+        <ul class="practice-list">
+          <li><button type="button" class="drill-card" id="start-notes">
+            <span class="dc-name" data-i18n="drill_notes">Назви ноти на грифі</span>
+            <span class="dc-meta" data-i18n="drill_notes_meta">Грифознавство · рахунок за точністю</span>
+          </button></li>
+        </ul>
+      </div>
+      <div class="practice-section">
+        <div class="ps-label" data-i18n="practice_grp_rhythm">Ритм</div>
+        <ul class="practice-list">
+          <li><button type="button" class="drill-card" id="start-changes">
+            <span class="dc-name" data-i18n="drill_changes">Зміна акордів за хвилину</span>
+            <span class="dc-meta" data-i18n="drill_changes_meta">Чисті зміни за хвилину · коуч (без оцінки)</span>
+          </button></li>
+        </ul>
+      </div>
       <!-- Progress readout (3b): the learner model's aggregate stats; renderPractice()
            fills #practice-progress, empty until the drill writes the first attempt. -->
       <div class="practice-progress-card">
         <div class="pp-title" data-i18n="prog_title">Прогрес</div>
         <div id="practice-progress"></div>
       </div>
+    </div>
+
+    <!-- Chord-change fluency / "one-minute changes" (Phase 5a): a coach drill with a
+         setup → timed run → summary flow. Reuses the chord diagrams; counts taps, not
+         audio (honest coach framing). Hidden until started. -->
+    <div id="cm-area" hidden>
+      <div class="drill-head">
+        <button type="button" class="btn" id="cm-quit" data-i18n="drill_quit">Вийти</button>
+        <span class="drill-count" data-i18n="drill_changes">Зміна акордів за хвилину</span>
+      </div>
+      <!-- setup: pick a chord pair + length, optional click; then Start -->
+      <div id="cm-setup">
+        <div class="row"><span class="ctrl-label" data-i18n="cm_pair">Пара акордів</span><div class="group" id="cm-pairs"></div></div>
+        <div class="row">
+          <span class="ctrl-label" data-i18n="cm_dur">Тривалість</span><div class="group" id="cm-durs"></div>
+          <div class="divider"></div>
+          <button type="button" class="btn" id="cm-click" aria-pressed="false"></button>
+        </div>
+        <div class="cm-best-line" id="cm-setup-best"></div>
+        <div class="drill-actions"><button class="btn play" id="cm-start-btn"></button></div>
+        <p class="drill-sub" id="cm-setup-note" data-i18n="cm_setup_note">Перемикайся між акордами якомога чистіше й натискай велику кнопку на кожній чистій зміні. Лічильник рахує твої натискання, а не звук гітари — оцінку з мікрофоном додамо згодом.</p>
+      </div>
+      <!-- active: timer, the two shapes, a big thumb-zone tally -->
+      <div id="cm-active" hidden>
+        <div class="cm-top">
+          <span class="cm-timer" id="cm-timer">1:00</span>
+          <button type="button" class="btn" id="cm-stop" data-i18n="cm_stop">Завершити</button>
+        </div>
+        <div class="cm-chords">
+          <div class="cm-chord" id="cm-chord-a"></div>
+          <div class="cm-swap" aria-hidden="true">↔</div>
+          <div class="cm-chord" id="cm-chord-b"></div>
+        </div>
+        <button type="button" class="cm-tally" id="cm-tally">
+          <span class="cm-count-val" id="cm-count-val">0</span>
+          <span class="cm-count-lab" id="cm-count-lab"></span>
+        </button>
+        <div class="cm-active-foot">
+          <span class="drill-sub" id="cm-sub"></span>
+          <button type="button" class="btn" id="cm-untap"></button>
+        </div>
+      </div>
+      <div class="drill-summary" id="cm-summary" hidden></div>
     </div>
 
     <!-- Active drill (3c): note-naming. Its own board (painted by renderBoard into
@@ -1197,10 +1283,19 @@
 <script>
 /* Single source of truth for the app version. Bump on each release and update
    the changelog comment at the top of the file + the <meta name="version">. */
-const APP_VERSION = '2.2.0';
+const APP_VERSION = '2.3.0';
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'2.3.0', date:'2026-06-21',
+    en:['Practice now has a Rhythm section, starting with the classic "one-minute changes" — the most useful drill there is for getting your chord changes clean and fast.',
+        'Pick a chord pair (A–D, C–G, G–Em and more), choose 30/60/90 seconds, and switch between the two shapes as cleanly as you can. The two chord diagrams stay on screen the whole time so you always know where your fingers go.',
+        'Tap the big button on every clean change; at the end you get your changes-per-minute and your personal best for that pair, so there is always a record to beat. An optional metronome gives you a pulse to switch against.',
+        'Honest by design: this is a coach drill — it counts your taps, not your guitar. Real "play it and get scored" lands later with microphone input.'],
+    uk:['У «Практиці» зʼявився розділ «Ритм», і перша вправа — класична «зміна акордів за хвилину», найкорисніше, що є для чистих і швидких переходів між акордами.',
+        'Обери пару акордів (A–D, C–G, G–Em та інші), задай 30/60/90 секунд і перемикайся між двома формами якомога чистіше. Обидві аплікатури весь час на екрані, тож завжди видно, куди ставити пальці.',
+        'Натискай велику кнопку на кожній чистій зміні; наприкінці отримуєш кількість змін за хвилину й свій рекорд для цієї пари — завжди є що побити. За бажання вмикається метроном для пульсу.',
+        'Чесно за задумом: це коуч-вправа — вона рахує твої натискання, а не звук гітари. Справжня оцінка гри зʼявиться згодом, із мікрофоном.'] },
   { v:'2.2.0', date:'2026-06-21',
     en:['Sound is now in stereo. The guitar spreads across the stereo field by register — low strings centred, higher strings wider — so chords and scales open up instead of collapsing to one spot, and the hi-hats sit slightly off-centre like a real kit.',
         'A master Volume slider in the Backing panel sets the overall output level (and is remembered between visits).',
@@ -1503,6 +1598,11 @@ const I18N = {
     drill_quit:'Вийти', drill_find_pre:'Знайди всі', drill_find_sub:'Познач усі такі ноти на грифі',
     drill_complete:'Сесію завершено', drill_score:'Рахунок', drill_clean:'Чисто', drill_misses:'Помилки', drill_time:'Час', drill_again:'Ще раз', drill_done:'Готово',
     seam_drill_notes:'Тренувати на грифі →',
+    practice_grp_fretboard:'Гриф', practice_grp_rhythm:'Ритм',
+    drill_changes:'Зміна акордів за хвилину', drill_changes_meta:'Чисті зміни за хвилину · коуч (без оцінки)',
+    cm_pair:'Пара акордів', cm_dur:'Тривалість', cm_sec:'с', cm_click:'Метроном', cm_start:'Почати', cm_stop:'Завершити',
+    cm_setup_note:'Перемикайся між акордами якомога чистіше й натискай велику кнопку на кожній чистій зміні. Лічильник рахує твої натискання, а не звук гітари — оцінку з мікрофоном додамо згодом.',
+    cm_changes:'Зміни', cm_cpm:'За хвилину', cm_best:'Рекорд', cm_tap_hint:'Натискай на кожній чистій зміні', cm_undo:'Скасувати', cm_newbest:'Новий рекорд!',
     prog_title:'Прогрес', prog_empty:'Ще немає практики — статистика з’явиться, щойно почнеш вправи.',
     prog_tracked:'Вивчається', prog_accuracy:'Точність', prog_streak:'Найкраща серія', prog_sessions:'Сесій',
     tab_harmony:'Акорди / тріади', lbl_view:'Вид', view_chords:'Тони акорду', view_triads:'Форми тріад',
@@ -1593,6 +1693,11 @@ const I18N = {
     drill_quit:'Quit', drill_find_pre:'Find every', drill_find_sub:'Tap every one of them on the neck',
     drill_complete:'Session complete', drill_score:'Score', drill_clean:'Clean', drill_misses:'Wrong taps', drill_time:'Time', drill_again:'Again', drill_done:'Done',
     seam_drill_notes:'Drill on the neck →',
+    practice_grp_fretboard:'Fretboard', practice_grp_rhythm:'Rhythm',
+    drill_changes:'One-minute changes', drill_changes_meta:'Clean changes per minute · coach (unscored)',
+    cm_pair:'Chord pair', cm_dur:'Length', cm_sec:'s', cm_click:'Click', cm_start:'Start', cm_stop:'Finish',
+    cm_setup_note:'Switch between the chords as cleanly as you can and tap the big button on each clean change. The counter counts your taps, not your guitar — mic scoring comes later.',
+    cm_changes:'Changes', cm_cpm:'Per minute', cm_best:'Best', cm_tap_hint:'Tap on each clean change', cm_undo:'Undo', cm_newbest:'New best!',
     prog_title:'Progress', prog_empty:'No practice yet — your stats will appear once you start a drill.',
     prog_tracked:'Tracked', prog_accuracy:'Accuracy', prog_streak:'Best streak', prog_sessions:'Sessions',
     tab_harmony:'Chords / triads', lbl_view:'View', view_chords:'Chord tones', view_triads:'Triad shapes',
@@ -3445,6 +3550,7 @@ function applyLang(){
   if(typeof renderPractice==='function') renderPractice();   // 3b: re-localize the progress chips
   if(typeof renderEar==='function') renderEar();             // Phase 4: ear progress chips
   if(typeof refreshEarLang==='function') refreshEarLang();   // re-localize an in-flight ear prompt
+  if(typeof refreshChangesLang==='function') refreshChangesLang();   // re-localize an in-flight changes drill (5a)
   setHView(hView); setScView(scView); updateGlobalPlay();
   if(typeof applyAudioAvailability==='function') applyAudioAvailability();
   activateRoot(document.getElementById('g-roots'), gRoot);
@@ -4210,6 +4316,204 @@ function renderDrillSummary(elapsed, acc){
   b.addEventListener('keydown', e=>{ if(e.key!=='Enter'&&e.key!==' ') return; const d=e.target.closest('.dot.quiz'); if(!d) return; e.preventDefault(); fire(d); });
   const q=document.getElementById('drill-quit'); if(q) q.onclick=exitDrill;
 })();
+/* ===================== Drill: Chord-change fluency (Phase 5a) =====================
+   The RHYTHM pillar's table-stakes coach tier — the famous "one-minute changes":
+   pick a chord pair, the timer runs, and you switch between the two shapes as cleanly
+   as you can, tapping the big counter on each clean change. At the end: changes made,
+   changes per minute, and your personal best for that pair.
+
+   Honest framing (roadmap): this is a COACH tier, not scored training — the app
+   counts YOUR taps, it can't hear your guitar (mic scoring waits on Phase 8 / F1).
+   That's no compromise here: counting yourself and beating your record IS the
+   authentic form of this exercise, so the reward (a per-pair personal best) needs no
+   mic. Reuses the chord diagrams (chordBoxSVG, 08), the cue bus for the count-in +
+   a new-best fanfare (05), an optional metronome on its own scheduler clock
+   (metroClick, 06), and the learner model's sessions ring buffer (13) — the best
+   per pair is DERIVED by scanning sessions, so the pinned item shape is untouched. */
+
+/* Classic open-chord change pairs, each [[pc,qi],[pc,qi]] (qi: 0=major, 1=minor).
+   Only natural roots, so ROOTS[pc] labels stay clean (C/D/E/G/A). */
+const CM_PAIRS = [
+  [[9,0],[2,0]],   // A  – D
+  [[9,0],[4,0]],   // A  – E
+  [[2,0],[4,0]],   // D  – E
+  [[0,0],[7,0]],   // C  – G
+  [[7,0],[4,1]],   // G  – Em
+  [[4,1],[9,1]],   // Em – Am
+  [[0,0],[9,1]],   // C  – Am
+  [[7,0],[2,0]],   // G  – D
+  [[9,1],[2,1]],   // Am – Dm
+  [[2,0],[7,0]],   // D  – G
+];
+const CM_DURS = [30, 60, 90];   // selectable session lengths (seconds)
+
+let cmDurIdx = 1;        // default 60 s
+let cmPairIdx = 0;       // selected preset pair (in-session preference)
+let cmClick = false;     // optional metronome reference during the run
+let cmDrill = null;
+// cmDrill = { phase:'setup'|'run'|'done', pairIdx, dur, count, remaining, startT,
+//             finished, ticker, clock, cpm, best, newBest }
+
+function cmChord(spec){ const [pc,qi]=spec, q=QUALITIES[qi]; return { pc, qi, q, short:q.short, lbl:ROOTS[pc]+q.short }; }
+function cmPairName(i){ const p=CM_PAIRS[i]; return cmChord(p[0]).lbl+' ↔ '+cmChord(p[1]).lbl; }
+function cmPairId(i){ const p=CM_PAIRS[i]; return 'changes:'+cmChord(p[0]).lbl+'-'+cmChord(p[1]).lbl; }   // stable session id
+
+/* Personal best (max changes-per-minute) for a pair, derived from the sessions ring
+   buffer so the pinned learner item shape (spine #3) needs no new field. */
+function cmPairBest(i){
+  const id=cmPairId(i); let best=0;
+  learner.sessions.forEach(s=>{ if(s.drill===id && s.score>best) best=s.score; });
+  return best;
+}
+
+/* ---- lifecycle ---- */
+function startChanges(){
+  cmDrill={ phase:'setup', pairIdx:cmPairIdx, dur:CM_DURS[cmDurIdx] };
+  const home=document.getElementById('practice-home'), area=document.getElementById('cm-area');
+  if(home) home.hidden=true; if(area) area.hidden=false;
+  renderCm();
+}
+function exitChanges(){
+  cmStopClocks();
+  cmDrill=null;
+  const home=document.getElementById('practice-home'), area=document.getElementById('cm-area');
+  if(area) area.hidden=true; if(home) home.hidden=false;
+  if(typeof renderPractice==='function') renderPractice();
+}
+function cmBegin(){
+  if(!cmDrill) return;
+  cmStopClocks();   // safety when re-running from the summary
+  cmDrill.phase='run'; cmDrill.pairIdx=cmPairIdx; cmDrill.dur=CM_DURS[cmDurIdx];
+  cmDrill.count=0; cmDrill.remaining=cmDrill.dur; cmDrill.startT=Date.now();
+  cmDrill.finished=false; cmDrill.cpm=0; cmDrill.newBest=false; cmDrill.best=cmPairBest(cmDrill.pairIdx);
+  cmCountIn(); cmStartClocks(); renderCm();
+}
+function cmTap(){
+  if(!cmDrill || cmDrill.phase!=='run') return;
+  cmDrill.count++; renderCmCount();
+  const el=document.getElementById('cm-tally'); if(el){ el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+}
+function cmUntap(){ if(!cmDrill || cmDrill.phase!=='run' || cmDrill.count<=0) return; cmDrill.count--; renderCmCount(); }
+function finishChanges(){
+  if(!cmDrill) return;
+  cmStopClocks();
+  cmDrill.phase='done'; cmDrill.finished=true;
+  const cpm=Math.round(cmDrill.count / (cmDrill.dur/60));
+  const prevBest=cmPairBest(cmDrill.pairIdx);
+  cmDrill.cpm=cpm; cmDrill.newBest = cpm>0 && cpm>prevBest; cmDrill.best=Math.max(prevBest, cpm);
+  recordSession(cmPairId(cmDrill.pairIdx), cpm);
+  saveState();
+  if(cmDrill.newBest) playCue('correct');
+  if(typeof renderPractice==='function') renderPractice();
+  renderCm();
+}
+
+/* ---- count-in + clocks (audio + the countdown ticker) ---- */
+function cmCountIn(){
+  const ctx=audio(); if(!ctx) return;
+  const b=beat(), start=ctx.currentTime+0.05;
+  for(let k=0;k<4;k++) cueBlip(start+k*b, k===3?1500:1100, 0.22, 0.05, 'square');   // "1-2-3-go"
+}
+function cmStartClocks(){
+  cmDrill.ticker=setInterval(cmCountdown, 1000);
+  if(cmClick){ audio();
+    cmDrill.clock={ interval:()=>beat(), tick:(time,count)=>metroClick(time, count%4===0) };
+    if(typeof addClock==='function') addClock(cmDrill.clock);
+  }
+}
+function cmStopClocks(){
+  if(cmDrill && cmDrill.ticker){ clearInterval(cmDrill.ticker); cmDrill.ticker=null; }
+  if(cmDrill && cmDrill.clock){ if(typeof removeClock==='function') removeClock(cmDrill.clock); cmDrill.clock=null; }
+}
+function cmCountdown(){
+  if(!cmDrill || cmDrill.phase!=='run') return;
+  cmDrill.remaining--;
+  if(cmDrill.remaining<=0){ cmDrill.remaining=0; finishChanges(); return; }
+  renderCmTime();
+}
+function cmFmtTime(s){ s=Math.max(0,s|0); const m=Math.floor(s/60), ss=s%60; return m+':'+(ss<10?'0':'')+ss; }
+
+/* ---- DOM paint (no-ops cleanly when the panel isn't in the DOM, e.g. some tests) ---- */
+function renderCm(){
+  if(!cmDrill) return;
+  const setup=document.getElementById('cm-setup'), active=document.getElementById('cm-active'), sum=document.getElementById('cm-summary');
+  if(!setup || !active || !sum) return;
+  setup.hidden = cmDrill.phase!=='setup';
+  active.hidden = cmDrill.phase!=='run';
+  sum.hidden = cmDrill.phase!=='done';
+  if(cmDrill.phase==='setup') renderCmSetup();
+  else if(cmDrill.phase==='run') renderCmActive();
+  else renderCmSummary();
+}
+function renderCmSetup(){
+  if(!cmDrill) return;
+  const pp=document.getElementById('cm-pairs');
+  if(pp) pp.innerHTML=CM_PAIRS.map((p,i)=>`<button type="button" class="btn cm-pair${i===cmDrill.pairIdx?' active':''}" data-i="${i}" aria-pressed="${i===cmDrill.pairIdx}">${cmPairName(i)}</button>`).join('');
+  const dd=document.getElementById('cm-durs');
+  if(dd) dd.innerHTML=CM_DURS.map((d,i)=>`<button type="button" class="btn cm-dur${i===cmDurIdx?' active':''}" data-i="${i}" aria-pressed="${i===cmDurIdx}">${d}${t('cm_sec')}</button>`).join('');
+  const ck=document.getElementById('cm-click');
+  if(ck){ ck.classList.toggle('active', cmClick); ck.setAttribute('aria-pressed', cmClick?'true':'false'); ck.innerHTML='&#9833; '+t('cm_click'); }
+  const bl=document.getElementById('cm-setup-best');
+  if(bl){ const b=cmPairBest(cmDrill.pairIdx); bl.textContent = b>0 ? (t('cm_best')+' · '+b+' '+t('cm_cpm').toLowerCase()) : ''; }
+  const sb=document.getElementById('cm-start-btn'); if(sb) sb.innerHTML='&#9654; '+t('cm_start');
+}
+function cmChordBox(c){
+  const q=c.q, funcMap={};
+  q.iv.forEach((iv,i)=>{ funcMap[mod(c.pc+iv,12)]=labClass(q.lab[i]); });
+  const list=chordVoicings(c.pc, c.short, q.iv), v=list[0];
+  return `<div class="cm-chordname">${c.lbl}</div>${v?chordBoxSVG(v, funcMap):''}`;
+}
+function renderCmActive(){
+  if(!cmDrill) return;
+  const p=CM_PAIRS[cmDrill.pairIdx];
+  const a=document.getElementById('cm-chord-a'), b=document.getElementById('cm-chord-b');
+  if(a) a.innerHTML=cmChordBox(cmChord(p[0]));
+  if(b) b.innerHTML=cmChordBox(cmChord(p[1]));
+  renderCmTime(); renderCmCount();
+  const sub=document.getElementById('cm-sub'); if(sub) sub.textContent=t('cm_tap_hint');
+  const ut=document.getElementById('cm-untap'); if(ut) ut.innerHTML='&minus; '+t('cm_undo');
+  const st=document.getElementById('cm-stop'); if(st) st.textContent=t('cm_stop');
+}
+function renderCmTime(){ const tm=document.getElementById('cm-timer'); if(tm && cmDrill) tm.textContent=cmFmtTime(cmDrill.remaining); }
+function renderCmCount(){
+  const c=document.getElementById('cm-count-val'); if(c && cmDrill) c.textContent=cmDrill.count;
+  const lab=document.getElementById('cm-count-lab'); if(lab) lab.textContent=t('cm_changes');
+}
+function renderCmSummary(){
+  const el=document.getElementById('cm-summary'); if(!el || !cmDrill) return;
+  const stat=(v,l)=>'<div class="pp-stat"><div class="pp-val">'+v+'</div><div class="pp-lab">'+l+'</div></div>';
+  const title = cmDrill.newBest ? t('cm_newbest') : t('drill_complete');
+  el.innerHTML='<div class="drill-done-title">'+title+'</div>'+
+    '<div class="pp-stats">'+
+      stat(cmDrill.count, t('cm_changes'))+
+      stat(cmDrill.cpm, t('cm_cpm'))+
+      stat(cmDrill.best, t('cm_best'))+
+      stat(cmDrill.dur+t('cm_sec'), t('drill_time'))+
+    '</div>'+
+    '<div class="drill-actions"><button class="btn play" id="cm-again"></button><button class="btn" id="cm-done"></button></div>';
+  const ag=document.getElementById('cm-again'); if(ag){ ag.innerHTML='&#9654; '+t('drill_again'); ag.onclick=cmBegin; }
+  const dn=document.getElementById('cm-done');  if(dn){ dn.textContent=t('drill_done'); dn.onclick=exitChanges; }
+}
+// re-localize an in-flight changes drill on a language switch (called from applyLang)
+function refreshChangesLang(){ if(cmDrill) renderCm(); }
+
+/* card starter + in-drill controls — wired once at load (guarded so a missing panel
+   never throws, mirroring initDrill / initEar). */
+(function initChanges(){
+  const card=document.getElementById('start-changes'); if(!card) return;
+  card.onclick=startChanges;
+  const wire=(id,fn)=>{ const el=document.getElementById(id); if(el) el.onclick=fn; };
+  wire('cm-quit',      exitChanges);
+  wire('cm-start-btn', cmBegin);
+  wire('cm-stop',      finishChanges);   // finish early
+  wire('cm-tally',     cmTap);
+  wire('cm-untap',     cmUntap);
+  wire('cm-click',     ()=>{ cmClick=!cmClick; renderCmSetup(); });
+  const pp=document.getElementById('cm-pairs');
+  if(pp) pp.addEventListener('click', e=>{ const btn=e.target.closest('.cm-pair'); if(btn){ cmPairIdx=+btn.dataset.i; if(cmDrill) cmDrill.pairIdx=cmPairIdx; renderCmSetup(); } });
+  const dd=document.getElementById('cm-durs');
+  if(dd) dd.addEventListener('click', e=>{ const btn=e.target.closest('.cm-dur'); if(btn){ cmDurIdx=+btn.dataset.i; if(cmDrill) cmDrill.dur=CM_DURS[cmDurIdx]; renderCmSetup(); } });
+})();
 /* ===================== WIRING ===================== */
 /* ---- shared root picker, display mode, sub-view toggle, global play ---- */
 /* Each render fn paints panel content for its mode and the ONE shared board only
@@ -4496,15 +4800,18 @@ function setMode(mode){
   });
   // end the other modes' running drills when we leave them
   if(currentMode!=='practice' && typeof drill!=='undefined' && drill) exitDrill();
+  if(currentMode!=='practice' && typeof cmDrill!=='undefined' && cmDrill) exitChanges();
   if(currentMode!=='ear' && typeof ear!=='undefined' && ear) exitEar();
   if(currentMode==='reference'){
     applyAsideState(); applyContextBar(); applyBoardRegion(); applyHarmonyExtras(); renderActiveContext();
   } else if(currentMode==='practice'){
     // entering Practice with no drill running: show the home view (drill starters
-    // call startDrill() right after, which swaps it for the active drill)
-    if(!(typeof drill!=='undefined' && drill)){
-      const home=document.getElementById('practice-home'), area=document.getElementById('drill-area');
-      if(home) home.hidden=false; if(area) area.hidden=true;
+    // swap it for the active drill area right after)
+    const anyDrill=(typeof drill!=='undefined' && drill) || (typeof cmDrill!=='undefined' && cmDrill);
+    if(!anyDrill){
+      const home=document.getElementById('practice-home');
+      if(home) home.hidden=false;
+      ['drill-area','cm-area'].forEach(id=>{ const a=document.getElementById(id); if(a) a.hidden=true; });
     }
     renderPractice();
   } else {   // ear
@@ -4705,6 +5012,10 @@ if (typeof window!=='undefined' && window.__GS_ALLOW_TEST__) {
     // ear-training drills (Phase 4)
     startEar, earAnswer, earNext, earReplay, exitEar, getEar:()=>ear,
     earChoices:()=>(ear?ear.cfg.choices(ear.cur):[]), INTERVALS, EAR_QUAL_IDX, RHYTHMS,
+    // chord-change fluency drill (Phase 5a)
+    startChanges, cmBegin, cmTap, cmUntap, finishChanges, exitChanges, getCm:()=>cmDrill,
+    CM_PAIRS, CM_DURS, cmPairId, cmPairBest,
+    setCmPair:(i)=>{ cmPairIdx=i; if(cmDrill) cmDrill.pairIdx=i; }, setCmDur:(i)=>{ cmDurIdx=i; if(cmDrill) cmDrill.dur=CM_DURS[i]; },
     CAGED_BY_POS, isCAGEDScale,
     setFret:(i)=>{ fretRangeIdx=i; },
     setCapo:(i)=>{ capo=i; }, getCapo:()=>capo,

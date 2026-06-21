@@ -1,6 +1,15 @@
 /* Changelog — single source of truth for the in-app "What's new" modal.
    Newest first; add a new entry on top each release. Bullets are localized. */
 const CHANGELOG = [
+  { v:'2.3.0', date:'2026-06-21',
+    en:['Practice now has a Rhythm section, starting with the classic "one-minute changes" — the most useful drill there is for getting your chord changes clean and fast.',
+        'Pick a chord pair (A–D, C–G, G–Em and more), choose 30/60/90 seconds, and switch between the two shapes as cleanly as you can. The two chord diagrams stay on screen the whole time so you always know where your fingers go.',
+        'Tap the big button on every clean change; at the end you get your changes-per-minute and your personal best for that pair, so there is always a record to beat. An optional metronome gives you a pulse to switch against.',
+        'Honest by design: this is a coach drill — it counts your taps, not your guitar. Real "play it and get scored" lands later with microphone input.'],
+    uk:['У «Практиці» зʼявився розділ «Ритм», і перша вправа — класична «зміна акордів за хвилину», найкорисніше, що є для чистих і швидких переходів між акордами.',
+        'Обери пару акордів (A–D, C–G, G–Em та інші), задай 30/60/90 секунд і перемикайся між двома формами якомога чистіше. Обидві аплікатури весь час на екрані, тож завжди видно, куди ставити пальці.',
+        'Натискай велику кнопку на кожній чистій зміні; наприкінці отримуєш кількість змін за хвилину й свій рекорд для цієї пари — завжди є що побити. За бажання вмикається метроном для пульсу.',
+        'Чесно за задумом: це коуч-вправа — вона рахує твої натискання, а не звук гітари. Справжня оцінка гри зʼявиться згодом, із мікрофоном.'] },
   { v:'2.2.0', date:'2026-06-21',
     en:['Sound is now in stereo. The guitar spreads across the stereo field by register — low strings centred, higher strings wider — so chords and scales open up instead of collapsing to one spot, and the hi-hats sit slightly off-centre like a real kit.',
         'A master Volume slider in the Backing panel sets the overall output level (and is remembered between visits).',

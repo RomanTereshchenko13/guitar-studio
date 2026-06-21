@@ -10,7 +10,7 @@ Code is authored as small `src/js/NN-*.js` modules and concatenated by a pure-st
 `build.js` (no bundler, no transpile). Every item below is reachable with the Web Audio API
 and vanilla JS. New phases add new `src/` modules; they never add a dependency.
 
-_Last updated: 2026-06-21 · shipping: v2.2.0_
+_Last updated: 2026-06-21 · shipping: v2.3.0_
 
 ---
 
@@ -453,10 +453,17 @@ the new `ear` mode. Low-risk, high value-per-effort; ran independent of Phases 1
 **Size:** L · **Risk:** med — many coach tiers; scoring waits on F1 (Phase 8).
 
 The half of playing nearly everyone does, built mostly by turning the existing backing band
-into something the user plays *along with*. Coach tiers ship with no mic:
+into something the user plays *along with*. Coach tiers ship with no mic. Ships incrementally
+(5a first), each step a new card in the **Practice** home (decided over a 4th "Play/Rhythm"
+mode, to keep the bottom nav at three and leave slot 4 for Progress) under a **Rhythm** group.
 
-- **Chord-change fluency** — switch cleanly between shapes in time; score clean changes per
-  cycle (the famous "one-minute changes"). We already have every shape.
+- **Chord-change fluency** ✅ **Shipped v2.3.0** (5a). The "one-minute changes" coach drill:
+  pick a classic open-chord pair (A–D, C–G, G–Em …) + a length (30/60/90 s), the two shapes stay
+  on screen, and you tap a big thumb-zone tally on each clean change. Result is changes-per-minute
+  + a **personal best per pair** — derived by scanning the learner's sessions ring buffer, so the
+  pinned item shape (spine #3) is untouched and no per-item SRS is minted. Optional metronome on its
+  own scheduler clock; count-in + a new-best fanfare on the cue bus. _Honest coach framing: it counts
+  your taps, not your guitar — which is the authentic form of this exercise; mic scoring is Phase 8/F1._
 - **Strumming-pattern trainer** — down/up patterns on the beat grid, synced to the scheduler;
   see and hear the pattern even without scoring.
 - **Comping the progression** — play the right chord at the right time as the progression

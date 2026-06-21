@@ -281,18 +281,75 @@
          active drill (#drill-area) while a session runs. -->
     <div id="practice-home">
       <p class="practice-soon" data-i18n="practice_intro">Вправи з рахунком, що ведуть облік твого прогресу й повертають те, що варто повторити.</p>
-      <ul class="practice-list">
-        <li><button type="button" class="drill-card" id="start-notes">
-          <span class="dc-name" data-i18n="drill_notes">Назви ноти на грифі</span>
-          <span class="dc-meta" data-i18n="drill_notes_meta">Грифознавство · рахунок за точністю</span>
-        </button></li>
-      </ul>
+      <!-- Drills grouped by pillar (Phase 5 adds the Rhythm group): Fretboard
+           knowledge vs playing THE changes. -->
+      <div class="practice-section">
+        <div class="ps-label" data-i18n="practice_grp_fretboard">Гриф</div>
+        <ul class="practice-list">
+          <li><button type="button" class="drill-card" id="start-notes">
+            <span class="dc-name" data-i18n="drill_notes">Назви ноти на грифі</span>
+            <span class="dc-meta" data-i18n="drill_notes_meta">Грифознавство · рахунок за точністю</span>
+          </button></li>
+        </ul>
+      </div>
+      <div class="practice-section">
+        <div class="ps-label" data-i18n="practice_grp_rhythm">Ритм</div>
+        <ul class="practice-list">
+          <li><button type="button" class="drill-card" id="start-changes">
+            <span class="dc-name" data-i18n="drill_changes">Зміна акордів за хвилину</span>
+            <span class="dc-meta" data-i18n="drill_changes_meta">Чисті зміни за хвилину · коуч (без оцінки)</span>
+          </button></li>
+        </ul>
+      </div>
       <!-- Progress readout (3b): the learner model's aggregate stats; renderPractice()
            fills #practice-progress, empty until the drill writes the first attempt. -->
       <div class="practice-progress-card">
         <div class="pp-title" data-i18n="prog_title">Прогрес</div>
         <div id="practice-progress"></div>
       </div>
+    </div>
+
+    <!-- Chord-change fluency / "one-minute changes" (Phase 5a): a coach drill with a
+         setup → timed run → summary flow. Reuses the chord diagrams; counts taps, not
+         audio (honest coach framing). Hidden until started. -->
+    <div id="cm-area" hidden>
+      <div class="drill-head">
+        <button type="button" class="btn" id="cm-quit" data-i18n="drill_quit">Вийти</button>
+        <span class="drill-count" data-i18n="drill_changes">Зміна акордів за хвилину</span>
+      </div>
+      <!-- setup: pick a chord pair + length, optional click; then Start -->
+      <div id="cm-setup">
+        <div class="row"><span class="ctrl-label" data-i18n="cm_pair">Пара акордів</span><div class="group" id="cm-pairs"></div></div>
+        <div class="row">
+          <span class="ctrl-label" data-i18n="cm_dur">Тривалість</span><div class="group" id="cm-durs"></div>
+          <div class="divider"></div>
+          <button type="button" class="btn" id="cm-click" aria-pressed="false"></button>
+        </div>
+        <div class="cm-best-line" id="cm-setup-best"></div>
+        <div class="drill-actions"><button class="btn play" id="cm-start-btn"></button></div>
+        <p class="drill-sub" id="cm-setup-note" data-i18n="cm_setup_note">Перемикайся між акордами якомога чистіше й натискай велику кнопку на кожній чистій зміні. Лічильник рахує твої натискання, а не звук гітари — оцінку з мікрофоном додамо згодом.</p>
+      </div>
+      <!-- active: timer, the two shapes, a big thumb-zone tally -->
+      <div id="cm-active" hidden>
+        <div class="cm-top">
+          <span class="cm-timer" id="cm-timer">1:00</span>
+          <button type="button" class="btn" id="cm-stop" data-i18n="cm_stop">Завершити</button>
+        </div>
+        <div class="cm-chords">
+          <div class="cm-chord" id="cm-chord-a"></div>
+          <div class="cm-swap" aria-hidden="true">↔</div>
+          <div class="cm-chord" id="cm-chord-b"></div>
+        </div>
+        <button type="button" class="cm-tally" id="cm-tally">
+          <span class="cm-count-val" id="cm-count-val">0</span>
+          <span class="cm-count-lab" id="cm-count-lab"></span>
+        </button>
+        <div class="cm-active-foot">
+          <span class="drill-sub" id="cm-sub"></span>
+          <button type="button" class="btn" id="cm-untap"></button>
+        </div>
+      </div>
+      <div class="drill-summary" id="cm-summary" hidden></div>
     </div>
 
     <!-- Active drill (3c): note-naming. Its own board (painted by renderBoard into

@@ -2,6 +2,13 @@
 
 _Generated from `src/js/02-changelog.js` by `build.js` — do not edit by hand._
 
+## v2.3.0 — 2026-06-21
+
+- Practice now has a Rhythm section, starting with the classic "one-minute changes" — the most useful drill there is for getting your chord changes clean and fast.
+- Pick a chord pair (A–D, C–G, G–Em and more), choose 30/60/90 seconds, and switch between the two shapes as cleanly as you can. The two chord diagrams stay on screen the whole time so you always know where your fingers go.
+- Tap the big button on every clean change; at the end you get your changes-per-minute and your personal best for that pair, so there is always a record to beat. An optional metronome gives you a pulse to switch against.
+- Honest by design: this is a coach drill — it counts your taps, not your guitar. Real "play it and get scored" lands later with microphone input.
+
 ## v2.2.0 — 2026-06-21
 
 - Sound is now in stereo. The guitar spreads across the stereo field by register — low strings centred, higher strings wider — so chords and scales open up instead of collapsing to one spot, and the hi-hats sit slightly off-centre like a real kit.
